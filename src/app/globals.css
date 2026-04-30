@@ -1,26 +1,90 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #030509;
+  --s1: #080d16;
+  --s2: #0e1525;
+  --br: #182236;
+  --neon: #00ff57;
+  --gold: #ffb800;
+  --red: #ff3b3b;
+  --text: #e7ecf3;
+  --muted: #6b7587;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-s1: var(--s1);
+  --color-s2: var(--s2);
+  --color-br: var(--br);
+  --color-neon: var(--neon);
+  --color-gold: var(--gold);
+  --color-red: var(--red);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --font-display: var(--font-bebas);
+  --font-mono: var(--font-jb-mono);
+  --font-sans: var(--font-exo);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-exo), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle grid backdrop for the cyber-zim feel */
+.bg-grid {
+  background-image:
+    radial-gradient(ellipse at top, rgba(0, 255, 87, 0.06), transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: auto, 48px 48px, 48px 48px;
+}
+
+.glass {
+  background: rgba(8, 13, 22, 0.72);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+.elite-glow {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 255, 87, 0.35),
+    0 0 24px -8px rgba(0, 255, 87, 0.45);
+}
+
+/* Scrollbar polish */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--br);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #243250;
+}
+
+@keyframes pulse-neon {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 87, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 255, 87, 0);
+  }
+}
+.live-dot {
+  animation: pulse-neon 1.6s ease-out infinite;
 }
