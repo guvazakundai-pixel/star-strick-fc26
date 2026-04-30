@@ -23,10 +23,37 @@ const exo = Exo_2({
   display: "swap",
 });
 
+const SITE_URL = "https://star-strick-fc26.vercel.app";
+const SITE_TITLE = "Star Strick FC26 — Zimbabwe's Pro EA FC League";
+const SITE_DESC =
+  "Live rankings, tournaments and clubs for the Star Strick FC26 competitive scene across Zimbabwe.";
+
 export const metadata: Metadata = {
-  title: "Star Strick FC26 — Zimbabwe's Pro EA FC League",
-  description:
-    "Live rankings, tournaments and clubs for the Star Strick FC26 competitive scene across Zimbabwe.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: "%s · Star Strick FC26" },
+  description: SITE_DESC,
+  applicationName: "Star Strick FC26",
+  keywords: [
+    "EA FC",
+    "FC26",
+    "Zimbabwe esports",
+    "FIFA Zimbabwe",
+    "EA Sports FC league",
+    "Star Strick",
+    "Harare gaming",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "Star Strick FC26",
+    url: SITE_URL,
+    title: SITE_TITLE,
+    description: SITE_DESC,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESC,
+  },
 };
 
 export const viewport: Viewport = {

@@ -11,14 +11,14 @@ import {
   type FormResult,
 } from "@/lib/players";
 
-type SortKey = "rank" | "points" | "wins" | "kdRatio";
+type SortKey = "rank" | "points" | "wins" | "gpm";
 type SortDir = "asc" | "desc";
 
 const SORT_LABEL: Record<SortKey, string> = {
   rank: "Rank",
   points: "Points",
   wins: "Wins",
-  kdRatio: "K/D",
+  gpm: "G/M",
 };
 
 export function Leaderboard() {
@@ -209,7 +209,7 @@ function SortBar({
   sortDir: SortDir;
   onSort: (k: SortKey) => void;
 }) {
-  const KEYS: SortKey[] = ["rank", "points", "wins", "kdRatio"];
+  const KEYS: SortKey[] = ["rank", "points", "wins", "gpm"];
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1">
       <span className="font-mono text-[10px] uppercase tracking-wider text-muted pr-1 shrink-0">
@@ -289,7 +289,7 @@ function PlayerRow({
             {player.points.toLocaleString()}
           </p>
           <p className="font-mono text-[10px] text-muted mt-0.5">
-            K/D <span className="text-text">{player.kdRatio.toFixed(2)}</span>
+            G/M <span className="text-text">{player.gpm.toFixed(2)}</span>
           </p>
         </div>
       </div>
@@ -424,12 +424,23 @@ function PlayerDrawer({
 }
 
 function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   const total = player.wins + player.losses + player.draws;
   const winRate = total > 0 ? (player.wins / total) * 100 : 0;
   const goalDiff = player.goalsFor - player.goalsAgainst;
 
   return (
-    <div className="h-full flex flex-col">
+    <div
+      className={
+        "h-full flex flex-col transition-all duration-300 ease-out " +
+        (mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2")
+      }
+    >
       <div className="flex items-center justify-between px-5 h-14 border-b border-br/70">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
           Player Profile
@@ -477,7 +488,7 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
             accent={winRate > 70 ? "neon" : winRate > 50 ? "gold" : "muted"}
           />
           <Stat label="Win Streak" value={`${player.winStreak}`} accent={player.winStreak >= 5 ? "neon" : "muted"} />
-          <Stat label="K/D Ratio" value={player.kdRatio.toFixed(2)} accent="muted" />
+          <Stat label="Goals / Match" value={player.gpm.toFixed(2)} accent="muted" />
           <Stat
             label="Goal Diff"
             value={`${goalDiff >= 0 ? "+" : ""}${goalDiff}`}
@@ -554,8 +565,16 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
           </dl>
         </section>
 
-        <button className="w-full h-12 rounded-lg border border-neon/50 bg-neon/10 text-neon font-display tracking-[0.15em] text-base hover:bg-neon/15 transition">
+        <button
+          disabled
+          aria-disabled="true"
+          title="Challenges arrive in Phase 2"
+          className="w-full h-12 rounded-lg border border-br/80 bg-s2 text-muted font-display tracking-[0.15em] text-base cursor-not-allowed flex items-center justify-center gap-2"
+        >
           CHALLENGE PLAYER
+          <span className="font-mono text-[9px] uppercase tracking-wider rounded-full border border-br px-1.5 py-0.5 text-muted">
+            Phase 2
+          </span>
         </button>
       </div>
     </div>

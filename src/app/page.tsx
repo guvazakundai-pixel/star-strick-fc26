@@ -2,7 +2,8 @@ import Link from "next/link";
 import { PLAYERS } from "@/lib/players";
 
 export default function HomePage() {
-  const top = PLAYERS.slice(0, 3);
+  // Podium order: #2 left, #1 centre (raised), #3 right.
+  const [first, second, third] = PLAYERS.slice(0, 3);
   const totalMatches = PLAYERS.reduce(
     (sum, p) => sum + p.wins + p.losses + p.draws,
     0,
@@ -15,9 +16,24 @@ export default function HomePage() {
       <Hero />
 
       <section className="grid grid-cols-3 gap-2 sm:gap-3">
-        <KpiCard label="Matches" value={totalMatches.toLocaleString()} accent="neon" />
-        <KpiCard label="Goals" value={totalGoals.toLocaleString()} accent="gold" />
-        <KpiCard label="Prize Pool" value={`$${(totalPrize / 1000).toFixed(1)}k`} accent="neon" />
+        <KpiCard
+          label="Matches"
+          value={totalMatches.toLocaleString()}
+          delta="+34 today"
+          accent="neon"
+        />
+        <KpiCard
+          label="Goals"
+          value={totalGoals.toLocaleString()}
+          delta="+118 today"
+          accent="gold"
+        />
+        <KpiCard
+          label="Prize Pool"
+          value={`$${(totalPrize / 1000).toFixed(1)}k`}
+          delta="+$420 wk"
+          accent="neon"
+        />
       </section>
 
       <section>
@@ -25,35 +41,7 @@ export default function HomePage() {
           title="TOP 3 RIGHT NOW"
           action={{ href: "/rankings", label: "View Rankings" }}
         />
-        <ol className="grid gap-2 sm:grid-cols-3">
-          {top.map((p) => (
-            <li
-              key={p.id}
-              className="rounded-xl border border-neon/30 elite-glow bg-s1/60 p-4"
-            >
-              <div className="flex items-baseline justify-between">
-                <span className="font-display text-3xl text-neon leading-none tabular-nums">
-                  #{p.rank}
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
-                  {p.city}
-                </span>
-              </div>
-              <p className="mt-3 font-display tracking-wide text-text text-xl truncate">
-                {p.name}
-              </p>
-              <p className="font-mono text-[11px] text-neon truncate">
-                @{p.gamertag}
-              </p>
-              <div className="mt-3 flex items-baseline justify-between font-mono">
-                <span className="text-[10px] text-muted">PTS</span>
-                <span className="text-text tabular-nums">
-                  {p.points.toLocaleString()}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ol>
+        <Podium first={first} second={second} third={third} />
       </section>
 
       <section>
@@ -116,20 +104,116 @@ function Hero() {
         <div className="mt-6 flex flex-wrap gap-2">
           <Link
             href="/rankings"
-            className="inline-flex items-center justify-center h-11 rounded-lg bg-neon px-5 font-display tracking-[0.15em] text-bg hover:brightness-110 transition"
+            className="inline-flex items-center justify-center h-11 rounded-lg bg-neon px-5 font-display tracking-[0.15em] hover:brightness-110 transition"
             style={{ color: "var(--bg)" }}
           >
             VIEW RANKINGS
           </Link>
           <Link
-            href="/clubs"
+            href="/tournaments"
             className="inline-flex items-center justify-center h-11 rounded-lg border border-br/80 bg-s1/60 px-5 font-display tracking-[0.15em] text-text hover:border-neon/50 hover:text-neon transition"
           >
-            EXPLORE CLUBS
+            VIEW CUPS
           </Link>
         </div>
       </div>
     </section>
+  );
+}
+
+function Podium({
+  first,
+  second,
+  third,
+}: {
+  first: (typeof PLAYERS)[number];
+  second: (typeof PLAYERS)[number];
+  third: (typeof PLAYERS)[number];
+}) {
+  return (
+    <div className="grid grid-cols-3 items-end gap-2 sm:gap-3">
+      <PodiumCard player={second} place={2} height="md" />
+      <PodiumCard player={first} place={1} height="lg" />
+      <PodiumCard player={third} place={3} height="sm" />
+    </div>
+  );
+}
+
+function PodiumCard({
+  player,
+  place,
+  height,
+}: {
+  player: (typeof PLAYERS)[number];
+  place: 1 | 2 | 3;
+  height: "sm" | "md" | "lg";
+}) {
+  const isFirst = place === 1;
+  const heightCls =
+    height === "lg" ? "min-h-[230px]" : height === "md" ? "min-h-[200px]" : "min-h-[185px]";
+  const accent =
+    place === 1 ? "text-neon" : place === 2 ? "text-text" : "text-gold";
+  const placeLabel = place === 1 ? "1ST" : place === 2 ? "2ND" : "3RD";
+
+  return (
+    <div
+      className={
+        "relative rounded-xl border bg-s1/60 p-3 sm:p-4 flex flex-col " +
+        heightCls +
+        " " +
+        (isFirst ? "border-neon/40 elite-glow" : "border-br/70")
+      }
+    >
+      {isFirst && (
+        <span
+          aria-hidden
+          className="absolute -top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full border border-neon/50 bg-bg px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-neon"
+        >
+          ★ Leader
+        </span>
+      )}
+      <div className="flex items-center justify-between">
+        <span
+          className={
+            "font-display text-3xl sm:text-4xl leading-none tabular-nums " + accent
+          }
+        >
+          #{player.rank}
+        </span>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+          {placeLabel}
+        </span>
+      </div>
+      <p className="mt-3 font-display tracking-wide text-text text-base sm:text-xl truncate">
+        {player.name}
+      </p>
+      <p className="font-mono text-[10px] sm:text-[11px] text-neon truncate">
+        @{player.gamertag}
+      </p>
+      <div className="mt-auto pt-3">
+        <div className="flex items-baseline justify-between font-mono">
+          <span className="text-[10px] text-muted uppercase tracking-wider">
+            Pts
+          </span>
+          <span className="text-text tabular-nums text-sm sm:text-base">
+            {player.points.toLocaleString()}
+          </span>
+        </div>
+        <div className="mt-1 flex items-baseline justify-between font-mono">
+          <span className="text-[10px] text-muted uppercase tracking-wider">
+            Streak
+          </span>
+          <span
+            className={
+              "tabular-nums text-sm " +
+              (player.winStreak >= 5 ? "text-neon" : "text-text")
+            }
+          >
+            {player.winStreak > 0 ? `🔥 ${player.winStreak}` : "—"}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -160,10 +244,12 @@ function SectionHeader({
 function KpiCard({
   label,
   value,
+  delta,
   accent,
 }: {
   label: string;
   value: string;
+  delta: string;
   accent: "neon" | "gold";
 }) {
   return (
@@ -178,6 +264,9 @@ function KpiCard({
         }
       >
         {value}
+      </p>
+      <p className="mt-1.5 font-mono text-[10px] text-muted">
+        <span className="text-neon">▲</span> {delta}
       </p>
     </div>
   );
