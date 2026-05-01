@@ -10,21 +10,16 @@ import {
   type City,
   type FormResult,
 } from "@/lib/players";
+import { CLUBS, clubByPlayerId } from "@/lib/clubs";
 
-type SortKey = "rank" | "points" | "wins" | "gpm";
+type SortKey = "rank" | "points" | "wins";
 type SortDir = "asc" | "desc";
-
-const SORT_LABEL: Record<SortKey, string> = {
-  rank: "Rank",
-  points: "Points",
-  wins: "Wins",
-  gpm: "G/M",
-};
 
 export function Leaderboard() {
   const [query, setQuery] = useState("");
   const [city, setCity] = useState<City | "All">("All");
   const [division, setDivision] = useState<Division | "All">("All");
+  const [clubId, setClubId] = useState<string | "All">("All");
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -34,25 +29,30 @@ export function Leaderboard() {
     const filtered = PLAYERS.filter((p) => {
       if (city !== "All" && p.city !== city) return false;
       if (division !== "All" && p.division !== division) return false;
+      if (clubId !== "All") {
+        const c = clubByPlayerId(p.id);
+        if (!c || c.id !== clubId) return false;
+      }
       if (!q) return true;
+      const c = clubByPlayerId(p.id);
       return (
         p.name.toLowerCase().includes(q) ||
         p.gamertag.toLowerCase().includes(q) ||
-        p.city.toLowerCase().includes(q)
+        p.city.toLowerCase().includes(q) ||
+        (c?.name.toLowerCase().includes(q) ?? false)
       );
     });
-    const sorted = [...filtered].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const av = a[sortKey];
       const bv = b[sortKey];
       const cmp = av < bv ? -1 : av > bv ? 1 : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
-    return sorted;
-  }, [query, city, division, sortKey, sortDir]);
+  }, [query, city, division, clubId, sortKey, sortDir]);
 
   const open = openId ? PLAYERS.find((p) => p.id === openId) ?? null : null;
 
-  function toggleSort(key: SortKey) {
+  function setSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -62,49 +62,41 @@ export function Leaderboard() {
   }
 
   return (
-    <div className="space-y-5">
-      <CommandBar
+    <div className="space-y-4">
+      <Toolbar
         query={query}
         onQuery={setQuery}
         city={city}
         onCity={setCity}
         division={division}
         onDivision={setDivision}
+        clubId={clubId}
+        onClubId={setClubId}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={setSort}
         resultCount={rows.length}
       />
 
-      <SortBar sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-
-      <ol className="space-y-2">
-        {rows.map((p) => (
-          <li key={p.id}>
-            <PlayerRow player={p} onOpen={() => setOpenId(p.id)} />
-          </li>
-        ))}
-        {rows.length === 0 && (
-          <li className="rounded-xl border border-br/70 bg-s1/60 px-4 py-10 text-center">
-            <p className="font-display tracking-wider text-text text-2xl">
-              NO MATCHES
-            </p>
-            <p className="font-mono text-xs text-muted mt-1">
-              Try clearing a filter or resetting the search.
-            </p>
-          </li>
-        )}
-      </ol>
+      <RankingsTable rows={rows} onOpen={setOpenId} />
 
       <PlayerDrawer player={open} onClose={() => setOpenId(null)} />
     </div>
   );
 }
 
-function CommandBar({
+function Toolbar({
   query,
   onQuery,
   city,
   onCity,
   division,
   onDivision,
+  clubId,
+  onClubId,
+  sortKey,
+  sortDir,
+  onSort,
   resultCount,
 }: {
   query: string;
@@ -113,13 +105,18 @@ function CommandBar({
   onCity: (c: City | "All") => void;
   division: Division | "All";
   onDivision: (d: Division | "All") => void;
+  clubId: string;
+  onClubId: (c: string) => void;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (k: SortKey) => void;
   resultCount: number;
 }) {
   return (
-    <div className="rounded-2xl border border-br/70 glass p-3 sm:p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="relative flex-1 group">
-          <span className="absolute inset-y-0 left-3 flex items-center text-muted group-focus-within:text-neon transition-colors">
+    <div className="rounded-md border border-border bg-surface">
+      <div className="p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+        <label className="relative flex-1 min-w-[200px]">
+          <span className="absolute inset-y-0 left-3 flex items-center text-muted">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
               <circle cx="11" cy="11" r="7" />
               <path d="M21 21l-4.3-4.3" />
@@ -128,14 +125,14 @@ function CommandBar({
           <input
             type="search"
             inputMode="search"
-            placeholder="Search player, gamertag, city…"
+            placeholder="Search player, gamertag, club…"
             value={query}
             onChange={(e) => onQuery(e.target.value)}
-            className="w-full h-11 rounded-lg bg-s2/80 border border-br/80 pl-9 pr-3 font-mono text-sm text-text placeholder:text-muted/70 focus:outline-none focus:border-neon focus:ring-2 focus:ring-neon/20 transition"
+            className="w-full h-9 rounded-md border border-border bg-surface pl-9 pr-3 text-sm text-ink placeholder:text-muted-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition"
           />
         </label>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select
             label="City"
             value={city}
@@ -143,21 +140,52 @@ function CommandBar({
             options={["All", ...CITIES]}
           />
           <Select
-            label="Div"
+            label="Division"
             value={division}
             onChange={(v) => onDivision(v as Division | "All")}
             options={["All", ...DIVISIONS]}
           />
+          <Select
+            label="Club"
+            value={clubId}
+            onChange={(v) => onClubId(v)}
+            options={[
+              { value: "All", label: "All" },
+              ...CLUBS.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-muted">
-        <span>
-          <span className="text-neon">{resultCount}</span> /{" "}
-          {PLAYERS.length} players
-        </span>
-        <span className="hidden sm:inline">
-          ZW · Season 1 · Week 12
+      <div className="px-3 sm:px-4 py-2 border-t border-border flex flex-wrap items-center gap-2 text-xs text-muted">
+        <span className="font-medium uppercase tracking-wide text-[11px]">Sort</span>
+        {(["rank", "points", "wins"] as const).map((k) => {
+          const active = sortKey === k;
+          const labels: Record<SortKey, string> = {
+            rank: "Rank",
+            points: "Points",
+            wins: "Wins",
+          };
+          return (
+            <button
+              key={k}
+              onClick={() => onSort(k)}
+              className={
+                "inline-flex items-center gap-1 h-7 px-2.5 rounded text-[12px] border transition " +
+                (active
+                  ? "border-accent text-accent bg-accent-soft"
+                  : "border-border text-ink-soft hover:border-border-strong hover:bg-surface-2")
+              }
+            >
+              {labels[k]}
+              {active && (
+                <span className="text-[10px]">{sortDir === "asc" ? "▲" : "▼"}</span>
+              )}
+            </button>
+          );
+        })}
+        <span className="ml-auto font-mono text-[11px] text-muted">
+          {resultCount} of {PLAYERS.length} players
         </span>
       </div>
     </div>
@@ -173,25 +201,29 @@ function Select({
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: readonly string[];
+  options: ReadonlyArray<string | { value: string; label: string }>;
 }) {
   return (
-    <label className="relative">
-      <span className="absolute -top-2 left-2 px-1 bg-bg text-[9px] font-mono uppercase tracking-wider text-muted">
+    <label className="relative inline-flex items-center">
+      <span className="absolute -top-2 left-2 px-1 bg-surface text-[9px] font-medium uppercase tracking-wider text-muted">
         {label}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none h-11 rounded-lg bg-s2/80 border border-br/80 pl-3 pr-8 font-mono text-xs text-text focus:outline-none focus:border-neon focus:ring-2 focus:ring-neon/20 transition cursor-pointer"
+        className="appearance-none h-9 rounded-md border border-border bg-surface pl-3 pr-8 text-xs text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition cursor-pointer"
       >
-        {options.map((o) => (
-          <option key={o} value={o} className="bg-s1 text-text">
-            {o}
-          </option>
-        ))}
+        {options.map((o) => {
+          const v = typeof o === "string" ? o : o.value;
+          const l = typeof o === "string" ? o : o.label;
+          return (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          );
+        })}
       </select>
-      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted">
+      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted-soft">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -200,115 +232,156 @@ function Select({
   );
 }
 
-function SortBar({
-  sortKey,
-  sortDir,
-  onSort,
+function RankingsTable({
+  rows,
+  onOpen,
 }: {
-  sortKey: SortKey;
-  sortDir: SortDir;
-  onSort: (k: SortKey) => void;
+  rows: Player[];
+  onOpen: (id: string) => void;
 }) {
-  const KEYS: SortKey[] = ["rank", "points", "wins", "gpm"];
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1">
-      <span className="font-mono text-[10px] uppercase tracking-wider text-muted pr-1 shrink-0">
-        Sort
-      </span>
-      {KEYS.map((k) => {
-        const active = sortKey === k;
-        return (
-          <button
-            key={k}
-            onClick={() => onSort(k)}
-            className={
-              "shrink-0 inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-mono uppercase tracking-wider border transition " +
-              (active
-                ? "border-neon/60 bg-neon/10 text-neon"
-                : "border-br/70 bg-s1/60 text-muted hover:text-text hover:border-br")
-            }
-          >
-            {SORT_LABEL[k]}
-            {active && (
-              <span aria-hidden className="text-[9px]">
-                {sortDir === "asc" ? "▲" : "▼"}
-              </span>
+    <div className="rounded-md border border-border bg-surface overflow-hidden">
+      <div className="overflow-x-auto" style={{ scrollBehavior: "smooth" }}>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="text-left text-muted text-[11px] uppercase tracking-wider">
+              <th
+                scope="col"
+                className="sticky left-0 z-20 bg-surface-2 border-b border-border w-12 px-3 py-2.5 font-medium"
+              >
+                #
+              </th>
+              <th
+                scope="col"
+                className="sticky left-12 z-20 bg-surface-2 sticky-shadow border-b border-border min-w-[210px] px-3 py-2.5 font-medium"
+              >
+                Player
+              </th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">Pts</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium">Form</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">P</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right text-positive">W</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">D</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right text-negative">L</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">GF</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">GA</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">GD</th>
+              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right pr-4">G/M</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p, i) => (
+              <PlayerRow key={p.id} player={p} index={i} onOpen={() => onOpen(p.id)} />
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={12} className="px-4 py-12 text-center text-muted">
+                  No players match these filters.
+                </td>
+              </tr>
             )}
-          </button>
-        );
-      })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 function PlayerRow({
   player,
+  index,
   onOpen,
 }: {
   player: Player;
+  index: number;
   onOpen: () => void;
 }) {
-  const isElite = player.division === "Elite";
+  const club = clubByPlayerId(player.id);
+  const matches = player.wins + player.losses + player.draws;
+  const gd = player.goalsFor - player.goalsAgainst;
+  const isLast = index < 0; // placeholder; we use border-b on each row
+  const topThree = player.rank <= 3;
+  const rowBg = topThree ? "bg-accent-soft/40" : "bg-surface";
+  const stickyBg = topThree ? "bg-accent-soft/40" : "bg-surface";
+
   return (
-    <button
+    <tr
       onClick={onOpen}
       className={
-        "w-full text-left rounded-xl border bg-s1/60 hover:bg-s2 transition-all duration-200 hover:border-neon/50 hover:-translate-y-px " +
-        (isElite ? "border-neon/30 elite-glow" : "border-br/70")
+        "cursor-pointer border-b border-border last:border-b-0 transition-colors " +
+        rowBg +
+        " hover:bg-surface-2"
       }
     >
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3 sm:p-4">
-        <div className="flex items-center gap-3">
-          <RankBadge rank={player.rank} elite={isElite} />
+      <td
+        className={
+          "sticky left-0 z-10 w-12 px-3 py-2.5 align-middle " + stickyBg
+        }
+      >
+        <span className="font-mono text-sm text-ink tabular-nums">
+          {player.rank}
+        </span>
+      </td>
+      <td
+        className={
+          "sticky left-12 z-10 sticky-shadow min-w-[210px] px-3 py-2.5 align-middle " +
+          stickyBg
+        }
+      >
+        <div className="flex items-center gap-3 min-w-0">
           <RankDelta rank={player.rank} prev={player.prev} />
-        </div>
-
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="truncate font-display tracking-wide text-text text-lg sm:text-xl">
-              {player.name}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="truncate font-semibold text-ink text-sm">
+                {player.name}
+              </p>
+              <DivisionTag division={player.division} />
+            </div>
+            <p className="truncate text-[11px] text-muted">
+              <span className="font-mono">@{player.gamertag}</span>
+              {club && <> · {club.name}</>}
             </p>
-            <DivisionPill division={player.division} />
-          </div>
-          <div className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted truncate">
-            <span className="text-neon/90">@{player.gamertag}</span>
-            <span className="opacity-50">·</span>
-            <span>{player.city}</span>
-          </div>
-          <div className="mt-2 flex items-center gap-3">
-            <FormStrip form={player.form} />
-            <span className="hidden sm:inline font-mono text-[10px] text-muted">
-              W {player.wins} · L {player.losses} · D {player.draws}
-            </span>
           </div>
         </div>
-
-        <div className="text-right">
-          <p className="font-mono text-xs text-muted leading-none">PTS</p>
-          <p className="font-mono text-xl sm:text-2xl text-text leading-tight tabular-nums">
-            {player.points.toLocaleString()}
-          </p>
-          <p className="font-mono text-[10px] text-muted mt-0.5">
-            G/M <span className="text-text">{player.gpm.toFixed(2)}</span>
-          </p>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function RankBadge({ rank, elite }: { rank: number; elite: boolean }) {
-  return (
-    <div
-      className={
-        "h-11 w-11 grid place-items-center rounded-lg border font-display text-2xl leading-none tabular-nums " +
-        (elite
-          ? "border-neon/50 bg-neon/10 text-neon"
-          : "border-br/80 bg-s2 text-text")
-      }
-    >
-      {rank}
-    </div>
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle">
+        <span className="font-mono text-base text-ink font-semibold tabular-nums">
+          {player.points.toLocaleString()}
+        </span>
+      </td>
+      <td className="px-3 py-2.5 align-middle">
+        <FormStrip form={player.form} />
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-ink-soft tabular-nums">
+        {matches}
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-positive tabular-nums">
+        {player.wins}
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-ink-soft tabular-nums">
+        {player.draws}
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-negative tabular-nums">
+        {player.losses}
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-ink-soft tabular-nums">
+        {player.goalsFor}
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-ink-soft tabular-nums">
+        {player.goalsAgainst}
+      </td>
+      <td
+        className={
+          "px-3 py-2.5 text-right align-middle font-mono tabular-nums " +
+          (gd > 0 ? "text-positive" : gd < 0 ? "text-negative" : "text-ink-soft")
+        }
+      >
+        {gd > 0 ? `+${gd}` : gd}
+      </td>
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-ink tabular-nums pr-4">
+        {player.gpm.toFixed(2)}
+      </td>
+    </tr>
   );
 }
 
@@ -316,7 +389,7 @@ function RankDelta({ rank, prev }: { rank: number; prev: number }) {
   const diff = prev - rank;
   if (diff === 0) {
     return (
-      <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded text-[10px] font-mono text-muted">
+      <span className="inline-flex items-center justify-center w-5 text-muted-soft" aria-label="No change">
         —
       </span>
     );
@@ -325,10 +398,10 @@ function RankDelta({ rank, prev }: { rank: number; prev: number }) {
   return (
     <span
       className={
-        "inline-flex items-center gap-0.5 h-5 px-1.5 rounded text-[10px] font-mono " +
-        (up ? "text-neon bg-neon/10" : "text-red bg-red/10")
+        "inline-flex items-center gap-0.5 font-mono text-[11px] tabular-nums " +
+        (up ? "text-positive" : "text-negative")
       }
-      style={up ? undefined : { color: "var(--red)", background: "rgba(255,59,59,0.1)" }}
+      aria-label={up ? `Up ${Math.abs(diff)}` : `Down ${Math.abs(diff)}`}
     >
       <span aria-hidden>{up ? "▲" : "▼"}</span>
       {Math.abs(diff)}
@@ -336,18 +409,18 @@ function RankDelta({ rank, prev }: { rank: number; prev: number }) {
   );
 }
 
-function DivisionPill({ division }: { division: Division }) {
-  const styles: Record<Division, string> = {
-    Elite: "border-neon/50 text-neon bg-neon/10",
-    Pro: "border-gold/50 text-gold bg-gold/10",
-    Challenger: "border-br text-text bg-s2",
-    Rookie: "border-br/70 text-muted bg-s1",
+function DivisionTag({ division }: { division: Division }) {
+  const cls: Record<Division, string> = {
+    Elite: "border-gold/60 text-gold bg-gold/5",
+    Pro: "border-accent/40 text-accent bg-accent-soft",
+    Challenger: "border-border-strong text-ink-soft bg-surface-2",
+    Rookie: "border-border text-muted bg-surface",
   };
   return (
     <span
       className={
-        "shrink-0 inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider " +
-        styles[division]
+        "shrink-0 inline-flex items-center rounded border px-1.5 py-px text-[9px] font-medium uppercase tracking-wider " +
+        cls[division]
       }
     >
       {division}
@@ -357,21 +430,25 @@ function DivisionPill({ division }: { division: Division }) {
 
 function FormStrip({ form }: { form: FormResult[] }) {
   return (
-    <div className="flex items-center gap-1" aria-label="Recent form">
+    <div className="flex items-center gap-1" aria-label="Last five results">
       {form.map((r, i) => {
         const cls =
           r === "W"
-            ? "bg-neon shadow-[0_0_8px_rgba(0,255,87,0.55)]"
+            ? "bg-positive text-surface"
             : r === "L"
-              ? "bg-red"
-              : "bg-muted/60";
+              ? "bg-negative text-surface"
+              : "bg-border-strong text-ink-soft";
         return (
           <span
             key={i}
             title={r === "W" ? "Win" : r === "L" ? "Loss" : "Draw"}
-            className={"h-1.5 w-4 rounded-sm " + cls}
-            style={r === "L" ? { background: "var(--red)" } : undefined}
-          />
+            className={
+              "inline-grid place-items-center h-5 w-5 rounded text-[10px] font-bold " +
+              cls
+            }
+          >
+            {r}
+          </span>
         );
       })}
     </div>
@@ -400,20 +477,20 @@ function PlayerDrawer({
     <div
       aria-hidden={!player}
       className={
-        "fixed inset-0 z-[60] transition-opacity duration-300 " +
+        "fixed inset-0 z-[60] transition-opacity duration-200 " +
         (player ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none")
       }
     >
       <button
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-ink/30"
       />
       <aside
         role="dialog"
         aria-modal="true"
         className={
-          "absolute right-0 top-0 h-full w-full sm:max-w-md border-l border-br/70 glass transition-transform duration-300 " +
+          "absolute right-0 top-0 h-full w-full sm:max-w-md bg-surface border-l border-border transition-transform duration-300 ease-out " +
           (player ? "translate-x-0" : "translate-x-full")
         }
       >
@@ -424,30 +501,20 @@ function PlayerDrawer({
 }
 
 function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
+  const club = clubByPlayerId(player.id);
   const total = player.wins + player.losses + player.draws;
   const winRate = total > 0 ? (player.wins / total) * 100 : 0;
   const goalDiff = player.goalsFor - player.goalsAgainst;
 
   return (
-    <div
-      className={
-        "h-full flex flex-col transition-all duration-300 ease-out " +
-        (mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2")
-      }
-    >
-      <div className="flex items-center justify-between px-5 h-14 border-b border-br/70">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between px-5 h-12 border-b border-border">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
           Player Profile
         </p>
         <button
           onClick={onClose}
-          className="h-8 w-8 grid place-items-center rounded-md border border-br/70 text-muted hover:text-text hover:border-br transition"
+          className="h-8 w-8 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2 transition"
           aria-label="Close drawer"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -458,107 +525,94 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-        <header className="flex items-start gap-4">
-          <div className="h-16 w-16 grid place-items-center rounded-xl border border-neon/40 bg-neon/10 elite-glow">
-            <span className="font-display text-3xl text-neon leading-none tabular-nums">
-              {player.rank}
+        <header>
+          <div className="flex items-baseline gap-3">
+            <span className="font-display text-5xl text-ink leading-none tabular-nums">
+              #{player.rank}
             </span>
+            <RankDelta rank={player.rank} prev={player.prev} />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-display tracking-wide text-text text-3xl leading-none">
-              {player.name}
-            </p>
-            <p className="mt-1 font-mono text-xs text-neon">
-              @{player.gamertag}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <DivisionPill division={player.division} />
-              <span className="inline-flex items-center rounded-full border border-br px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted bg-s2">
-                {player.city}
+          <p className="mt-3 text-2xl font-semibold text-ink leading-tight">
+            {player.name}
+          </p>
+          <p className="mt-0.5 font-mono text-sm text-muted">
+            @{player.gamertag}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <DivisionTag division={player.division} />
+            <span className="inline-flex items-center rounded border border-border px-1.5 py-px text-[10px] font-medium uppercase tracking-wider text-ink-soft bg-surface-2">
+              {player.city}
+            </span>
+            {club && (
+              <span className="inline-flex items-center rounded border border-border px-1.5 py-px text-[10px] font-medium uppercase tracking-wider text-ink-soft bg-surface-2">
+                {club.name}
               </span>
-            </div>
+            )}
           </div>
         </header>
 
-        <section className="grid grid-cols-2 gap-2">
-          <Stat label="Points" value={player.points.toLocaleString()} accent="neon" />
-          <Stat
-            label="Win Rate"
-            value={`${winRate.toFixed(1)}%`}
-            accent={winRate > 70 ? "neon" : winRate > 50 ? "gold" : "muted"}
-          />
-          <Stat label="Win Streak" value={`${player.winStreak}`} accent={player.winStreak >= 5 ? "neon" : "muted"} />
-          <Stat label="Goals / Match" value={player.gpm.toFixed(2)} accent="muted" />
+        <section className="grid grid-cols-2 sm:grid-cols-3 border border-border rounded-md overflow-hidden divide-x divide-y divide-border bg-surface">
+          <Stat label="Points" value={player.points.toLocaleString()} />
+          <Stat label="Win Rate" value={`${winRate.toFixed(1)}%`} />
+          <Stat label="G / Match" value={player.gpm.toFixed(2)} />
           <Stat
             label="Goal Diff"
             value={`${goalDiff >= 0 ? "+" : ""}${goalDiff}`}
-            accent={goalDiff > 0 ? "neon" : "red"}
+            tone={goalDiff > 0 ? "positive" : goalDiff < 0 ? "negative" : "default"}
           />
-          <Stat
-            label="Prize Money"
-            value={`$${player.prizeMoney.toLocaleString()}`}
-            accent="gold"
-          />
+          <Stat label="Streak" value={player.winStreak.toString()} />
+          <Stat label="Prize" value={`$${player.prizeMoney.toLocaleString()}`} />
         </section>
 
-        <section className="rounded-xl border border-br/70 bg-s1/60 p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-            Recent Form
+        <section>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted mb-2">
+            Form (last 5)
           </p>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {player.form.map((r, i) => (
               <span
                 key={i}
                 className={
-                  "h-7 w-7 grid place-items-center rounded-md font-display text-sm " +
+                  "inline-grid place-items-center h-9 w-9 rounded text-sm font-bold " +
                   (r === "W"
-                    ? "bg-neon/15 text-neon border border-neon/40"
+                    ? "bg-positive text-surface"
                     : r === "L"
-                      ? "border"
-                      : "bg-s2 text-muted border border-br")
-                }
-                style={
-                  r === "L"
-                    ? {
-                        background: "rgba(255,59,59,0.12)",
-                        color: "var(--red)",
-                        borderColor: "rgba(255,59,59,0.4)",
-                      }
-                    : undefined
+                      ? "bg-negative text-surface"
+                      : "bg-border-strong text-ink-soft")
                 }
               >
                 {r}
               </span>
             ))}
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-[11px]">
-            <Pill label="W" value={player.wins} tone="neon" />
-            <Pill label="D" value={player.draws} tone="muted" />
-            <Pill label="L" value={player.losses} tone="red" />
+          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+            <ResultPill label="Wins" value={player.wins} tone="positive" />
+            <ResultPill label="Draws" value={player.draws} tone="default" />
+            <ResultPill label="Losses" value={player.losses} tone="negative" />
           </div>
         </section>
 
-        <section className="rounded-xl border border-br/70 bg-s1/60 p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <section>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted mb-2">
             Goals
           </p>
-          <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-sm">
-            <div className="rounded-md border border-br/70 bg-s2 px-3 py-2">
-              <p className="text-[10px] text-muted">For</p>
-              <p className="text-text tabular-nums">{player.goalsFor}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-md border border-border bg-surface px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted">Scored</p>
+              <p className="font-mono text-base text-ink tabular-nums">{player.goalsFor}</p>
             </div>
-            <div className="rounded-md border border-br/70 bg-s2 px-3 py-2">
-              <p className="text-[10px] text-muted">Against</p>
-              <p className="text-text tabular-nums">{player.goalsAgainst}</p>
+            <div className="rounded-md border border-border bg-surface px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted">Conceded</p>
+              <p className="font-mono text-base text-ink tabular-nums">{player.goalsAgainst}</p>
             </div>
           </div>
         </section>
 
-        <section className="rounded-xl border border-br/70 bg-s1/60 p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-            Hardware Spec
+        <section>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted mb-2">
+            Hardware
           </p>
-          <dl className="mt-3 space-y-2 font-mono text-xs">
+          <dl className="rounded-md border border-border bg-surface divide-y divide-border text-xs">
             <SpecRow label="Console" value={player.hardware.console} />
             <SpecRow label="Controller" value={player.hardware.controller} />
             <SpecRow label="Display" value={player.hardware.monitor} />
@@ -569,10 +623,10 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
           disabled
           aria-disabled="true"
           title="Challenges arrive in Phase 2"
-          className="w-full h-12 rounded-lg border border-br/80 bg-s2 text-muted font-display tracking-[0.15em] text-base cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full h-10 rounded-md border border-border bg-surface-2 text-muted text-sm font-medium tracking-wide cursor-not-allowed flex items-center justify-center gap-2"
         >
-          CHALLENGE PLAYER
-          <span className="font-mono text-[9px] uppercase tracking-wider rounded-full border border-br px-1.5 py-0.5 text-muted">
+          Challenge Player
+          <span className="text-[9px] font-medium uppercase tracking-wider rounded border border-border px-1.5 py-0.5 text-muted">
             Phase 2
           </span>
         </button>
@@ -584,78 +638,54 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
 function Stat({
   label,
   value,
-  accent,
+  tone = "default",
 }: {
   label: string;
   value: string;
-  accent: "neon" | "gold" | "red" | "muted";
+  tone?: "default" | "positive" | "negative";
 }) {
   const cls =
-    accent === "neon"
-      ? "text-neon"
-      : accent === "gold"
-        ? "text-gold"
-        : accent === "red"
-          ? ""
-          : "text-text";
+    tone === "positive"
+      ? "text-positive"
+      : tone === "negative"
+        ? "text-negative"
+        : "text-ink";
   return (
-    <div className="rounded-xl border border-br/70 bg-s1/60 p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-        {label}
-      </p>
-      <p
-        className={"mt-1 font-mono text-xl tabular-nums " + cls}
-        style={accent === "red" ? { color: "var(--red)" } : undefined}
-      >
-        {value}
-      </p>
+    <div className="px-3 py-2.5">
+      <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
+      <p className={"mt-0.5 font-mono text-base tabular-nums " + cls}>{value}</p>
     </div>
   );
 }
 
-function Pill({
+function ResultPill({
   label,
   value,
   tone,
 }: {
   label: string;
   value: number;
-  tone: "neon" | "muted" | "red";
+  tone: "positive" | "negative" | "default";
 }) {
   const cls =
-    tone === "neon"
-      ? "border-neon/40 bg-neon/10 text-neon"
-      : tone === "red"
-        ? ""
-        : "border-br bg-s2 text-muted";
+    tone === "positive"
+      ? "text-positive"
+      : tone === "negative"
+        ? "text-negative"
+        : "text-ink-soft";
   return (
-    <div
-      className={"flex items-center justify-between rounded-md border px-2.5 py-1.5 " + cls}
-      style={
-        tone === "red"
-          ? {
-              borderColor: "rgba(255,59,59,0.4)",
-              background: "rgba(255,59,59,0.1)",
-              color: "var(--red)",
-            }
-          : undefined
-      }
-    >
-      <span className="text-[10px] uppercase tracking-wider opacity-80">
-        {label}
-      </span>
-      <span className="tabular-nums">{value}</span>
+    <div className="rounded-md border border-border bg-surface px-2.5 py-1.5 flex items-center justify-between">
+      <span className="text-[10px] uppercase tracking-wider text-muted">{label}</span>
+      <span className={"font-mono tabular-nums " + cls}>{value}</span>
     </div>
   );
 }
 
 function SpecRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-br/40 pb-1.5 last:border-b-0 last:pb-0">
-      <dt className="text-[10px] uppercase tracking-wider text-muted">
-        {label}
-      </dt>
-      <dd className="text-text text-right truncate">{value}</dd>
+    <div className="flex items-center justify-between gap-3 px-3 py-2">
+      <dt className="text-[10px] uppercase tracking-wider text-muted">{label}</dt>
+      <dd className="text-ink text-right truncate font-mono">{value}</dd>
     </div>
   );
 }

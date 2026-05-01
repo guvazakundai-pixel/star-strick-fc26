@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bebas_Neue, JetBrains_Mono, Exo_2 } from "next/font/google";
+import { Bebas_Neue, JetBrains_Mono, Exo_2, Barlow } from "next/font/google";
 import { BottomNav } from "@/components/BottomNav";
 import { TopBar } from "@/components/TopBar";
 import "./globals.css";
@@ -23,10 +23,18 @@ const exo = Exo_2({
   display: "swap",
 });
 
+const barlow = Barlow({
+  weight: ["700", "900"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-barlow",
+  display: "swap",
+});
+
 const SITE_URL = "https://star-strick-fc26.vercel.app";
-const SITE_TITLE = "Star Strick FC26 — Zimbabwe's Pro EA FC League";
+const SITE_TITLE = "Star Strick FC26 — Zimbabwe Pro EA FC Rankings";
 const SITE_DESC =
-  "Live rankings, tournaments and clubs for the Star Strick FC26 competitive scene across Zimbabwe.";
+  "Official rankings, clubs and tournaments for Zimbabwe's competitive EA Sports FC scene.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -40,7 +48,6 @@ export const metadata: Metadata = {
     "FIFA Zimbabwe",
     "EA Sports FC league",
     "Star Strick",
-    "Harare gaming",
   ],
   openGraph: {
     type: "website",
@@ -50,14 +57,14 @@ export const metadata: Metadata = {
     description: SITE_DESC,
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: SITE_TITLE,
     description: SITE_DESC,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#030509",
+  themeColor: "#f7f8fa",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -69,10 +76,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bebas.variable} ${jbMono.variable} ${exo.variable} h-full`}
+      className={`${bebas.variable} ${jbMono.variable} ${exo.variable} ${barlow.variable} h-full`}
     >
-      <body className="min-h-full bg-bg text-text antialiased">
-        <div className="bg-grid min-h-screen flex flex-col">
+      <body className="min-h-full bg-bg text-ink antialiased">
+        <div className="min-h-screen flex flex-col">
           <TopBar />
           <main className="flex-1 pb-24">{children}</main>
           <BottomNav />

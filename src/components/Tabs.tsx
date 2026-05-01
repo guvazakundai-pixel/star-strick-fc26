@@ -16,27 +16,29 @@ export function Tabs<T extends string>({
     <>
       <div
         role="tablist"
-        className="flex items-center gap-1 overflow-x-auto -mx-1 px-1 mb-4"
+        className="mb-5 -mx-4 sm:mx-0 px-4 sm:px-0 border-b border-border overflow-x-auto"
       >
-        {tabs.map((t) => {
-          const on = active === t;
-          return (
-            <button
-              key={t}
-              role="tab"
-              aria-selected={on}
-              onClick={() => setActive(t)}
-              className={
-                "shrink-0 inline-flex items-center rounded-full border px-4 py-1.5 font-mono text-[11px] uppercase tracking-wider transition " +
-                (on
-                  ? "border-neon/60 bg-neon/10 text-neon"
-                  : "border-br/70 bg-s1/60 text-muted hover:text-text hover:border-br")
-              }
-            >
-              {t}
-            </button>
-          );
-        })}
+        <div className="flex items-center gap-6 min-w-max">
+          {tabs.map((t) => {
+            const on = active === t;
+            return (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={on}
+                onClick={() => setActive(t)}
+                className={
+                  "shrink-0 -mb-px border-b-2 py-2.5 text-[13px] font-medium tracking-wide transition " +
+                  (on
+                    ? "border-accent text-ink"
+                    : "border-transparent text-muted hover:text-ink-soft")
+                }
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div role="tabpanel">{panels[active]}</div>
     </>

@@ -16,7 +16,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-0 inset-x-0 z-50 border-t border-br/70 glass pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 inset-x-0 z-50 bg-surface border-t border-border pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="mx-auto max-w-2xl grid grid-cols-5">
         {ITEMS.map(({ href, label, icon: Icon }) => {
@@ -26,12 +26,12 @@ export function BottomNav() {
             <li key={href}>
               <Link
                 href={href}
-                className="group flex flex-col items-center justify-center gap-1 py-2.5 px-1 text-[10px] font-mono uppercase tracking-wider"
+                className="relative flex flex-col items-center justify-center gap-1 py-2.5 px-1 text-[10px] font-medium uppercase tracking-wider"
               >
                 <span
                   className={
-                    "h-6 w-6 grid place-items-center transition-colors " +
-                    (active ? "text-neon" : "text-muted group-hover:text-text")
+                    "h-5 w-5 grid place-items-center transition-colors " +
+                    (active ? "text-accent" : "text-muted")
                   }
                 >
                   <Icon />
@@ -39,18 +39,17 @@ export function BottomNav() {
                 <span
                   className={
                     "transition-colors " +
-                    (active ? "text-neon" : "text-muted group-hover:text-text")
+                    (active ? "text-accent" : "text-muted")
                   }
                 >
                   {label}
                 </span>
-                <span
-                  aria-hidden
-                  className={
-                    "h-[2px] w-6 rounded-full transition-all " +
-                    (active ? "bg-neon shadow-[0_0_10px_rgba(0,255,87,0.6)]" : "bg-transparent")
-                  }
-                />
+                {active && (
+                  <span
+                    aria-hidden
+                    className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 bg-accent"
+                  />
+                )}
               </Link>
             </li>
           );
