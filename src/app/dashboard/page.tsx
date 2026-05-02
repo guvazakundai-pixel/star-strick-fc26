@@ -178,6 +178,7 @@ function PlayerDashboard({ stats, user }: { stats: Record<string, unknown> | nul
 function ManagerDashboard() {
   const [club, setClub] = useState<Record<string, unknown> | null>(null)
   const [members, setMembers] = useState<Record<string, unknown>[]>([])
+  const [pending, setPending] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -190,6 +191,11 @@ function ManagerDashboard() {
           const res = await fetch(`/api/clubs/${myClub.id}/members`)
           const memData = await res.json()
           setMembers(memData.members ?? [])
+
+          // Fetch pending members
+          const pendingRes = await fetch(`/api/clubs/${myClub.id}/pending-members`)
+          const pendingData = await pendingRes.json()
+          setPending(pendingData.pending ?? [])
         }
       })
       .catch(() => {})
@@ -203,8 +209,11 @@ function ManagerDashboard() {
       body: JSON.stringify(data),
     })
     if (res.ok) {
-      const updated = await res.json()
-      setMembers((prev) => prev.map((m) => (m.id === memberId ? updated.member : m)))
+      setPending((prev) => prev.filter((m) => m.id !== memberId))
+      // Refresh all members
+      const res2 = await fetch(`/api/clubs/${club?.id}/members`)
+      const memData = await res2.json()
+      setMembers(memData.members ?? [])
     }
   }
 
@@ -233,6 +242,33 @@ function ManagerDashboard() {
           <a href={`/clubs/${club.slug}`} className="text-sm text-[#00ff85] hover:underline">View Public Page →</a>
         </div>
       </div>
+
+      {pending.length > 0 && (
+        <div className="rounded-sm border border-[#ffb800]/30 bg-[#ffb800]/5 p-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#ffb800] mb-3">Pending Requests ({pending.length})</h2>
+          <div className="space-y-2">
+            {pending.map((m: Record<string, unknown>) => {
+              const u = m.user as Record<string, unknown> | undefined
+              return (
+                <div key={m.id as string} className="flex items-center justify-between rounded-sm border border-[#1a1a1a] bg-[#111] px-4 py-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-white text-sm">{u?.username ?? "Unknown"}</span>
+                    {u?.playerStats && (
+                      <span className="text-xs text-white/40">
+                        {(u.playerStats as Record<string, unknown>).wins}W / {(u.playerStats as Record<string, unknown>).losses}L
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleMemberAction(m.id as string, { status: "APPROVED" })} className="h-6 px-2 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold hover:bg-[#00ff85]/20 transition">Accept</button>
+                    <button onClick={() => handleMemberAction(m.id as string, { status: "REJECTED" })} className="h-6 px-2 rounded-sm bg-red-500/10 text-red-400 text-xs font-bold hover:bg-red-500/20 transition">Reject</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
         <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Members ({members.length})</h2>

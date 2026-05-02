@@ -37,6 +37,38 @@ enum MediaType {
   GALLERY
 }
 
+enum NotificationType {
+  JOIN_REQUEST
+  JOIN_APPROVED
+  JOIN_REJECTED
+  RANK_CHANGED
+  CLUB_INVITE
+  POST_LIKE
+  POST_COMMENT
+  MATCH_RESULT
+  SYSTEM_ALERT
+  REPORT_ACTION
+}
+
+enum ActionType {
+  USER_REGISTER
+  USER_LOGIN
+  CLUB_CREATE
+  CLUB_UPDATE
+  CLUB_DELETE
+  MEMBER_JOIN
+  MEMBER_LEAVE
+  MEMBER_PROMOTE
+  RANK_UPDATE
+  MEDIA_UPLOAD
+  POST_CREATE
+  MATCH_REPORT
+  APPLICATION_SUBMIT
+  APPLICATION_REVIEW
+  ADMIN_OVERRIDE
+  REPORT_SUBMIT
+}
+
 model User {
   id            String    @id @default(uuid())
   username      String    @unique
@@ -44,6 +76,11 @@ model User {
   passwordHash  String    @map("password_hash")
   role          Role      @default(PLAYER)
   avatarUrl     String?   @map("avatar_url")
+  bio           String?
+  isShadowBanned Boolean  @default(false) @map("is_shadow_banned")
+  isVerified    Boolean   @default(false) @map("is_verified")
+  verificationToken String? @map("verification_token")
+  lastLogin     DateTime? @map("last_login")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -58,6 +95,21 @@ model User {
   reviews       ManagerApplication[] @relation("ReviewedBy", fields: [adminId], references: [id])
   adminId       String?            @map("admin_id")
 
+  notifications Notification[]
+  activityLogs  ActivityLog[]
+  posts         ClubPost[]
+  likedPosts    PostLike[]
+  postComments  PostComment[]
+  followers     Follow[]        @relation("Followers")
+  following     Follow[]        @relation("Following")
+  followings    Follow[]        @relation("UserFollows")
+  followedBy    Follow[]        @relation("FollowedBy")
+  matchReports1 MatchReport[]   @relation("Player1Matches")
+  matchReports2 MatchReport[]   @relation("Player2Matches")
+  disputes      Dispute[]
+  reports       Report[]
+  auditLogs     AuditLog[]
+
   @@map("users")
 }
 
@@ -70,6 +122,9 @@ model Club {
   description String?
   logoUrl     String?  @map("logo_url")
   bannerUrl   String?  @map("banner_url")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  isBanned    Boolean  @default(false) @map("is_banned")
+  momentum    Int      @default(50)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -80,6 +135,10 @@ model Club {
   rankings    ClubRanking[]
   globalRank  GlobalClubRanking?
   media       Media[]
+  posts       ClubPost[]
+  rivalries1  Rivalry[] @relation("RivalClub1")
+  rivalries2  Rivalry[] @relation("RivalClub2")
+  matches     MatchReport[]
 
   @@map("clubs")
 }
@@ -104,23 +163,45 @@ model ClubRanking {
   clubId       String   @map("club_id")
   userId       String   @map("user_id")
   rankPosition Int      @map("rank_position")
+  prevPosition Int?     @map("prev_position")
   points       Int      @default(0)
+  formHistory  String   @default("") @map("form_history")
+  lastActive   DateTime @default(now()) @map("last_active")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   club  Club @relation(fields: [clubId], references: [id])
   user  User @relation(fields: [userId], references: [id])
 
+  history     RankingHistory[]
+
   @@unique([clubId, userId])
   @@map("club_rankings")
+}
+
+model RankingHistory {
+  id           String   @id @default(uuid())
+  rankingId    String   @map("ranking_id")
+  oldPosition  Int      @map("old_position")
+  newPosition  Int      @map("new_position")
+  oldPoints    Int      @map("old_points")
+  newPoints    Int      @map("new_points")
+  changedAt    DateTime @default(now()) @map("changed_at")
+
+  ranking      ClubRanking @relation(fields: [rankingId], references: [id], onDelete: Cascade)
+
+  @@map("ranking_history")
 }
 
 model GlobalClubRanking {
   id           String   @id @default(uuid())
   clubId       String   @unique @map("club_id")
   rankPosition Int      @map("rank_position")
+  prevPosition Int?     @map("prev_position")
   totalPoints  Int      @default(0) @map("total_points")
   wins         Int      @default(0)
   losses       Int      @default(0)
+  draws        Int      @default(0)
+  momentum     Int      @default(50)
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   club  Club   @relation(fields: [clubId], references: [id])
@@ -136,6 +217,10 @@ model PlayerStats {
   losses        Int      @default(0)
   draws         Int      @default(0)
   goalsScored   Int      @default(0) @map("goals_scored")
+  goalsConceded Int      @default(0) @map("goals_conceded")
+  winStreak     Int      @default(0) @map("win_streak")
+  mvpCount      Int      @default(0) @map("mvp_count")
+  formHistory   String   @default("") @map("form_history")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   user  User   @relation(fields: [userId], references: [id])
@@ -172,4 +257,177 @@ model ManagerApplication {
   reviewedBy User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
 
   @@map("manager_applications")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id         String     @id @default(uuid())
+  userId     String     @map("user_id")
+  actionType ActionType  @map("action_type")
+  metadata   Json?
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+model ClubPost {
+  id         String    @id @default(uuid())
+  clubId     String    @map("club_id")
+  authorId   String    @map("author_id")
+  content    String
+  imageUrl   String?   @map("image_url")
+  isAnnouncement Boolean @default(false) @map("is_announcement")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  club       Club      @relation(fields: [clubId], references: [id])
+  author     User      @relation(fields: [authorId], references: [id])
+  likes      PostLike[]
+  comments   PostComment[]
+
+  @@map("club_posts")
+}
+
+model PostLike {
+  id        String    @id @default(uuid())
+  postId    String    @map("post_id")
+  userId    String    @map("user_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  post      ClubPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+model PostComment {
+  id        String    @id @default(uuid())
+  postId    String    @map("post_id")
+  userId    String    @map("user_id")
+  content   String
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  post      ClubPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("post_comments")
+}
+
+model Follow {
+  id         String   @id @default(uuid())
+  followerId String   @map("follower_id")
+  followingId String  @map("following_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  follower   User     @relation("Followers", fields: [followerId], references: [id])
+  following  User     @relation("Following", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model MatchReport {
+  id          String    @id @default(uuid())
+  clubId      String    @map("club_id")
+  player1Id   String    @map("player1_id")
+  player2Id   String    @map("player2_id")
+  winnerId    String?   @map("winner_id")
+  score1      Int       @default(0) @map("score1")
+  score2      Int       @default(0) @map("score2")
+  isDisputed  Boolean   @default(false) @map("is_disputed")
+  notes       String?
+  submittedById String  @map("submitted_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  club        Club      @relation(fields: [clubId], references: [id])
+  player1     User      @relation("Player1Matches", fields: [player1Id], references: [id])
+  player2     User      @relation("Player2Matches", fields: [player2Id], references: [id])
+  winner      User?     @relation("WinnerMatches", fields: [winnerId], references: [id])
+
+  @@map("match_reports")
+}
+
+model Dispute {
+  id          String    @id @default(uuid())
+  matchId     String    @map("match_id")
+  reportedById String   @map("reported_by")
+  reason      String
+  status      String    @default("OPEN")
+  resolvedById String?  @map("resolved_by")
+  resolution  String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  resolvedAt  DateTime? @map("resolved_at")
+
+  @@map("disputes")
+}
+
+model Rivalry {
+  id         String   @id @default(uuid())
+  club1Id    String   @map("club1_id")
+  club2Id    String   @map("club2_id")
+  club1Wins  Int      @default(0) @map("club1_wins")
+  club2Wins  Int      @default(0) @map("club2_wins")
+  draws      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  club1      Club     @relation("RivalClub1", fields: [club1Id], references: [id])
+  club2      Club     @relation("RivalClub2", fields: [club2Id], references: [id])
+
+  @@unique([club1Id, club2Id])
+  @@map("rivalries")
+}
+
+model Report {
+  id          String    @id @default(uuid())
+  reporterId  String    @map("reporter_id")
+  targetId    String    @map("target_id")
+  targetType  String    @map("target_type")
+  reason      String
+  status      String    @default("PENDING")
+  reviewedById String?  @map("reviewed_by")
+  action      String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("reports")
+}
+
+model AuditLog {
+  id         String    @id @default(uuid())
+  adminId    String    @map("admin_id")
+  action     String
+  target     String
+  details    Json?
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  admin      User      @relation(fields: [adminId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model SystemHealth {
+  id           String   @id @default(uuid())
+  metric       String   @unique
+  value        Float
+  label        String
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("system_health")
 }

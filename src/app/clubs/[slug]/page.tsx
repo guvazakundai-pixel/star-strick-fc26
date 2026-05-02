@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { useAuth } from "@/lib/auth-context"
 
 type ClubData = {
   id: string
@@ -32,11 +33,15 @@ type PlayerRanking = {
 }
 
 export default function ClubProfilePage() {
+  const { user } = useAuth()
   const params = useParams()
   const slug = params?.slug as string
   const [club, setClub] = useState<ClubData | null>(null)
   const [topPlayers, setTopPlayers] = useState<PlayerRanking[]>([])
   const [loading, setLoading] = useState(true)
+  const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
+  const [joining, setJoining] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     fetch(`/api/clubs/${slug}`)
@@ -50,6 +55,42 @@ export default function ClubProfilePage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [slug])
+
+  useEffect(() => {
+    if (club && user) {
+      // Check membership status
+      fetch(`/api/clubs/${club.id}/members`)
+        .then((r) => r.json())
+        .then((data) => {
+          const myMembership = (data.members ?? []).find((m: Record<string, unknown>) => (m.user as Record<string, unknown>)?.id === user.id)
+          if (myMembership) setMembershipStatus(myMembership.status as string)
+        })
+        .catch(() => {})
+    }
+  }, [club, user])
+
+  const handleJoin = async () => {
+    if (!club || !user) return
+    setJoining(true)
+    setError("")
+    try {
+      const res = await fetch(`/api/clubs/${club.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error ?? "Failed to join")
+        return
+      }
+      setMembershipStatus("PENDING")
+    } catch {
+      setError("Network error")
+    } finally {
+      setJoining(false)
+    }
+  }
 
   if (loading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><p className="text-white/40">Loading...</p></div>
   if (!club) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><p className="text-red-400">Club not found</p></div>
@@ -65,19 +106,42 @@ export default function ClubProfilePage() {
         )}
 
         <div className="px-4 py-6 -mt-16 relative z-10 space-y-6">
-          <div className="flex items-end gap-4">
-            <div className="h-24 w-24 rounded-sm border-4 border-[#050505] bg-[#0a0a0a] overflow-hidden shrink-0">
-              {club.logoUrl ? (
-                <img src={club.logoUrl} alt={club.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl font-black text-[#00ff85]">
-                  {club.name.slice(0, 2).toUpperCase()}
-                </div>
-              )}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="flex items-end gap-4">
+              <div className="h-24 w-24 rounded-sm border-4 border-[#050505] bg-[#0a0a0a] overflow-hidden shrink-0">
+                {club.logoUrl ? (
+                  <img src={club.logoUrl} alt={club.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-2xl font-black text-[#00ff85]">
+                    {club.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="pb-1">
+                <h1 className="bc-headline text-3xl sm:text-4xl text-white">{club.name}</h1>
+                <p className="text-sm text-white/50">{club.city}, {club.country}</p>
+              </div>
             </div>
-            <div className="pb-1">
-              <h1 className="bc-headline text-3xl sm:text-4xl text-white">{club.name}</h1>
-              <p className="text-sm text-white/50">{club.city}, {club.country}</p>
+
+            <div className="shrink-0">
+              {!user ? (
+                <Link href="/login" className="h-10 px-6 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold hover:bg-[#00ff85]/20 transition inline-block">
+                  Sign in to Join
+                </Link>
+              ) : membershipStatus === "PENDING" ? (
+                <span className="h-10 px-6 rounded-sm bg-yellow-500/10 text-yellow-400 text-xs font-bold inline-block text-center">Request Pending</span>
+              ) : membershipStatus === "APPROVED" ? (
+                <span className="h-10 px-6 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold inline-block text-center">✓ Member</span>
+              ) : (
+                <button
+                  onClick={handleJoin}
+                  disabled={joining}
+                  className="h-10 px-6 rounded-sm bg-[#00ff85] text-[#050505] text-xs font-bold hover:bg-white transition disabled:opacity-50"
+                >
+                  {joining ? "Joining..." : "Join Club"}
+                </button>
+              )}
+              {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
             </div>
           </div>
 
