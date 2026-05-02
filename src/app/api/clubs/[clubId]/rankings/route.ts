@@ -64,5 +64,7 @@ export async function PUT(
     include: { user: { select: { id: true, username: true } } },
   })
 
+  await (import("@/lib/rankings").then((m) => m.recalculateGlobalRankings()))
+
   return NextResponse.json({ rankings: updated })
 }

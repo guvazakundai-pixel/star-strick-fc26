@@ -56,7 +56,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {user.role === "PLAYER" && <PlayerDashboard stats={stats} />}
+        {user.role === "PLAYER" && <PlayerDashboard stats={stats} user={user} />}
         {user.role === "MANAGER" && <ManagerDashboard />}
         {user.role === "ADMIN" && <AdminDashboard />}
       </div>
@@ -73,10 +73,11 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "ne
   )
 }
 
-function PlayerDashboard({ stats }: { stats: Record<string, unknown> | null }) {
+function PlayerDashboard({ stats, user }: { stats: Record<string, unknown> | null; user: { id: string } }) {
   const [clubs, setClubs] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [joining, setJoining] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/clubs")
@@ -85,6 +86,27 @@ function PlayerDashboard({ stats }: { stats: Record<string, unknown> | null }) {
       .catch(() => setError("Failed to load clubs"))
       .finally(() => setLoading(false))
   }, [])
+
+  const handleJoin = async (clubId: string) => {
+    setJoining(clubId)
+    try {
+      const res = await fetch(`/api/clubs/${clubId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error ?? "Failed to join")
+        return
+      }
+      setClubs((prev) => prev.map((c) => (c.id === clubId ? { ...c, pending: true } : c)))
+    } catch {
+      setError("Failed to join")
+    } finally {
+      setJoining(null)
+    }
+  }
 
   return (
     <>
@@ -112,17 +134,26 @@ function PlayerDashboard({ stats }: { stats: Record<string, unknown> | null }) {
         ) : (
           <div className="space-y-2">
             {clubs.map((club: Record<string, unknown>) => (
-              <a
+              <div
                 key={club.id as string}
-                href={`/clubs/${club.slug}`}
-                className="flex items-center justify-between rounded-sm border border-[#1a1a1a] bg-[#111] px-4 py-3 hover:border-[#00ff85] transition group"
+                className="flex items-center justify-between rounded-sm border border-[#1a1a1a] bg-[#111] px-4 py-3"
               >
-                <div>
+                <a href={`/clubs/${club.slug}`} className="flex-1 min-w-0 group">
                   <p className="text-white font-bold group-hover:text-[#00ff85] transition">{club.name as string}</p>
                   <p className="text-xs text-white/40">{club.city as string}</p>
-                </div>
-                <span className="text-xs text-white/30">View →</span>
-              </a>
+                </a>
+                {(club as Record<string, boolean>).pending ? (
+                  <span className="text-xs px-3 py-1 rounded-sm bg-yellow-500/10 text-yellow-400 font-bold">Pending</span>
+                ) : (
+                  <button
+                    onClick={() => handleJoin(club.id as string)}
+                    disabled={joining === club.id}
+                    className="h-8 px-4 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold hover:bg-[#00ff85]/20 transition disabled:opacity-50"
+                  >
+                    {joining === club.id ? "Joining..." : "Join"}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -165,6 +196,18 @@ function ManagerDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
+  const handleMemberAction = async (memberId: string, data: { status?: string; role?: string }) => {
+    const res = await fetch(`/api/clubs/${club?.id}/members/${memberId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setMembers((prev) => prev.map((m) => (m.id === memberId ? updated.member : m)))
+    }
+  }
+
   if (loading) return <p className="text-white/40">Loading...</p>
 
   if (!club) {
@@ -199,12 +242,27 @@ function ManagerDashboard() {
           <div className="space-y-2">
             {members.map((m: Record<string, unknown>) => {
               const u = m.user as Record<string, unknown> | undefined
+              const memberEligible = m.status === "APPROVED" && m.role !== "CO_MANAGER"
               return (
                 <div key={m.id as string} className="flex items-center justify-between rounded-sm border border-[#1a1a1a] bg-[#111] px-4 py-2">
-                  <span className="text-white text-sm">{u?.username ?? "Unknown"}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-sm ${m.status === "APPROVED" ? "bg-[#00ff85]/10 text-[#00ff85]" : m.status === "PENDING" ? "bg-yellow-500/10 text-yellow-400" : "bg-red-500/10 text-red-400"}`}>
-                    {m.status as string}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-white text-sm">{u?.username ?? "Unknown"}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-sm ${m.status === "APPROVED" ? "bg-[#00ff85]/10 text-[#00ff85]" : m.status === "PENDING" ? "bg-yellow-500/10 text-yellow-400" : "bg-red-500/10 text-red-400"}`}>
+                      {m.status as string}
+                    </span>
+                    {m.role === "CO_MANAGER" && <span className="text-xs px-2 py-0.5 rounded-sm bg-purple-500/10 text-purple-400">Co-Manager</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    {m.status === "PENDING" && (
+                      <>
+                        <button onClick={() => handleMemberAction(m.id as string, { status: "APPROVED" })} className="h-6 px-2 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold hover:bg-[#00ff85]/20 transition">Accept</button>
+                        <button onClick={() => handleMemberAction(m.id as string, { status: "REJECTED" })} className="h-6 px-2 rounded-sm bg-red-500/10 text-red-400 text-xs font-bold hover:bg-red-500/20 transition">Reject</button>
+                      </>
+                    )}
+                    {memberEligible && (
+                      <button onClick={() => handleMemberAction(m.id as string, { role: "CO_MANAGER" })} className="h-6 px-2 rounded-sm bg-purple-500/10 text-purple-400 text-xs font-bold hover:bg-purple-500/20 transition">Promote</button>
+                    )}
+                  </div>
                 </div>
               )
             })}

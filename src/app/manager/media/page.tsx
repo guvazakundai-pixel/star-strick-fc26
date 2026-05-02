@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
+import { useAuth } from "@/lib/auth-context"
 
 type MediaItem = {
   id: string
@@ -12,13 +13,17 @@ type MediaItem = {
 }
 
 export default function ManagerMediaPage() {
+  const { user } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [club, setClub] = useState<{ id: string; name: string } | null>(null)
   const [media, setMedia] = useState<MediaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [uploadType, setUploadType] = useState("GALLERY")
-  const [url, setUrl] = useState("")
   const [caption, setCaption] = useState("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
   const [error, setError] = useState("")
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     fetch("/api/clubs")
@@ -36,16 +41,45 @@ export default function ManagerMediaPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file")
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File must be under 5MB")
+      return
+    }
+
+    setError("")
+    setSelectedFile(file)
+
+    const reader = new FileReader()
+    reader.onload = () => setPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    if (!club || !url) return
+    if (!club || !selectedFile) return
+
+    setUploading(true)
 
     try {
-      const res = await fetch("/api/media", {
+      const formData = new FormData()
+      formData.append("file", selectedFile)
+      formData.append("type", uploadType)
+      formData.append("clubId", club.id)
+      if (caption) formData.append("caption", caption)
+
+      const res = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clubId: club.id, type: uploadType, url, caption: caption || undefined }),
+        body: formData,
       })
 
       if (!res.ok) {
@@ -56,10 +90,14 @@ export default function ManagerMediaPage() {
 
       const data = await res.json()
       setMedia((prev) => [data.media, ...prev])
-      setUrl("")
+      setSelectedFile(null)
+      setPreview(null)
       setCaption("")
+      if (fileInputRef.current) fileInputRef.current.value = ""
     } catch {
       setError("Upload failed")
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -79,7 +117,7 @@ export default function ManagerMediaPage() {
         <h1 className="bc-headline text-3xl text-white">Media: {club.name}</h1>
 
         <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Add Media</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Upload Media</h2>
           {error && <div className="mb-3 rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</div>}
           <form onSubmit={handleUpload} className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -94,14 +132,28 @@ export default function ManagerMediaPage() {
                 </button>
               ))}
             </div>
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Image URL (https://...)"
-              required
-              className="w-full rounded-sm border border-[#1a1a1a] bg-[#111] px-3 py-2.5 text-sm text-white placeholder-white/30 focus:border-[#00ff85] focus:outline-none"
-            />
+
+            <div
+              className="border-2 border-dashed border-[#1a1a1a] rounded-sm p-6 text-center cursor-pointer hover:border-[#00ff85] transition"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {preview ? (
+                <img src={preview} alt="Preview" className="mx-auto max-h-48 rounded-sm" />
+              ) : (
+                <div>
+                  <p className="text-white/50 text-sm">Click to select image</p>
+                  <p className="text-white/30 text-xs mt-1">JPEG, PNG, WebP · Max 5MB</p>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
+
             <input
               type="text"
               value={caption}
@@ -110,8 +162,13 @@ export default function ManagerMediaPage() {
               maxLength={200}
               className="w-full rounded-sm border border-[#1a1a1a] bg-[#111] px-3 py-2.5 text-sm text-white placeholder-white/30 focus:border-[#00ff85] focus:outline-none"
             />
-            <button type="submit" className="h-10 px-6 rounded-sm bg-[#00ff85] text-[#050505] font-black text-sm tracking-[0.15em] uppercase hover:bg-white transition">
-              Add
+
+            <button
+              type="submit"
+              disabled={!selectedFile || uploading}
+              className="h-10 px-6 rounded-sm bg-[#00ff85] text-[#050505] font-black text-sm tracking-[0.15em] uppercase hover:bg-white transition disabled:opacity-50"
+            >
+              {uploading ? "Uploading..." : "Upload"}
             </button>
           </form>
         </div>
@@ -123,11 +180,18 @@ export default function ManagerMediaPage() {
             {media.map((m) => (
               <div key={m.id} className="group relative rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden">
                 <img src={m.url} alt={m.caption ?? ""} className="w-full aspect-square object-cover" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center p-2">
-                  <p className="text-white text-xs text-center">{m.caption || m.type}</p>
+                <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-sm bg-black/60 text-[10px] text-white/70 font-bold">
+                  {m.type}
+                </div>
+                {m.caption && (
+                  <p className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-black/70 text-xs text-white truncate">
+                    {m.caption}
+                  </p>
+                )}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center">
                   <button
                     onClick={() => handleDelete(m.id)}
-                    className="mt-2 text-xs text-red-400 hover:text-red-300"
+                    className="text-sm text-red-400 hover:text-red-300 font-bold"
                   >
                     Delete
                   </button>
