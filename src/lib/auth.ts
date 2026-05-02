@@ -25,22 +25,28 @@ export function verifyToken(token: string): { id: string; role: string } | null 
   }
 }
 
-export async function registerUser(username: string, email: string, password: string) {
+export async function registerUser(username: string, email: string, password: string, phone?: string) {
   const passwordHash = await hashPassword(password)
   const user = await prisma.user.create({
     data: {
       username,
       email,
+      phone: phone ?? null,
       passwordHash,
       role: "PLAYER",
+      playerStatus: "UNPLACED",
       playerStats: { create: {} },
     },
     select: {
       id: true,
       username: true,
       email: true,
+      phone: true,
       role: true,
+      playerStatus: true,
       avatarUrl: true,
+      isVerified: true,
+      onboardingComplete: true,
       createdAt: true,
     },
   })
@@ -56,14 +62,23 @@ export async function loginUser(email: string, password: string) {
   const valid = await verifyPassword(password, user.passwordHash)
   if (!valid) return null
 
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLogin: new Date() },
+  })
+
   const token = generateToken({ id: user.id, role: user.role })
   return {
     user: {
       id: user.id,
       username: user.username,
       email: user.email,
+      phone: user.phone,
       role: user.role,
+      playerStatus: user.playerStatus,
       avatarUrl: user.avatarUrl,
+      isVerified: user.isVerified,
+      onboardingComplete: user.onboardingComplete,
     },
     token,
   }

@@ -6,16 +6,21 @@ type User = {
   id: string
   username: string
   email: string
+  phone?: string
   role: "PLAYER" | "MANAGER" | "ADMIN"
+  playerStatus: "UNPLACED" | "PLACED" | "RANKED"
   avatarUrl?: string
+  isVerified: boolean
+  onboardingComplete: boolean
 }
 
 type AuthContextType = {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (username: string, email: string, password: string) => Promise<void>
+  register: (username: string, email: string, password: string, phone?: string) => Promise<void>
   logout: () => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -24,14 +29,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const refreshUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me")
+      const data = await res.json()
+      if (data.user) setUser(data.user)
+    } catch {}
+  }
+
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.user) setUser(data.user)
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    refreshUser().finally(() => setLoading(false))
   }, [])
 
   const login = async (email: string, password: string) => {
@@ -48,11 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user)
   }
 
-  const register = async (username: string, email: string, password: string) => {
+  const register = async (username: string, email: string, password: string, phone?: string) => {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, phone }),
     })
     if (!res.ok) {
       const data = await res.json()
@@ -63,12 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await fetch("/api/auth/me", { method: "POST" })
+    await fetch("/api/auth/logout", { method: "POST" })
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

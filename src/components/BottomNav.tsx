@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const ITEMS = [
   { href: "/", label: "Home", icon: HomeIcon },
   { href: "/rankings", label: "Rankings", icon: RankIcon },
-  { href: "/tournaments", label: "Cups", icon: TrophyIcon },
+  { href: "/matches/find", label: "Play", icon: PlayIcon },
   { href: "/clubs", label: "Clubs", icon: ShieldIcon },
   { href: "/profile", label: "Me", icon: UserIcon },
 ] as const;
@@ -85,6 +85,14 @@ function TrophyIcon() {
       <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
       <path d="M17 5h3v3a3 3 0 0 1-3 3" />
       <path d="M7 5H4v3a3 3 0 0 0 3 3" />
+    </svg>
+  );
+}
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8 12l3 3 5-5" />
     </svg>
   );
 }

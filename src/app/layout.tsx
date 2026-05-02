@@ -71,6 +71,7 @@ export const viewport: Viewport = {
 };
 
 import { AuthProvider } from "@/lib/auth-context";
+import { PlayMatchButton } from "@/components/PlayMatchButton";
 
 export default function RootLayout({
   children,
@@ -86,6 +87,7 @@ export default function RootLayout({
             <TopBar />
             <main className="flex-1 pb-24">{children}</main>
             <BottomNav />
+            <PlayMatchButton />
           </div>
         </AuthProvider>
       </body>

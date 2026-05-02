@@ -3,423 +3,247 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { motion } from "framer-motion"
+import Link from "next/link"
 
-export default function DashboardPage() {
-  const { user, loading: authLoading, logout } = useAuth()
+interface PlayerStats {
+  wins: number
+  losses: number
+  draws: number
+  matchesPlayed: number
+  skillRating: number
+  winStreak: number
+  formHistory: string
+}
+
+interface ClubInfo {
+  id: string
+  name: string
+  slug: string
+}
+
+export default function PlayerDashboard() {
+  const { user, refreshUser } = useAuth()
   const router = useRouter()
-  const [stats, setStats] = useState<Record<string, unknown> | null>(null)
+  const [stats, setStats] = useState<PlayerStats | null>(null)
+  const [club, setClub] = useState<ClubInfo | null>(null)
+  const [recentMatches, setRecentMatches] = useState<Record<string, unknown>[]>([])
+  const [pendingRequests, setPendingRequests] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!user) {
       router.push("/login")
+      return
     }
-  }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user) {
-      fetch("/api/auth/me")
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.user?.playerStats) setStats(data.user.playerStats)
-        })
+    if (!user.onboardingComplete) {
+      router.push("/onboarding")
+      return
     }
-  }, [user])
 
-  if (authLoading || !user) return <LoadingSkeleton />
-
-  return (
-    <div className="broadcast-theme min-h-screen bc-noise">
-      <div className="mx-auto max-w-6xl px-4 py-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="bc-headline text-3xl sm:text-4xl text-white">Dashboard</h1>
-            <p className="text-white/50 text-sm mt-1">Welcome back, {user.username}</p>
-          </div>
-          <button
-            onClick={async () => {
-              await logout()
-              router.push("/login")
-            }}
-            className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] px-4 py-2 text-sm text-white/60 hover:border-red-500 hover:text-red-400 transition"
-          >
-            Sign Out
-          </button>
-        </div>
-
-        <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Your Profile</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Stat label="Username" value={user.username} />
-            <Stat label="Role" value={user.role} />
-            <Stat label="Member Since" value={new Date().toLocaleDateString()} />
-            <Stat label="Status" value="Active" tone="neon" />
-          </div>
-        </div>
-
-        {user.role === "PLAYER" && <PlayerDashboard stats={stats} user={user} />}
-        {user.role === "MANAGER" && <ManagerDashboard />}
-        {user.role === "ADMIN" && <AdminDashboard />}
-      </div>
-    </div>
-  )
-}
-
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "neon" }) {
-  return (
-    <div>
-      <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">{label}</p>
-      <p className={`text-lg font-mono font-bold ${tone === "neon" ? "text-[#00ff85]" : "text-white"}`}>{value}</p>
-    </div>
-  )
-}
-
-function PlayerDashboard({ stats, user }: { stats: Record<string, unknown> | null; user: { id: string } }) {
-  const [clubs, setClubs] = useState<Record<string, unknown>[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [joining, setJoining] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch("/api/clubs")
-      .then((r) => r.json())
-      .then((data) => setClubs(data.clubs ?? []))
-      .catch(() => setError("Failed to load clubs"))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const handleJoin = async (clubId: string) => {
-    setJoining(clubId)
-    try {
-      const res = await fetch(`/api/clubs/${clubId}/members`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
+    Promise.all([
+      fetch(`/api/players/${user.id}/stats`).catch(() => null),
+      fetch("/api/clubs/my").catch(() => null),
+      fetch(`/api/matches?playerId=${user.id}&limit=5`).catch(() => null),
+      fetch("/api/match-requests?type=received").catch(() => null),
+    ])
+      .then(([statsRes, clubRes, matchesRes, requestsRes]) => {
+        if (statsRes?.ok) return statsRes.json().then((d) => d.stats).catch(() => null)
+        return null
       })
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error ?? "Failed to join")
-        return
-      }
-      setClubs((prev) => prev.map((c) => (c.id === clubId ? { ...c, pending: true } : c)))
-    } catch {
-      setError("Failed to join")
-    } finally {
-      setJoining(null)
-    }
-  }
-
-  return (
-    <>
-      {stats && (
-        <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Player Stats</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-            <Stat label="Matches" value={String(stats.matchesPlayed ?? 0)} />
-            <Stat label="Wins" value={String(stats.wins ?? 0)} tone="neon" />
-            <Stat label="Losses" value={String(stats.losses ?? 0)} />
-            <Stat label="Draws" value={String(stats.draws ?? 0)} />
-            <Stat label="Goals" value={String(stats.goalsScored ?? 0)} tone="neon" />
-          </div>
-        </div>
-      )}
-
-      <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Browse Clubs</h2>
-        {loading ? (
-          <p className="text-white/40 text-sm">Loading...</p>
-        ) : error ? (
-          <p className="text-red-400 text-sm">{error}</p>
-        ) : clubs.length === 0 ? (
-          <p className="text-white/40 text-sm">No clubs yet</p>
-        ) : (
-          <div className="space-y-2">
-            {clubs.map((club: Record<string, unknown>) => (
-              <div
-                key={club.id as string}
-                className="flex items-center justify-between rounded-sm border border-[#1a1a1a] bg-[#111] px-4 py-3"
-              >
-                <a href={`/clubs/${club.slug}`} className="flex-1 min-w-0 group">
-                  <p className="text-white font-bold group-hover:text-[#00ff85] transition">{club.name as string}</p>
-                  <p className="text-xs text-white/40">{club.city as string}</p>
-                </a>
-                {(club as Record<string, boolean>).pending ? (
-                  <span className="text-xs px-3 py-1 rounded-sm bg-yellow-500/10 text-yellow-400 font-bold">Pending</span>
-                ) : (
-                  <button
-                    onClick={() => handleJoin(club.id as string)}
-                    disabled={joining === club.id}
-                    className="h-8 px-4 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold hover:bg-[#00ff85]/20 transition disabled:opacity-50"
-                  >
-                    {joining === club.id ? "Joining..." : "Join"}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Want to Manage a Club?</h2>
-        <p className="text-white/50 text-sm mb-4">
-          Apply to become a club manager and create your own team.
-        </p>
-        <a
-          href="/manager/apply"
-          className="inline-flex h-10 items-center justify-center rounded-sm bg-[#00ff85] px-6 text-sm font-black tracking-[0.15em] text-[#050505] hover:bg-white transition"
-        >
-          Apply Now
-        </a>
-      </div>
-    </>
-  )
-}
-
-function ManagerDashboard() {
-  const [club, setClub] = useState<Record<string, unknown> | null>(null)
-  const [members, setMembers] = useState<Record<string, unknown>[]>([])
-  const [pending, setPending] = useState<Record<string, unknown>[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch("/api/clubs")
-      .then((r) => r.json())
-      .then(async (data) => {
-        const myClub = (data.clubs ?? []).find((c: Record<string, unknown>) => c.manager)
-        if (myClub) {
-          setClub(myClub)
-          const res = await fetch(`/api/clubs/${myClub.id}/members`)
-          const memData = await res.json()
-          setMembers(memData.members ?? [])
-
-          // Fetch pending members
-          const pendingRes = await fetch(`/api/clubs/${myClub.id}/pending-members`)
-          const pendingData = await pendingRes.json()
-          setPending(pendingData.pending ?? [])
-        }
+      .then((s) => {
+        if (s) setStats(s)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [user, router])
 
-  const handleMemberAction = async (memberId: string, data: { status?: string; role?: string }) => {
-    const res = await fetch(`/api/clubs/${club?.id}/members/${memberId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
-    if (res.ok) {
-      setPending((prev) => prev.filter((m) => m.id !== memberId))
-      // Refresh all members
-      const res2 = await fetch(`/api/clubs/${club?.id}/members`)
-      const memData = await res2.json()
-      setMembers(memData.members ?? [])
-    }
+  if (!user || loading) {
+    return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><p className="text-white/40">Loading...</p></div>
   }
 
-  if (loading) return <p className="text-white/40">Loading...</p>
-
-  if (!club) {
-    return (
-      <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Create Your Club</h2>
-        <p className="text-white/50 text-sm mb-4">You haven&apos;t created a club yet.</p>
-        <a href="/manager/create" className="inline-flex h-10 items-center justify-center rounded-sm bg-[#00ff85] px-6 text-sm font-black tracking-[0.15em] text-[#050505] hover:bg-white transition">
-          Create Club
-        </a>
-      </div>
-    )
-  }
+  const isUnranked = user.playerStatus === "UNPLACED"
+  const winRate = stats && stats.matchesPlayed > 0
+    ? Math.round((stats.wins / stats.matchesPlayed) * 100)
+    : 0
 
   return (
-    <>
-      <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-        <div className="flex items-center justify-between">
+    <div className="broadcast-theme min-h-screen bc-noise pb-24">
+      <div className="max-w-4xl mx-auto px-4 pt-20">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold text-white">{club.name as string}</h2>
-            <p className="text-sm text-white/40">{club.city as string}</p>
+            <h1 className="text-2xl font-black text-white">{user.username}</h1>
+            {isUnranked ? (
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-sm bg-white/5 text-white/40 text-xs font-bold">
+                UNRANKED
+              </span>
+            ) : (
+              <p className="text-[#00ff85] text-sm font-bold">Rating: {stats ? Math.round(stats.skillRating) : "—"}</p>
+            )}
           </div>
-          <a href={`/clubs/${club.slug}`} className="text-sm text-[#00ff85] hover:underline">View Public Page →</a>
+          <Link
+            href="/profile/edit"
+            className="h-9 px-3 rounded-sm border border-[#1a1a1a] text-white/50 text-xs font-bold hover:text-white transition"
+          >
+            Edit Profile
+          </Link>
         </div>
-      </div>
 
-      {pending.length > 0 && (
-        <div className="rounded-sm border border-[#ffb800]/30 bg-[#ffb800]/5 p-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[#ffb800] mb-3">Pending Requests ({pending.length})</h2>
-          <div className="space-y-2">
-            {pending.map((m: Record<string, unknown>) => {
-              const u = m.user as Record<string, unknown> | undefined
-              return (
-                <div key={m.id as string} className="flex items-center justify-between rounded-sm border border-[#1a1a1a] bg-[#111] px-4 py-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-white text-sm">{u?.username ?? "Unknown"}</span>
-                    {u?.playerStats && (
-                      <span className="text-xs text-white/40">
-                        {(u.playerStats as Record<string, unknown>).wins}W / {(u.playerStats as Record<string, unknown>).losses}L
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleMemberAction(m.id as string, { status: "APPROVED" })} className="h-6 px-2 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold hover:bg-[#00ff85]/20 transition">Accept</button>
-                    <button onClick={() => handleMemberAction(m.id as string, { status: "REJECTED" })} className="h-6 px-2 rounded-sm bg-red-500/10 text-red-400 text-xs font-bold hover:bg-red-500/20 transition">Reject</button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+        {/* Unranked CTA */}
+        {isUnranked && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-sm border border-[#ffb800]/30 bg-[#ffb800]/5 p-4 mb-6"
+          >
+            <p className="text-[#ffb800] font-bold text-sm">Play your first match to get ranked!</p>
+            <p className="text-white/40 text-xs mt-1">After your first verified match, you'll be placed on the leaderboard.</p>
+            <button
+              onClick={() => router.push("/matches/find")}
+              className="mt-3 h-9 px-4 rounded-sm bg-[#ffb800] text-[#050505] text-xs font-black tracking-[0.1em] hover:bg-white transition"
+            >
+              FIND OPPONENT →
+            </button>
+          </motion.div>
+        )}
 
-      <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Members ({members.length})</h2>
-        {members.length === 0 ? (
-          <p className="text-white/40 text-sm">No members yet</p>
-        ) : (
-          <div className="space-y-2">
-            {members.map((m: Record<string, unknown>) => {
-              const u = m.user as Record<string, unknown> | undefined
-              const memberEligible = m.status === "APPROVED" && m.role !== "CO_MANAGER"
-              return (
-                <div key={m.id as string} className="flex items-center justify-between rounded-sm border border-[#1a1a1a] bg-[#111] px-4 py-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-white text-sm">{u?.username ?? "Unknown"}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-sm ${m.status === "APPROVED" ? "bg-[#00ff85]/10 text-[#00ff85]" : m.status === "PENDING" ? "bg-yellow-500/10 text-yellow-400" : "bg-red-500/10 text-red-400"}`}>
-                      {m.status as string}
-                    </span>
-                    {m.role === "CO_MANAGER" && <span className="text-xs px-2 py-0.5 rounded-sm bg-purple-500/10 text-purple-400">Co-Manager</span>}
-                  </div>
-                  <div className="flex gap-2">
-                    {m.status === "PENDING" && (
-                      <>
-                        <button onClick={() => handleMemberAction(m.id as string, { status: "APPROVED" })} className="h-6 px-2 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold hover:bg-[#00ff85]/20 transition">Accept</button>
-                        <button onClick={() => handleMemberAction(m.id as string, { status: "REJECTED" })} className="h-6 px-2 rounded-sm bg-red-500/10 text-red-400 text-xs font-bold hover:bg-red-500/20 transition">Reject</button>
-                      </>
-                    )}
-                    {memberEligible && (
-                      <button onClick={() => handleMemberAction(m.id as string, { role: "CO_MANAGER" })} className="h-6 px-2 rounded-sm bg-purple-500/10 text-purple-400 text-xs font-bold hover:bg-purple-500/20 transition">Promote</button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+        {/* Club prompt */}
+        {!club && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-sm border border-[#00ff85]/20 bg-[#00ff85]/5 p-4 mb-6"
+          >
+            <p className="text-[#00ff85] font-bold text-sm">Join a club to compete officially</p>
+            <p className="text-white/40 text-xs mt-1">Matches without a club don't count toward rankings.</p>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => router.push("/clubs")}
+                className="h-8 px-3 rounded-sm bg-[#00ff85]/10 text-[#00ff85] text-xs font-bold hover:bg-[#00ff85]/20 transition"
+              >
+                Browse Clubs
+              </button>
+              <button
+                onClick={() => router.push("/manager/apply")}
+                className="h-8 px-3 rounded-sm border border-[#1a1a1a] text-white/50 text-xs font-bold hover:text-white transition"
+              >
+                Create Club
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Stats Grid */}
+        {stats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <StatCard label="Rating" value={String(Math.round(stats.skillRating))} tone="neon" />
+            <StatCard label="Win Rate" value={`${winRate}%`} tone={winRate > 50 ? "neon" : "gold"} />
+            <StatCard label="Matches" value={String(stats.matchesPlayed)} tone="gold" />
+            <StatCard label="Streak" value={`${stats.winStreak}W`} tone={stats.winStreak > 0 ? "neon" : ""} />
           </div>
         )}
-      </div>
 
-      <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">Quick Actions</h2>
-        <div className="flex flex-wrap gap-2">
-          <a href="/manager/edit" className="h-10 inline-flex items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#111] px-4 text-sm text-white hover:border-[#00ff85] transition">Edit Club</a>
-          <a href="/manager/rankings" className="h-10 inline-flex items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#111] px-4 text-sm text-white hover:border-[#00ff85] transition">Rankings</a>
-          <a href="/manager/posts" className="h-10 inline-flex items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#111] px-4 text-sm text-white hover:border-[#00ff85] transition">Posts & Announcements</a>
-          <a href="/manager/media" className="h-10 inline-flex items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#111] px-4 text-sm text-white hover:border-[#00ff85] transition">Media</a>
+        {/* Pending Requests */}
+        {pendingRequests > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-sm border border-[#ffb800]/30 bg-[#ffb800]/5 p-4 mb-6"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[#ffb800] font-bold text-sm">{pendingRequests} pending challenge{pendingRequests > 1 ? "s" : ""}</p>
+                <p className="text-white/40 text-xs">Someone wants to play!</p>
+              </div>
+              <button
+                onClick={() => router.push("/matches/requests")}
+                className="h-8 px-4 rounded-sm bg-[#ffb800] text-[#050505] text-xs font-black tracking-[0.1em] hover:bg-white transition"
+              >
+                VIEW →
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <button
+            onClick={() => router.push("/matches/find")}
+            className="rounded-sm border border-[#00ff85]/30 bg-[#00ff85]/5 p-6 text-center hover:bg-[#00ff85]/10 transition group"
+          >
+            <div className="h-10 w-10 rounded-full bg-[#00ff85]/10 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5 text-[#00ff85]">
+                <circle cx="12" cy="12" r="10" /><path d="M8 12l3 3 5-5" />
+              </svg>
+            </div>
+            <p className="text-white font-bold text-sm">Play Match</p>
+            <p className="text-white/30 text-xs mt-1">Challenge a player</p>
+          </button>
+
+          <button
+            onClick={() => router.push("/matches/requests")}
+            className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-6 text-center hover:border-[#1a1a1a] transition group"
+          >
+            <div className="h-10 w-10 rounded-full bg-[#111] flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5 text-white/60">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+              </svg>
+            </div>
+            <p className="text-white font-bold text-sm">Requests</p>
+            <p className="text-white/30 text-xs mt-1">{pendingRequests} pending</p>
+          </button>
         </div>
-      </div>
-    </>
-  )
-}
 
-function AdminDashboard() {
-  const [applications, setApplications] = useState<Record<string, unknown>[]>([])
-  const [clubs, setClubs] = useState<Record<string, unknown>[]>([])
-  const [tab, setTab] = useState<"applications" | "clubs">("applications")
-
-  useEffect(() => {
-    fetch("/api/admin?type=applications")
-      .then((r) => r.json())
-      .then((data) => setApplications(data.applications ?? []))
-    fetch("/api/admin?type=clubs")
-      .then((r) => r.json())
-      .then((data) => setClubs(data.clubs ?? []))
-  }, [])
-
-  const handleReview = async (appId: string, status: "APPROVED" | "REJECTED") => {
-    await fetch(`/api/admin/applications/${appId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    })
-    setApplications((prev) => prev.filter((a) => a.id !== appId))
-  }
-
-  return (
-    <>
-      <div className="flex gap-2">
-        <button
-          onClick={() => setTab("applications")}
-          className={`h-10 px-4 text-sm rounded-sm transition ${tab === "applications" ? "bg-[#00ff85] text-[#050505] font-bold" : "border border-[#1a1a1a] bg-[#0a0a0a] text-white/60"}`}
-        >
-          Applications ({applications.filter((a) => a.status === "PENDING").length})
-        </button>
-        <button
-          onClick={() => setTab("clubs")}
-          className={`h-10 px-4 text-sm rounded-sm transition ${tab === "clubs" ? "bg-[#00ff85] text-[#050505] font-bold" : "border border-[#1a1a1a] bg-[#0a0a0a] text-white/60"}`}
-        >
-          Clubs ({clubs.length})
-        </button>
-      </div>
-
-      {tab === "applications" && (
-        <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4 space-y-3">
-          {applications.filter((a) => a.status === "PENDING").length === 0 ? (
-            <p className="text-white/40 text-sm">No pending applications</p>
+        {/* Recent Matches */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white/50">Recent Matches</h2>
+            <Link href="/matches" className="text-xs text-[#00ff85] font-bold hover:underline">View All</Link>
+          </div>
+          {recentMatches.length === 0 ? (
+            <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-8 text-center">
+              <p className="text-white/40">No matches yet</p>
+              <button
+                onClick={() => router.push("/matches/find")}
+                className="mt-3 text-[#00ff85] text-sm font-bold hover:underline"
+              >
+                Play your first match →
+              </button>
+            </div>
           ) : (
-            applications.filter((a) => a.status === "PENDING").map((app) => {
-              const u = app.user as Record<string, unknown> | undefined
-              return (
-                <div key={app.id as string} className="rounded-sm border border-[#1a1a1a] bg-[#111] p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-white font-bold">{u?.username as string}</p>
-                      <p className="text-xs text-white/40">{app.clubNameRequested as string}</p>
-                      <p className="text-sm text-white/60 mt-2">{app.description as string}</p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={() => handleReview(app.id as string, "APPROVED")}
-                        className="h-8 px-3 rounded-sm bg-[#00ff85] text-[#050505] text-xs font-bold hover:bg-white transition"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleReview(app.id as string, "REJECTED")}
-                        className="h-8 px-3 rounded-sm border border-red-500 text-red-400 text-xs font-bold hover:bg-red-500/10 transition"
-                      >
-                        Reject
-                      </button>
-                    </div>
+            <div className="space-y-2">
+              {recentMatches.map((match) => (
+                <div key={match.id as string} className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-bold text-sm">
+                      {match.player1?.username as string} vs {match.player2?.username as string}
+                    </p>
+                    <p className="text-xs text-white/30">{new Date(match.createdAt as string).toLocaleDateString()}</p>
                   </div>
+                  <span className="text-[#00ff85] font-black text-lg">
+                    {match.score1 as number} - {match.score2 as number}
+                  </span>
                 </div>
-              )
-            })
+              ))}
+            </div>
           )}
         </div>
-      )}
-
-      {tab === "clubs" && (
-        <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4 space-y-2">
-          {clubs.map((club) => {
-            const m = club.manager as Record<string, unknown> | undefined
-            return (
-              <div key={club.id as string} className="flex items-center justify-between rounded-sm border border-[#1a1a1a] bg-[#111] px-4 py-3">
-                <div>
-                  <p className="text-white font-bold">{club.name as string}</p>
-                  <p className="text-xs text-white/40">{m?.username as string} · {(club._count as Record<string, unknown>)?.members ?? 0} members</p>
-                </div>
-                <a href={`/clubs/${club.slug}`} className="text-xs text-[#00ff85] hover:underline">View →</a>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </>
+      </div>
+    </div>
   )
 }
 
-function LoadingSkeleton() {
+function StatCard({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  const colors: Record<string, string> = {
+    neon: "text-[#00ff85]",
+    gold: "text-[#ffb800]",
+  }
   return (
-    <div className="broadcast-theme min-h-screen bc-noise flex items-center justify-center">
-      <p className="text-white/40">Loading...</p>
+    <div className="rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-4">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">{label}</p>
+      <p className={`text-2xl font-black mt-1 ${colors[tone ?? ""] || "text-white"}`}>{value}</p>
     </div>
   )
 }
