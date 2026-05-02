@@ -246,6 +246,7 @@ model PlayerStats {
   goalsScored   Int      @default(0) @map("goals_scored")
   goalsConceded Int      @default(0) @map("goals_conceded")
   skillRating   Float    @default(1000) @map("skill_rating")
+  points        Int      @default(1000)
   formScore     Float    @default(0) @map("form_score")
   winStreak     Int      @default(0) @map("win_streak")
   mvpCount      Int      @default(0) @map("mvp_count")
@@ -374,13 +375,14 @@ model Follow {
 
 model MatchReport {
   id          String    @id @default(uuid())
-  clubId      String    @map("club_id")
+  clubId      String?   @map("club_id")
   player1Id   String    @map("player1_id")
   player2Id   String    @map("player2_id")
   winnerId    String?   @map("winner_id")
   score1      Int       @default(0) @map("score1")
   score2      Int       @default(0) @map("score2")
   status      MatchStatus @default(PENDING)
+  confirmations Json?
   isDisputed  Boolean   @default(false) @map("is_disputed")
   notes       String?
   submittedById String  @map("submitted_by")
@@ -388,12 +390,14 @@ model MatchReport {
   approvedAt  DateTime? @map("approved_at")
   createdAt   DateTime  @default(now()) @map("created_at")
 
-  club        Club      @relation(fields: [clubId], references: [id])
+  club        Club?     @relation(fields: [clubId], references: [id])
   player1     User      @relation("Player1Matches", fields: [player1Id], references: [id])
   player2     User      @relation("Player2Matches", fields: [player2Id], references: [id])
   winner      User?     @relation("WinnerMatches", fields: [winnerId], references: [id])
   approvedBy  User?     @relation("ApprovedBy", fields: [approvedById], references: [id])
 
+  @@index([player1Id, status])
+  @@index([player2Id, status])
   @@map("match_reports")
 }
 

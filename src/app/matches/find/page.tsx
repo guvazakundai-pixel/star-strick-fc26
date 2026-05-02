@@ -27,9 +27,28 @@ export default function FindMatchPage() {
   async function handleSearch() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/players/search?q=${searchQuery}&exclude=${user?.id}`)
+      const res = await fetch("/api/clubs")
       const data = await res.json()
-      setPlayers(data.players ?? [])
+      const allMembers: Player[] = []
+      for (const club of data.clubs ?? []) {
+        const memRes = await fetch(`/api/clubs/${club.id}/members`)
+        const memData = await memRes.json()
+        for (const m of memData.members ?? []) {
+          if (m.user && m.user.id !== user?.id && m.status === "APPROVED") {
+            allMembers.push({
+              id: m.user.id,
+              username: m.user.username,
+              avatarUrl: m.user.avatarUrl,
+              playerStats: m.user.playerStats,
+              isOnline: false,
+            })
+          }
+        }
+      }
+      const filtered = searchQuery
+        ? allMembers.filter((p) => p.username.toLowerCase().includes(searchQuery.toLowerCase()))
+        : allMembers
+      setPlayers(filtered)
       setStep("select")
     } catch {
     } finally {
@@ -202,9 +221,26 @@ function QuickChallengeCards() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/players/suggested")
+    fetch("/api/clubs")
       .then((r) => r.json())
-      .then((data) => setSuggested(data.players ?? []))
+      .then(async (data) => {
+        const allMembers: Player[] = []
+        for (const club of data.clubs ?? []) {
+          const memRes = await fetch(`/api/clubs/${club.id}/members`)
+          const memData = await memRes.json()
+          for (const m of memData.members ?? []) {
+            if (m.user && m.status === "APPROVED") {
+              allMembers.push({
+                id: m.user.id,
+                username: m.user.username,
+                avatarUrl: m.user.avatarUrl,
+                playerStats: m.user.playerStats,
+              })
+            }
+          }
+        }
+        setSuggested(allMembers.slice(0, 4))
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
