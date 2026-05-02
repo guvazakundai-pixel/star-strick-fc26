@@ -77,6 +77,7 @@ model User {
   role          Role      @default(PLAYER)
   avatarUrl     String?   @map("avatar_url")
   bio           String?
+  country       String    @default("Zimbabwe")
   isShadowBanned Boolean  @default(false) @map("is_shadow_banned")
   isVerified    Boolean   @default(false) @map("is_verified")
   verificationToken String? @map("verification_token")
@@ -218,6 +219,8 @@ model PlayerStats {
   draws         Int      @default(0)
   goalsScored   Int      @default(0) @map("goals_scored")
   goalsConceded Int      @default(0) @map("goals_conceded")
+  skillRating   Float    @default(1000) @map("skill_rating")
+  formScore     Float    @default(0) @map("form_score")
   winStreak     Int      @default(0) @map("win_streak")
   mvpCount      Int      @default(0) @map("mvp_count")
   formHistory   String   @default("") @map("form_history")
