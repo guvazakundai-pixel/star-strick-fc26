@@ -6,6 +6,7 @@ type RankingEntry = {
   id: string
   userId: string
   rankPosition: number
+  prevPosition: number | null
   points: number
   user: { username: string }
 }
@@ -93,20 +94,28 @@ export default function ManagerRankingsPage() {
           <p className="text-white/40">No players to rank yet.</p>
         ) : (
           <div className="space-y-2">
-            {rankings.map((r, i) => (
-              <div key={r.id} className="flex items-center gap-4 rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] px-4 py-3">
-                <span className="text-lg font-black text-white/30 w-8 text-center">#{i + 1}</span>
-                <span className="flex-1 text-white font-bold">{r.user.username}</span>
-                <label className="text-xs text-white/40">Points</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={r.points}
-                  onChange={(e) => updatePoints(i, parseInt(e.target.value) || 0)}
-                  className="w-20 rounded-sm border border-[#1a1a1a] bg-[#111] px-2 py-1.5 text-sm text-white text-center focus:border-[#00ff85] focus:outline-none"
-                />
-              </div>
-            ))}
+            {rankings.map((r, i) => {
+              const movement = r.prevPosition ? r.prevPosition - (i + 1) : 0
+              return (
+                <div key={r.id} className="flex items-center gap-4 rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] px-4 py-3">
+                  <div className="w-8 text-center">
+                    <span className="text-lg font-black text-white/30">#{i + 1}</span>
+                    {movement > 0 && <span className="block text-xs text-[#00ff85]">▲ {movement}</span>}
+                    {movement < 0 && <span className="block text-xs text-red-400">▼ {Math.abs(movement)}</span>}
+                    {movement === 0 && r.prevPosition !== null && <span className="block text-xs text-white/30">—</span>}
+                  </div>
+                  <span className="flex-1 text-white font-bold">{r.user.username}</span>
+                  <label className="text-xs text-white/40">Points</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={r.points}
+                    onChange={(e) => updatePoints(i, parseInt(e.target.value) || 0)}
+                    className="w-20 rounded-sm border border-[#1a1a1a] bg-[#111] px-2 py-1.5 text-sm text-white text-center focus:border-[#00ff85] focus:outline-none"
+                  />
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

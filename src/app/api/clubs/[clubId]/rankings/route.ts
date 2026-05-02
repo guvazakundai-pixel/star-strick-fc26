@@ -48,15 +48,38 @@ export async function PUT(
     return NextResponse.json({ error: "Invalid input" }, { status: 400 })
   }
 
+  const oldRankings = await prisma.clubRanking.findMany({
+    where: { clubId },
+    select: { id: true, userId: true, rankPosition: true, points: true },
+  })
+
   await prisma.$transaction(
     parsed.data.map((entry) =>
       prisma.clubRanking.upsert({
         where: { clubId_userId: { clubId, userId: entry.userId } },
-        update: { rankPosition: entry.rankPosition, points: entry.points },
+        update: { 
+          rankPosition: entry.rankPosition, 
+          points: entry.points,
+          lastActive: new Date()
+        },
         create: { clubId, userId: entry.userId, rankPosition: entry.rankPosition, points: entry.points },
       })
     )
   )
+
+  // Record history if changed
+  const newRankings = await prisma.clubRanking.findMany({
+    where: { clubId },
+    select: { id: true, userId: true, rankPosition: true, points: true },
+  })
+
+  const { recordRankHistory } = await import("@/lib/rankings")
+  for (const newR of newRankings) {
+    const oldR = oldRankings.find(r => r.userId === newR.userId)
+    if (oldR && (oldR.rankPosition !== newR.rankPosition || oldR.points !== newR.points)) {
+      await recordRankHistory(newR.id, oldR.rankPosition, newR.rankPosition, oldR.points, newR.points)
+    }
+  }
 
   const updated = await prisma.clubRanking.findMany({
     where: { clubId },

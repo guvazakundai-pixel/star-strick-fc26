@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 type GlobalRanking = {
   id: string
   rankPosition: number
+  prevPosition: number | null
   totalPoints: number
   wins: number
   losses: number
@@ -105,15 +106,20 @@ export default function GlobalRankingsPage() {
                         </div>
                       </Link>
 
-                      <div className="px-4 shrink-0 text-right">
-                        {trend > 0 ? (
-                          <span className="text-[#00ff85] text-sm font-bold">▲ Rising</span>
-                        ) : trend < 0 ? (
-                          <span className="text-red-400 text-sm font-bold">▼ Falling</span>
-                        ) : (
-                          <span className="text-white/30 text-sm">—</span>
-                        )}
-                      </div>
+                      <div className="px-4 shrink-0 text-right flex flex-col items-end gap-1">
+                      {r.prevPosition !== null ? (
+                        <>
+                          <span className={`text-sm font-bold ${r.rankPosition < r.prevPosition ? "text-[#00ff85]" : r.rankPosition > r.prevPosition ? "text-red-400" : "text-white/50"}`}>
+                            {r.rankPosition < r.prevPosition ? "▲ Rising" : r.rankPosition > r.prevPosition ? "▼ Falling" : "— Stable"}
+                          </span>
+                          <span className="text-xs text-white/40">
+                            {Math.abs(r.prevPosition - r.rankPosition)} spots
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-white/30 text-sm">New</span>
+                      )}
+                    </div>
                     </div>
                   </motion.div>
                 )
