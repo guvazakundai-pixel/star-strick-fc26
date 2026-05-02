@@ -70,6 +70,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+import { AuthProvider } from "@/lib/auth-context";
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -79,11 +81,13 @@ export default function RootLayout({
       className={`${bebas.variable} ${jbMono.variable} ${exo.variable} ${barlow.variable} h-full`}
     >
       <body className="min-h-full bg-bg text-ink antialiased">
-        <div className="min-h-screen flex flex-col">
-          <TopBar />
-          <main className="flex-1 pb-24">{children}</main>
-          <BottomNav />
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen flex flex-col">
+            <TopBar />
+            <main className="flex-1 pb-24">{children}</main>
+            <BottomNav />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

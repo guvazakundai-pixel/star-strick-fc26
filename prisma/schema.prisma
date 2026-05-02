@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLAYER
+  MANAGER
+  ADMIN
+}
+
+enum MemberStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MemberRole {
+  PLAYER
+  CO_MANAGER
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MediaType {
+  LOGO
+  BANNER
+  POST
+  GALLERY
+}
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  role          Role      @default(PLAYER)
+  avatarUrl     String?   @map("avatar_url")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  club          Club?             @relation("ManagerClub", fields: [managedClubId], references: [id])
+  managedClubId String?           @unique @map("managed_club_id")
+
+  memberships   ClubMember[]
+  clubRankings  ClubRanking[]
+  playerStats   PlayerStats?
+  mediaUploads  Media[]
+  applications  ManagerApplication[]
+  reviews       ManagerApplication[] @relation("ReviewedBy", fields: [adminId], references: [id])
+  adminId       String?            @map("admin_id")
+
+  @@map("users")
+}
+
+model Club {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  city        String
+  country     String   @default("Zimbabwe")
+  description String?
+  logoUrl     String?  @map("logo_url")
+  bannerUrl   String?  @map("banner_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  managerId   String @map("manager_id")
+  manager     User   @relation("ManagerClub", fields: [managerId], references: [id])
+
+  members     ClubMember[]
+  rankings    ClubRanking[]
+  globalRank  GlobalClubRanking?
+  media       Media[]
+
+  @@map("clubs")
+}
+
+model ClubMember {
+  id        String     @id @default(uuid())
+  userId    String     @map("user_id")
+  clubId    String     @map("club_id")
+  role      MemberRole @default(PLAYER)
+  status    MemberStatus @default(PENDING)
+  joinedAt  DateTime   @default(now()) @map("joined_at")
+
+  user      User   @relation(fields: [userId], references: [id])
+  club      Club   @relation(fields: [clubId], references: [id])
+
+  @@unique([userId, clubId])
+  @@map("club_members")
+}
+
+model ClubRanking {
+  id           String   @id @default(uuid())
+  clubId       String   @map("club_id")
+  userId       String   @map("user_id")
+  rankPosition Int      @map("rank_position")
+  points       Int      @default(0)
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  club  Club @relation(fields: [clubId], references: [id])
+  user  User @relation(fields: [userId], references: [id])
+
+  @@unique([clubId, userId])
+  @@map("club_rankings")
+}
+
+model GlobalClubRanking {
+  id           String   @id @default(uuid())
+  clubId       String   @unique @map("club_id")
+  rankPosition Int      @map("rank_position")
+  totalPoints  Int      @default(0) @map("total_points")
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  club  Club   @relation(fields: [clubId], references: [id])
+
+  @@map("global_club_rankings")
+}
+
+model PlayerStats {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  matchesPlayed Int      @default(0) @map("matches_played")
+  wins          Int      @default(0)
+  losses        Int      @default(0)
+  draws         Int      @default(0)
+  goalsScored   Int      @default(0) @map("goals_scored")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user  User   @relation(fields: [userId], references: [id])
+
+  @@map("player_stats")
+}
+
+model Media {
+  id          String    @id @default(uuid())
+  clubId      String?   @map("club_id")
+  uploadedById String    @map("uploaded_by")
+  type        MediaType
+  url         String
+  caption     String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  club         Club? @relation(fields: [clubId], references: [id])
+  uploadedBy   User  @relation(fields: [uploadedById], references: [id])
+
+  @@map("media")
+}
+
+model ManagerApplication {
+  id                String            @id @default(uuid())
+  userId            String            @map("user_id")
+  clubNameRequested String            @map("club_name_requested")
+  description       String
+  status            ApplicationStatus @default(PENDING)
+  reviewedById      String?           @map("reviewed_by")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  user       User  @relation(fields: [userId], references: [id])
+  reviewedBy User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+  @@map("manager_applications")
+}
