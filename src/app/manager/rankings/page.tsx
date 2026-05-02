@@ -69,6 +69,21 @@ export default function ManagerRankingsPage() {
     setRankings((prev) => prev.map((r, i) => i === idx ? { ...r, points } : r))
   }
 
+  const movePlayer = (index: number, direction: 'up' | 'down') => {
+    setRankings((prev) => {
+      const newRankings = [...prev]
+      const targetIndex = direction === 'up' ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= newRankings.length) return prev
+      
+      // Swap
+      const temp = newRankings[index]
+      newRankings[index] = newRankings[targetIndex]
+      newRankings[targetIndex] = temp
+      
+      return newRankings
+    })
+  }
+
   if (loading) return <p className="text-white/40 p-8">Loading...</p>
   if (!club) return <p className="text-red-400 p-8">No club found.</p>
 
@@ -105,6 +120,20 @@ export default function ManagerRankingsPage() {
                     {movement === 0 && r.prevPosition !== null && <span className="block text-xs text-white/30">—</span>}
                   </div>
                   <span className="flex-1 text-white font-bold">{r.user.username}</span>
+                  
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => movePlayer(i, 'up')} disabled={i === 0} className="p-1 rounded-sm hover:bg-white/10 disabled:opacity-20 transition">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4 text-white">
+                        <path d="M18 15l-6-6-6 6"/>
+                      </svg>
+                    </button>
+                    <button onClick={() => movePlayer(i, 'down')} disabled={i === rankings.length - 1} className="p-1 rounded-sm hover:bg-white/10 disabled:opacity-20 transition">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4 text-white">
+                        <path d="M6 9l6 6 6-6"/>
+                      </svg>
+                    </button>
+                  </div>
+
                   <label className="text-xs text-white/40">Points</label>
                   <input
                     type="number"

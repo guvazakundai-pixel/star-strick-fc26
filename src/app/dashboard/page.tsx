@@ -311,6 +311,7 @@ function ManagerDashboard() {
         <div className="flex flex-wrap gap-2">
           <a href="/manager/edit" className="h-10 inline-flex items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#111] px-4 text-sm text-white hover:border-[#00ff85] transition">Edit Club</a>
           <a href="/manager/rankings" className="h-10 inline-flex items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#111] px-4 text-sm text-white hover:border-[#00ff85] transition">Rankings</a>
+          <a href="/manager/posts" className="h-10 inline-flex items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#111] px-4 text-sm text-white hover:border-[#00ff85] transition">Posts & Announcements</a>
           <a href="/manager/media" className="h-10 inline-flex items-center justify-center rounded-sm border border-[#1a1a1a] bg-[#111] px-4 text-sm text-white hover:border-[#00ff85] transition">Media</a>
         </div>
       </div>

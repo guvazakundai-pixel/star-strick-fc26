@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
+import { NotificationBell } from "@/components/NotificationBell"
 
 export function TopBar() {
   const { user } = useAuth()
@@ -23,9 +24,15 @@ export function TopBar() {
           </div>
         </Link>
         <div className="flex items-center gap-3">
-          <span className="hidden sm:inline-flex items-center gap-2 font-mono text-[11px] text-muted">
-            Season 1 · Week 12
-          </span>
+          <Link href="/search" className="h-9 w-9 flex items-center justify-center rounded-sm hover:bg-white/5 transition text-white/70 hover:text-white hidden sm:flex">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </Link>
+          
+          <NotificationBell />
+          
           {user ? (
             <Link
               href="/dashboard"
