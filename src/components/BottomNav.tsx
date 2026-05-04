@@ -2,17 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuthModal } from "@/lib/auth-context";
+import { useSession } from "@/lib/session-client";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: HomeIcon },
   { href: "/rankings", label: "Rankings", icon: RankIcon },
   { href: "/matches/find", label: "Play", icon: PlayIcon },
   { href: "/clubs", label: "Clubs", icon: ShieldIcon },
-  { href: "/profile", label: "Me", icon: UserIcon },
 ] as const;
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { openAuth } = useAuthModal();
+  const session = useSession();
+  const loggedIn = !!session;
+
   return (
     <nav
       aria-label="Primary"
@@ -54,6 +59,51 @@ export function BottomNav() {
             </li>
           );
         })}
+        <li>
+          {loggedIn ? (
+            <Link
+              href="/dashboard"
+              className="relative flex flex-col items-center justify-center gap-1 py-2.5 px-1 text-[10px] font-medium uppercase tracking-wider"
+            >
+              <span
+                className={
+                  "h-5 w-5 grid place-items-center transition-colors " +
+                  (pathname.startsWith("/dashboard") || pathname === "/profile"
+                    ? "text-accent"
+                    : "text-muted")
+                }
+              >
+                <UserIcon />
+              </span>
+              <span
+                className={
+                  "transition-colors " +
+                  (pathname.startsWith("/dashboard") || pathname === "/profile"
+                    ? "text-accent"
+                    : "text-muted")
+                }
+              >
+                Me
+              </span>
+              {(pathname.startsWith("/dashboard") || pathname === "/profile") && (
+                <span
+                  aria-hidden
+                  className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 bg-accent"
+                />
+              )}
+            </Link>
+          ) : (
+            <button
+              onClick={() => openAuth("signin")}
+              className="relative flex flex-col items-center justify-center gap-1 py-2.5 px-1 text-[10px] font-medium uppercase tracking-wider w-full"
+            >
+              <span className="h-5 w-5 grid place-items-center text-muted">
+                <UserIcon />
+              </span>
+              <span className="text-muted">Me</span>
+            </button>
+          )}
+        </li>
       </ul>
     </nav>
   );
