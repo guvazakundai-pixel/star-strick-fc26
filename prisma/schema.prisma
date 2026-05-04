@@ -8,25 +8,18 @@ datasource db {
 }
 
 enum Role {
-  PLAYER
-  MANAGER
+  SUPER_ADMIN
   ADMIN
+  MODERATOR
+  MANAGER
+  PLAYER
 }
 
-enum PlayerStatus {
-  UNPLACED
-  PLACED
-  RANKED
-}
-
-enum MatchStatus {
-  PENDING
-  ACCEPTED
-  COMPLETED
-  APPROVED
-  REJECTED
-  DISPUTED
-  FLAGGED
+enum Platform {
+  PLAYSTATION
+  XBOX
+  PC
+  CROSSPLAY
 }
 
 enum MemberStatus {
@@ -40,17 +33,10 @@ enum MemberRole {
   CO_MANAGER
 }
 
-enum ApplicationStatus {
+enum ClubStatus {
   PENDING
-  APPROVED
-  REJECTED
-}
-
-enum MediaType {
-  LOGO
-  BANNER
-  POST
-  GALLERY
+  VERIFIED
+  BANNED
 }
 
 enum NotificationType {
@@ -64,6 +50,7 @@ enum NotificationType {
   MATCH_RESULT
   SYSTEM_ALERT
   REPORT_ACTION
+  POINTS_AWARDED
 }
 
 enum ActionType {
@@ -83,89 +70,139 @@ enum ActionType {
   APPLICATION_REVIEW
   ADMIN_OVERRIDE
   REPORT_SUBMIT
+  POINTS_ADD
+  POINTS_DEDUCT
+}
+
+enum PointsReason {
+  MATCH_WIN
+  MATCH_LOSS
+  TOURNAMENT
+  ADMIN_AWARD
+  ADMIN_DEDUCT
+  BONUS
+  PENALTY
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  COMPLETED
+  APPROVED
+  REJECTED
+  DISPUTED
+  FLAGGED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MediaType {
+  LOGO
+  BANNER
+  POST
+  GALLERY
 }
 
 model User {
-  id            String    @id @default(uuid())
-  username      String    @unique
-  email         String    @unique
-  phone         String?
-  passwordHash  String    @map("password_hash")
-  role          Role      @default(PLAYER)
-  playerStatus  PlayerStatus @default(UNPLACED) @map("player_status")
-  avatarUrl     String?   @map("avatar_url")
-  bio           String?
-  country       String    @default("Zimbabwe")
-  city          String?
-  isShadowBanned Boolean  @default(false) @map("is_shadow_banned")
-  isVerified    Boolean   @default(false) @map("is_verified")
-  verificationToken String? @map("verification_token")
+  id                String    @id @default(uuid())
+  displayName        String?   @map("display_name")
+  username          String    @unique
+  email             String    @unique
+  passwordHash      String    @map("password_hash")
+  role              Role      @default(PLAYER)
+  platform          Platform?
+  fcUsername        String?   @unique @map("fc_username")
+  avatarUrl         String?   @map("avatar_url")
+  bio               String?
+  country           String    @default("Zimbabwe")
+  city              String?
+  phone             String?
+  isShadowBanned    Boolean   @default(false) @map("is_shadow_banned")
+  isVerified        Boolean   @default(false) @map("is_verified")
+  isBanned          Boolean   @default(false) @map("is_banned")
+  verificationToken String?   @map("verification_token")
   verificationTokenExpiry DateTime? @map("verification_token_expiry")
   onboardingComplete Boolean @default(false) @map("onboarding_complete")
-  lastLogin     DateTime? @map("last_login")
-  lastActiveAt  DateTime? @map("last_active_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLogin         DateTime? @map("last_login")
+  lastActiveAt      DateTime? @map("last_active_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  club          Club?             @relation("ManagerClub", fields: [managedClubId], references: [id])
-  managedClubId String?           @unique @map("managed_club_id")
+  clubId           String?   @unique @map("club_id")
+  club              Club?     @relation("UserClubMembership", fields: [clubId], references: [id], onDelete: SetNull)
 
-  memberships   ClubMember[]
-  clubRankings  ClubRanking[]
-  playerStats   PlayerStats?
-  mediaUploads  Media[]
-  applications  ManagerApplication[]
-  reviews       ManagerApplication[] @relation("ReviewedBy", fields: [adminId], references: [id])
-  adminId       String?            @map("admin_id")
+  managedClubId     String?   @unique @map("managed_club_id")
+  managedClub       Club?     @relation("ClubManager")
 
-  notifications Notification[]
-  activityLogs  ActivityLog[]
-  posts         ClubPost[]
-  likedPosts    PostLike[]
-  postComments  PostComment[]
-  followers     Follow[]        @relation("Followers")
-  following     Follow[]        @relation("Following")
-  followings    Follow[]        @relation("UserFollows")
-  followedBy    Follow[]        @relation("FollowedBy")
-  matchReports1 MatchReport[]   @relation("Player1Matches")
-  matchReports2 MatchReport[]   @relation("Player2Matches")
-  approvedMatches MatchReport[] @relation("ApprovedBy")
-  sentMatchRequests MatchRequest[] @relation("SentMatchRequests")
-  receivedMatchRequests MatchRequest[] @relation("ReceivedMatchRequests")
-  disputes      Dispute[]
-  reports       Report[]
-  auditLogs     AuditLog[]
+  memberships       ClubMember[]
+  clubRankings      ClubRanking[]
+  playerStats       PlayerStats?
+  mediaUploads      Media[]
+  applications      ManagerApplication[] @relation("UserApplications")
+  reviews           ManagerApplication[] @relation("ReviewedByUser")
+  notifications    Notification[]
+  activityLogs      ActivityLog[]
+  posts             ClubPost[]
+  likedPosts        PostLike[]
+  postComments      PostComment[]
+  followers         Follow[]        @relation("Followers")
+  following         Follow[]        @relation("Following")
+  disputes          Dispute[]       @relation("DisputeReporter")
+  reports           Report[]        @relation("ReportReporter")
+  auditLogs         AuditLog[]
+  pointsLogs        PointsLog[]     @relation("PointsLogUser")
+  givenPointsLogs   PointsLog[]     @relation("PointsLogAdmin")
+
+  createdClubs      Club[]          @relation("ClubCreator")
+  matchPlayer1      MatchReport[]   @relation("MatchPlayer1")
+  matchPlayer2      MatchReport[]   @relation("MatchPlayer2")
+  matchWinner       MatchReport[]   @relation("MatchWinner")
+  matchApprover     MatchReport[]   @relation("MatchApprover")
+  matchSubmitter    MatchReport[]   @relation("MatchSubmitter")
+  sentMatchRequests  MatchRequest[] @relation("SentMatchRequest")
+  receivedMatchRequests MatchRequest[] @relation("ReceivedMatchRequest")
 
   @@map("users")
 }
 
 model Club {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  slug        String   @unique
-  city        String
-  country     String   @default("Zimbabwe")
-  description String?
-  logoUrl     String?  @map("logo_url")
-  bannerUrl   String?  @map("banner_url")
-  isVerified  Boolean  @default(false) @map("is_verified")
-  isBanned    Boolean  @default(false) @map("is_banned")
-  momentum    Int      @default(50)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String      @id @default(uuid())
+  name              String      @unique
+  slug              String      @unique
+  tag               String?     @unique @map("tag")
+  city              String
+  country           String      @default("Zimbabwe")
+  description       String?
+  logoUrl           String?     @map("logo_url")
+  bannerUrl         String?     @map("banner_url")
+  isVerified        Boolean     @default(false) @map("is_verified")
+  isBanned          Boolean     @default(false) @map("is_banned")
+  status            ClubStatus  @default(PENDING) @map("status")
+  platform          Platform?
+  membersInviteOnly Boolean     @default(false) @map("members_invite_only")
+  momentum          Int         @default(50)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
 
-  managerId   String @map("manager_id")
-  manager     User   @relation("ManagerClub", fields: [managerId], references: [id])
+  managerId         String      @unique @map("manager_id")
+  manager           User        @relation("ClubManager", fields: [managerId], references: [id])
 
-  members     ClubMember[]
-  rankings    ClubRanking[]
-  globalRank  GlobalClubRanking?
-  media       Media[]
-  posts       ClubPost[]
-  rivalries1  Rivalry[] @relation("RivalClub1")
-  rivalries2  Rivalry[] @relation("RivalClub2")
-  matches     MatchReport[]
-  matchRequests MatchRequest[]
+  members           ClubMember[]
+  rankings          ClubRanking[]
+  globalRank        GlobalClubRanking?
+  media             Media[]
+  posts             ClubPost[]
+  rivalries1        Rivalry[]   @relation("RivalClub1")
+  rivalries2        Rivalry[]   @relation("RivalClub2")
+  matches           MatchReport[]
+  matchRequests     MatchRequest[]
+  createdByUserId   String?     @map("created_by_user_id")
+  createdBy         User?       @relation("ClubCreator", fields: [createdByUserId], references: [id])
+  clubMembers       User[]      @relation("UserClubMembership")
 
   @@map("clubs")
 }
@@ -236,6 +273,24 @@ model GlobalClubRanking {
   @@map("global_club_rankings")
 }
 
+model PointsLog {
+  id             String      @id @default(uuid())
+  userId         String      @map("user_id")
+  adminId        String?     @map("admin_id")
+  pointsChange   Int         @map("points_change")
+  reason         PointsReason
+  reasonText     String?
+  matchId        String?     @map("match_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  user           User        @relation("PointsLogUser", fields: [userId], references: [id])
+  admin          User?       @relation("PointsLogAdmin", fields: [adminId], references: [id])
+  playerStatsId  String?     @map("player_stats_id")
+  playerStats    PlayerStats? @relation("PointsLogPlayerStats", fields: [playerStatsId], references: [id])
+
+  @@map("points_log")
+}
+
 model PlayerStats {
   id            String   @id @default(uuid())
   userId        String   @unique @map("user_id")
@@ -246,14 +301,15 @@ model PlayerStats {
   goalsScored   Int      @default(0) @map("goals_scored")
   goalsConceded Int      @default(0) @map("goals_conceded")
   skillRating   Float    @default(1000) @map("skill_rating")
-  points        Int      @default(1000)
+  points        Int      @default(0)
   formScore     Float    @default(0) @map("form_score")
   winStreak     Int      @default(0) @map("win_streak")
   mvpCount      Int      @default(0) @map("mvp_count")
   formHistory   String   @default("") @map("form_history")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  user  User   @relation(fields: [userId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+  pointsLogs   PointsLog[] @relation("PointsLogPlayerStats")
 
   @@map("player_stats")
 }
@@ -283,8 +339,8 @@ model ManagerApplication {
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
-  user       User  @relation(fields: [userId], references: [id])
-  reviewedBy User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  user       User  @relation("UserApplications", fields: [userId], references: [id])
+  reviewedBy User? @relation("ReviewedByUser", fields: [reviewedById], references: [id])
 
   @@map("manager_applications")
 }
@@ -382,6 +438,7 @@ model MatchReport {
   score1      Int       @default(0) @map("score1")
   score2      Int       @default(0) @map("score2")
   status      MatchStatus @default(PENDING)
+  statusRaw   String    @default("PENDING") @map("status_raw")
   confirmations Json?
   isDisputed  Boolean   @default(false) @map("is_disputed")
   notes       String?
@@ -391,13 +448,14 @@ model MatchReport {
   createdAt   DateTime  @default(now()) @map("created_at")
 
   club        Club?     @relation(fields: [clubId], references: [id])
-  player1     User      @relation("Player1Matches", fields: [player1Id], references: [id])
-  player2     User      @relation("Player2Matches", fields: [player2Id], references: [id])
-  winner      User?     @relation("WinnerMatches", fields: [winnerId], references: [id])
-  approvedBy  User?     @relation("ApprovedBy", fields: [approvedById], references: [id])
+  player1     User      @relation("MatchPlayer1", fields: [player1Id], references: [id])
+  player2     User      @relation("MatchPlayer2", fields: [player2Id], references: [id])
+  winner      User?     @relation("MatchWinner", fields: [winnerId], references: [id])
+  approvedBy  User?     @relation("MatchApprover", fields: [approvedById], references: [id])
+  submittedBy User      @relation("MatchSubmitter", fields: [submittedById], references: [id])
 
-  @@index([player1Id, status])
-  @@index([player2Id, status])
+  @@index([player1Id, statusRaw])
+  @@index([player2Id, statusRaw])
   @@map("match_reports")
 }
 
@@ -407,15 +465,16 @@ model MatchRequest {
   receiverId  String    @map("receiver_id")
   clubId      String?   @map("club_id")
   status      MatchStatus @default(PENDING)
+  statusRaw   String    @default("PENDING") @map("status_raw")
   message     String?
   expiresAt   DateTime  @map("expires_at")
   createdAt   DateTime  @default(now()) @map("created_at")
 
-  sender      User      @relation("SentMatchRequests", fields: [senderId], references: [id])
-  receiver    User      @relation("ReceivedMatchRequests", fields: [receiverId], references: [id])
+  sender      User      @relation("SentMatchRequest", fields: [senderId], references: [id])
+  receiver    User      @relation("ReceivedMatchRequest", fields: [receiverId], references: [id])
   club        Club?     @relation(fields: [clubId], references: [id])
 
-  @@index([receiverId, status])
+  @@index([receiverId, statusRaw])
   @@index([expiresAt])
   @@map("match_requests")
 }
@@ -430,6 +489,8 @@ model Dispute {
   resolution  String?
   createdAt   DateTime  @default(now()) @map("created_at")
   resolvedAt  DateTime? @map("resolved_at")
+
+  reporter    User      @relation("DisputeReporter", fields: [reportedById], references: [id])
 
   @@map("disputes")
 }
@@ -461,6 +522,8 @@ model Report {
   reviewedById String?  @map("reviewed_by")
   action      String?
   createdAt   DateTime  @default(now()) @map("created_at")
+
+  reporter    User      @relation("ReportReporter", fields: [reporterId], references: [id])
 
   @@map("reports")
 }
