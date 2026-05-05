@@ -3,109 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  SUPER_ADMIN
-  ADMIN
-  MODERATOR
-  MANAGER
-  PLAYER
-}
-
-enum Platform {
-  PLAYSTATION
-  XBOX
-  PC
-  CROSSPLAY
-}
-
-enum MemberStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum MemberRole {
-  PLAYER
-  CO_MANAGER
-}
-
-enum ClubStatus {
-  PENDING
-  VERIFIED
-  BANNED
-}
-
-enum NotificationType {
-  JOIN_REQUEST
-  JOIN_APPROVED
-  JOIN_REJECTED
-  RANK_CHANGED
-  CLUB_INVITE
-  POST_LIKE
-  POST_COMMENT
-  MATCH_RESULT
-  SYSTEM_ALERT
-  REPORT_ACTION
-  POINTS_AWARDED
-}
-
-enum ActionType {
-  USER_REGISTER
-  USER_LOGIN
-  CLUB_CREATE
-  CLUB_UPDATE
-  CLUB_DELETE
-  MEMBER_JOIN
-  MEMBER_LEAVE
-  MEMBER_PROMOTE
-  RANK_UPDATE
-  MEDIA_UPLOAD
-  POST_CREATE
-  MATCH_REPORT
-  APPLICATION_SUBMIT
-  APPLICATION_REVIEW
-  ADMIN_OVERRIDE
-  REPORT_SUBMIT
-  POINTS_ADD
-  POINTS_DEDUCT
-}
-
-enum PointsReason {
-  MATCH_WIN
-  MATCH_LOSS
-  TOURNAMENT
-  ADMIN_AWARD
-  ADMIN_DEDUCT
-  BONUS
-  PENALTY
-}
-
-enum MatchStatus {
-  PENDING
-  ACCEPTED
-  COMPLETED
-  APPROVED
-  REJECTED
-  DISPUTED
-  FLAGGED
-}
-
-enum ApplicationStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum MediaType {
-  LOGO
-  BANNER
-  POST
-  GALLERY
-}
 
 model User {
   id                String    @id @default(uuid())
@@ -113,8 +14,8 @@ model User {
   username          String    @unique
   email             String    @unique
   passwordHash      String    @map("password_hash")
-  role              Role      @default(PLAYER)
-  platform          Platform?
+  role              String    @default("PLAYER")
+  platform          String?
   fcUsername        String?   @unique @map("fc_username")
   avatarUrl         String?   @map("avatar_url")
   bio               String?
@@ -181,8 +82,8 @@ model Club {
   bannerUrl         String?     @map("banner_url")
   isVerified        Boolean     @default(false) @map("is_verified")
   isBanned          Boolean     @default(false) @map("is_banned")
-  status            ClubStatus  @default(PENDING) @map("status")
-  platform          Platform?
+  status            String      @default("PENDING") @map("status")
+  platform          String?
   membersInviteOnly Boolean     @default(false) @map("members_invite_only")
   momentum          Int         @default(50)
   createdAt         DateTime    @default(now()) @map("created_at")
@@ -211,8 +112,8 @@ model ClubMember {
   id        String     @id @default(uuid())
   userId    String     @map("user_id")
   clubId    String     @map("club_id")
-  role      MemberRole @default(PLAYER)
-  status    MemberStatus @default(PENDING)
+  role      String @default("PLAYER")
+  status    String @default("PENDING")
   joinedAt  DateTime   @default(now()) @map("joined_at")
 
   user      User   @relation(fields: [userId], references: [id])
@@ -278,7 +179,7 @@ model PointsLog {
   userId         String      @map("user_id")
   adminId        String?     @map("admin_id")
   pointsChange   Int         @map("points_change")
-  reason         PointsReason
+  reason         String
   reasonText     String?
   matchId        String?     @map("match_id")
   createdAt       DateTime    @default(now()) @map("created_at")
@@ -318,7 +219,7 @@ model Media {
   id          String    @id @default(uuid())
   clubId      String?   @map("club_id")
   uploadedById String    @map("uploaded_by")
-  type        MediaType
+  type        String
   url         String
   caption     String?
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -334,7 +235,7 @@ model ManagerApplication {
   userId            String            @map("user_id")
   clubNameRequested String            @map("club_name_requested")
   description       String
-  status            ApplicationStatus @default(PENDING)
+  status            String            @default("PENDING")
   reviewedById      String?           @map("reviewed_by")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
@@ -348,7 +249,7 @@ model ManagerApplication {
 model Notification {
   id        String           @id @default(uuid())
   userId    String           @map("user_id")
-  type      NotificationType
+  type      String
   title     String
   message   String
   link      String?
@@ -363,7 +264,7 @@ model Notification {
 model ActivityLog {
   id         String     @id @default(uuid())
   userId     String     @map("user_id")
-  actionType ActionType  @map("action_type")
+  actionType String     @map("action_type")
   metadata   Json?
   createdAt  DateTime   @default(now()) @map("created_at")
 
@@ -437,7 +338,7 @@ model MatchReport {
   winnerId    String?   @map("winner_id")
   score1      Int       @default(0) @map("score1")
   score2      Int       @default(0) @map("score2")
-  status      MatchStatus @default(PENDING)
+  status      String    @default("PENDING")
   statusRaw   String    @default("PENDING") @map("status_raw")
   confirmations Json?
   isDisputed  Boolean   @default(false) @map("is_disputed")
@@ -464,7 +365,7 @@ model MatchRequest {
   senderId    String    @map("sender_id")
   receiverId  String    @map("receiver_id")
   clubId      String?   @map("club_id")
-  status      MatchStatus @default(PENDING)
+  status      String    @default("PENDING")
   statusRaw   String    @default("PENDING") @map("status_raw")
   message     String?
   expiresAt   DateTime  @map("expires_at")
