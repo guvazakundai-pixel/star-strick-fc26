@@ -1,146 +1,123 @@
-import { PrismaClient, Role } from "@prisma/client"
-import bcrypt from "bcryptjs"
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { CLUBS } from "../src/lib/clubs";
+import { PLAYERS } from "../src/lib/players";
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
-async function main() {
-  await prisma.clubMember.deleteMany()
-  await prisma.clubRanking.deleteMany()
-  await prisma.globalClubRanking.deleteMany()
-  await prisma.playerStats.deleteMany()
-  await prisma.media.deleteMany()
-  await prisma.managerApplication.deleteMany()
-  await prisma.club.deleteMany()
-  await prisma.user.deleteMany()
+const DEFAULT_PASSWORD = "changeme123";
+const ADMIN_EMAIL = "admin@starstrick.fc";
 
-  const adminPassword = await bcrypt.hash("admin123", 12)
-  await prisma.user.create({
-    data: {
-      username: "admin",
-      email: "admin@starstrick.com",
-      passwordHash: adminPassword,
-      role: "ADMIN",
-      playerStats: { create: {} },
-    },
-  })
+const usernameFromGamertag = (g: string) =>
+  g.toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_|_$/g, "").slice(0, 32);
 
-  const INITIAL_CLUBS = [
-    { name: "Game Nation", city: "Harare", rank: 1 },
-    { name: "GameStop", city: "Bulawayo", rank: 2 },
-    { name: "Keep4Gaming", city: "Harare", rank: 3 },
-    { name: "Elite Strikers", city: "Mutare", rank: 4 },
-    { name: "Digital Warriors", city: "Gweru", rank: 5 },
-  ]
+const usernameFromName = (n: string) =>
+  n.toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_|_$/g, "").slice(0, 32);
 
-  const playerNames = [
-    ["Tendai", "Rudo", "Simba"],
-    ["Nyasha", "Kuda", "Tatenda"],
-    ["Farai", "Tariro", "Blessing"],
-    ["Tinashe", "Tafadzwa", "Rumbidzai"],
-    ["Takudzwa", "Shepherd", "Munashe"],
-  ]
+const fakeEmail = (slug: string) => `${slug}@starstrick.local`;
 
-  for (let i = 0; i < INITIAL_CLUBS.length; i++) {
-    const clubData = INITIAL_CLUBS[i]
-    const slug = clubData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-    const managerPassword = await bcrypt.hash("password123", 12)
-
-    const manager = await prisma.user.create({
-      data: {
-        username: `${clubData.name.toLowerCase().replace(/\s+/g, "_")}_manager`,
-        email: `manager.${clubData.name.toLowerCase().replace(/\s+/g, ".")}@starstrick.com`,
-        passwordHash: managerPassword,
-        role: "MANAGER",
-        playerStats: {
-          create: {
-            matchesPlayed: Math.floor(Math.random() * 50) + 20,
-            wins: Math.floor(Math.random() * 30) + 10,
-            losses: Math.floor(Math.random() * 15),
-            draws: Math.floor(Math.random() * 10),
-            goalsScored: Math.floor(Math.random() * 80) + 20,
-          },
-        },
-      },
-    })
-
-    const club = await prisma.club.create({
-      data: {
-        name: clubData.name,
-        slug,
-        city: clubData.city,
-        country: "Zimbabwe",
-        description: `Professional esports club based in ${clubData.city}.`,
-        managerId: manager.id,
-        members: {
-          create: {
-            userId: manager.id,
-            role: "CO_MANAGER",
-            status: "APPROVED",
-          },
-        },
-      },
-    })
-
-    await prisma.globalClubRanking.create({
-      data: {
-        clubId: club.id,
-        rankPosition: clubData.rank,
-        totalPoints: 100 - i * 15,
-        wins: Math.floor(Math.random() * 30) + 15,
-        losses: Math.floor(Math.random() * 10),
-      },
-    })
-
-    for (let j = 0; j < 3; j++) {
-      const name = playerNames[i][j]
-      const pw = await bcrypt.hash("password123", 12)
-
-      const player = await prisma.user.create({
-        data: {
-          username: `${name.toLowerCase()}_${slug}`,
-          email: `${name.toLowerCase()}.${slug}@starstrick.com`,
-          passwordHash: pw,
-          role: "PLAYER",
-          playerStats: {
-            create: {
-              matchesPlayed: Math.floor(Math.random() * 40) + 10,
-              wins: Math.floor(Math.random() * 20) + 5,
-              losses: Math.floor(Math.random() * 15),
-              draws: Math.floor(Math.random() * 10),
-              goalsScored: Math.floor(Math.random() * 50) + 10,
-            },
-          },
-        },
-      })
-
-      await prisma.clubMember.create({
-        data: {
-          userId: player.id,
-          clubId: club.id,
-          role: "PLAYER",
-          status: "APPROVED",
-        },
-      })
-
-      await prisma.clubRanking.create({
-        data: {
-          clubId: club.id,
-          userId: player.id,
-          rankPosition: j + 2,
-          points: 100 - j * 20 - i * 5,
-        },
-      })
-    }
+function generateTag(name: string): string {
+  const words = name.split(" ");
+  if (words.length >= 2) {
+    return (words[0][0] + words[1].substring(0, 3)).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
   }
-
-  console.log("Database seeded successfully!")
+  return name.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
 }
 
-main()
-  .catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+async function main() {
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 12);
+
+  // 1. ADMIN
+  await prisma.user.upsert({
+    where: { email: ADMIN_EMAIL },
+    update: {},
+    create: {
+      username: "admin",
+      email: ADMIN_EMAIL,
+      passwordHash,
+      role: "ADMIN",
+      displayName: "Star Strick Admin",
+      platform: "CROSSPLAY",
+      country: "Zimbabwe",
+    },
+  });
+  console.log(`✓ admin → ${ADMIN_EMAIL} / ${DEFAULT_PASSWORD}`);
+
+  // 2. PLAYERS
+  for (const p of PLAYERS) {
+    const username = usernameFromGamertag(p.gamertag);
+    await prisma.user.upsert({
+      where: { username },
+      update: { displayName: p.name, country: p.city, platform: "CROSSPLAY" },
+      create: {
+        username,
+        email: fakeEmail(username),
+        passwordHash,
+        role: "PLAYER",
+        displayName: p.name,
+        country: p.city,
+        platform: "CROSSPLAY",
+      },
+    });
+    const playerUser = await prisma.user.findUniqueOrThrow({ where: { username } });
+    await prisma.playerStats.upsert({
+      where: { userId: playerUser.id },
+      update: { matchesPlayed: p.wins + p.losses + p.draws, wins: p.wins, draws: p.draws, losses: p.losses, goalsScored: p.goalsFor, goalsAgainst: p.goalsAgainst, points: p.points, winStreak: p.winStreak, skillRating: 1000 + p.points },
+      create: { userId: playerUser.id, matchesPlayed: p.wins + p.losses + p.draws, wins: p.wins, draws: p.draws, losses: p.losses, goalsScored: p.goalsFor, goalsAgainst: p.goalsAgainst, points: p.points, winStreak: p.winStreak, skillRating: 1000 + p.points },
+    });
+    await prisma.playerRanking.upsert({
+      where: { userId: playerUser.id },
+      update: { rankPosition: p.rank, prevPosition: p.prev, rankChange: p.prev - p.rank, points: p.points },
+      create: { userId: playerUser.id, rankPosition: p.rank, prevPosition: p.prev, rankChange: p.prev - p.rank, points: p.points },
+    });
+  }
+  console.log(`✓ players → ${PLAYERS.length} seeded`);
+
+  // 3. MANAGERS
+  const managerByClubId = new Map<string, { id: string; username: string }>();
+  for (const c of CLUBS) {
+    const username = usernameFromName(c.manager);
+    const user = await prisma.user.upsert({
+      where: { username },
+      update: { role: "MANAGER", displayName: c.manager, country: c.city },
+      create: { username, email: fakeEmail(username), passwordHash, role: "MANAGER", displayName: c.manager, country: c.city, platform: "CROSSPLAY" },
+      select: { id: true, username: true },
+    });
+    managerByClubId.set(c.id, user);
+  }
+  console.log(`✓ managers → ${CLUBS.length} accounts`);
+
+  // 4. CLUBS + GLOBAL RANKINGS
+  for (const c of CLUBS) {
+    const manager = managerByClubId.get(c.id)!;
+    const tag = generateTag(c.name);
+    await prisma.club.upsert({
+      where: { name: c.name },
+      update: { tag, city: c.city, country: "Zimbabwe", createdByUserId: manager.id, globalRanking: { upsert: { create: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst }, update: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst } } } },
+      create: { name: c.name, tag, city: c.city, country: "Zimbabwe", createdByUserId: manager.id, globalRanking: { create: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst } } },
+    });
+  }
+  console.log(`✓ clubs → ${CLUBS.length} with global rankings`);
+
+  // 5. CLUB MEMBERSHIPS + INTERNAL RANKINGS
+  let totalMemberships = 0;
+  for (const c of CLUBS) {
+    const club = await prisma.club.findUniqueOrThrow({ where: { name: c.name } });
+    let pos = 1;
+    for (const playerId of c.playerIds) {
+      const player = PLAYERS.find((p) => p.id === playerId);
+      if (!player) continue;
+      const playerUser = await prisma.user.findUnique({ where: { username: usernameFromGamertag(player.gamertag) } });
+      if (!playerUser) continue;
+      await prisma.clubMember.upsert({ where: { userId_clubId: { userId: playerUser.id, clubId: club.id } }, update: { status: "APPROVED" }, create: { userId: playerUser.id, clubId: club.id, role: "PLAYER", status: "APPROVED" } });
+      await prisma.clubRanking.upsert({ where: { clubId_userId: { clubId: club.id, userId: playerUser.id } }, update: { rankPosition: pos, points: player.points }, create: { clubId: club.id, userId: playerUser.id, rankPosition: pos, points: player.points } });
+      pos++;
+      totalMemberships++;
+    }
+  }
+  console.log(`✓ members → ${totalMemberships} memberships + internal rankings`);
+  console.log("\nSeeded successfully.\n");
+  console.log(`Admin login → email: ${ADMIN_EMAIL}  password: ${DEFAULT_PASSWORD}`);
+}
+
+main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());

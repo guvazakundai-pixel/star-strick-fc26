@@ -1,93 +1,47 @@
-import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
-import { getAuthFromHeaders } from "@/lib/auth"
-import { prisma } from "@/lib/db"
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireClubManager } from "@/lib/route-auth";
+import { prisma } from "@/lib/prisma";
 
-const rankingSchema = z.array(
+const reorderSchema = z.array(
   z.object({
     userId: z.string(),
-    rankPosition: z.number().int().min(1),
     points: z.number().int().min(0),
   })
-)
+);
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ clubId: string }> }
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ clubId: string }> },
 ) {
-  const { clubId } = await params
+  const { clubId } = await params;
+  const auth = await requireClubManager(clubId);
+  if (!auth.ok) return auth.response;
 
-  const rankings = await prisma.clubRanking.findMany({
-    where: { clubId },
-    orderBy: { rankPosition: "asc" },
-    include: {
-      user: { select: { id: true, username: true, avatarUrl: true, playerStats: true } },
-    },
-  })
-
-  return NextResponse.json({ rankings })
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ clubId: string }> }
-) {
-  const auth = getAuthFromHeaders(request)
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  const { clubId } = await params
-
-  const club = await prisma.club.findUnique({ where: { id: clubId } })
-  if (!club || club.managerId !== auth.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
-
-  const body = await request.json()
-  const parsed = rankingSchema.safeParse(body)
+  const body = await req.json().catch(() => null);
+  const parsed = reorderSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const oldRankings = await prisma.clubRanking.findMany({
-    where: { clubId },
-    select: { id: true, userId: true, rankPosition: true, points: true },
-  })
-
-  await prisma.$transaction(
-    parsed.data.map((entry) =>
-      prisma.clubRanking.upsert({
-        where: { clubId_userId: { clubId, userId: entry.userId } },
-        update: { 
-          rankPosition: entry.rankPosition, 
-          points: entry.points,
-          lastActive: new Date()
-        },
-        create: { clubId, userId: entry.userId, rankPosition: entry.rankPosition, points: entry.points },
-      })
-    )
-  )
-
-  // Record history if changed
-  const newRankings = await prisma.clubRanking.findMany({
-    where: { clubId },
-    select: { id: true, userId: true, rankPosition: true, points: true },
-  })
-
-  const { recordRankHistory } = await import("@/lib/rankings")
-  for (const newR of newRankings) {
-    const oldR = oldRankings.find(r => r.userId === newR.userId)
-    if (oldR && (oldR.rankPosition !== newR.rankPosition || oldR.points !== newR.points)) {
-      await recordRankHistory(newR.id, oldR.rankPosition, newR.rankPosition, oldR.points, newR.points)
-    }
+  const updates = parsed.data;
+  for (let i = 0; i < updates.length; i++) {
+    await prisma.clubRanking.upsert({
+      where: { clubId_userId: { clubId, userId: updates[i].userId } },
+      update: { rankPosition: i + 1, points: updates[i].points },
+      create: { clubId, userId: updates[i].userId, rankPosition: i + 1, points: updates[i].points },
+    });
   }
 
-  const updated = await prisma.clubRanking.findMany({
-    where: { clubId },
-    orderBy: { rankPosition: "asc" },
-    include: { user: { select: { id: true, username: true } } },
-  })
+  await prisma.auditLog.create({
+    data: {
+      actorId: auth.session.userId,
+      actionType: "RANKING_REORDER",
+      entityType: "CLUB",
+      entityId: clubId,
+      metadata: JSON.stringify({ count: updates.length }),
+    },
+  });
 
-  await (import("@/lib/rankings").then((m) => m.recalculateGlobalRankings()))
-
-  return NextResponse.json({ rankings: updated })
+  return NextResponse.json({ ok: true, reordered: updates.length });
 }

@@ -1,75 +1,87 @@
-import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
-import { getAuthFromHeaders } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { auditAction, notifyUser } from "@/lib/utils"
-
-const updateMemberSchema = z.object({
-  status: z.enum(["APPROVED", "REJECTED"]).optional(),
-  role: z.enum(["PLAYER", "CO_MANAGER"]).optional(),
-})
+import { NextResponse } from "next/server";
+import { requireClubManager } from "@/lib/route-auth";
+import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ clubId: string; memberId: string }> }
+  req: Request,
+  { params }: { params: Promise<{ clubId: string; memberId: string }> },
 ) {
-  const auth = getAuthFromHeaders(request)
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { clubId, memberId } = await params;
+  const auth = await requireClubManager(clubId);
+  if (!auth.ok) return auth.response;
 
-  const { clubId, memberId } = await params
+  const body = await req.json().catch(() => null);
+  const status = body?.status;
+  const role = body?.role;
 
-  const club = await prisma.club.findUnique({ where: { id: clubId } })
-  if (!club || club.managerId !== auth.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (status && !["APPROVED", "REJECTED"].includes(status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+  if (role && !["PLAYER", "CAPTAIN"].includes(role)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 
-  const body = await request.json()
-  const parsed = updateMemberSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+  const member = await prisma.clubMember.findUnique({ where: { id: memberId } });
+  if (!member || member.clubId !== clubId) {
+    return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
 
-  const member = await prisma.clubMember.update({
+  const data: Record<string, unknown> = {};
+  if (status) data.status = status;
+  if (role) data.role = role;
+
+  const updated = await prisma.clubMember.update({
     where: { id: memberId },
-    data: parsed.data,
-    include: { user: { select: { id: true, username: true } } },
-  })
+    data,
+  });
 
-  // Audit log
-  await auditAction(auth.id, `MEMBER_${parsed.data.status || parsed.data.role}`, `member:${memberId}`, {
-    clubId,
-    userId: member.userId,
-    action: parsed.data.status || parsed.data.role,
-  })
-
-  // Notify user
-  if (parsed.data.status) {
-    const isApproved = parsed.data.status === "APPROVED"
-    await notifyUser(
-      member.userId,
-      isApproved ? "JOIN_APPROVED" : "JOIN_REJECTED",
-      isApproved ? `Welcome to ${club.name}!` : `Join request to ${club.name}`,
-      isApproved ? "Your request has been approved. You're now a member!" : "Your request was not approved."
-    )
+  if (status === "APPROVED") {
+    await prisma.user.update({
+      where: { id: member.userId },
+      data: { clubId },
+    });
   }
 
-  return NextResponse.json({ member })
+  await prisma.auditLog.create({
+    data: {
+      actorId: auth.session.userId,
+      actionType: status === "APPROVED" ? "MEMBER_APPROVE" : status === "REJECTED" ? "MEMBER_REJECT" : "MEMBER_PROMOTE",
+      entityType: "CLUB_MEMBER",
+      entityId: memberId,
+    },
+  });
+
+  return NextResponse.json({ member: updated });
 }
 
 export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ clubId: string; memberId: string }> }
+  req: Request,
+  { params }: { params: Promise<{ clubId: string; memberId: string }> },
 ) {
-  const auth = getAuthFromHeaders(request)
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { clubId, memberId } = await params;
+  const auth = await requireClubManager(clubId);
+  if (!auth.ok) return auth.response;
 
-  const { clubId, memberId } = await params
-
-  const club = await prisma.club.findUnique({ where: { id: clubId } })
-  if (!club || club.managerId !== auth.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const member = await prisma.clubMember.findUnique({ where: { id: memberId } });
+  if (!member || member.clubId !== clubId) {
+    return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
 
-  await prisma.clubMember.delete({ where: { id: memberId } })
-  return NextResponse.json({ success: true })
+  await prisma.clubMember.delete({ where: { id: memberId } });
+
+  await prisma.user.update({
+    where: { id: member.userId },
+    data: { clubId: null },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      actorId: auth.session.userId,
+      actionType: "MEMBER_REMOVE",
+      entityType: "CLUB_MEMBER",
+      entityId: memberId,
+    },
+  });
+
+  return NextResponse.json({ ok: true });
 }

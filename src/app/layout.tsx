@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Bebas_Neue, JetBrains_Mono, Exo_2, Barlow } from "next/font/google";
 import { BottomNav } from "@/components/BottomNav";
 import { TopBar } from "@/components/TopBar";
+import { AuthProvider, AuthUrlHandler } from "@/lib/auth-context";
+import { AuthModal } from "@/components/AuthModal";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -70,9 +73,6 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-import { AuthProvider } from "@/lib/auth-context";
-import { PlayMatchButton } from "@/components/PlayMatchButton";
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -83,12 +83,15 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-bg text-ink antialiased">
         <AuthProvider>
+          <Suspense fallback={null}>
+            <AuthUrlHandler />
+          </Suspense>
           <div className="min-h-screen flex flex-col">
             <TopBar />
             <main className="flex-1 pb-24">{children}</main>
             <BottomNav />
-            <PlayMatchButton />
           </div>
+          <AuthModal />
         </AuthProvider>
       </body>
     </html>

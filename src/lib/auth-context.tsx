@@ -1,91 +1,55 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 
-type User = {
-  id: string
-  username: string
-  email: string
-  phone?: string
-  role: "PLAYER" | "MANAGER" | "ADMIN"
-  playerStatus: "UNPLACED" | "PLACED" | "RANKED"
-  avatarUrl?: string
-  isVerified: boolean
-  onboardingComplete: boolean
+type AuthModalTab = "signin" | "join";
+
+interface AuthContextValue {
+  open: boolean;
+  tab: AuthModalTab;
+  openAuth: (initialTab?: AuthModalTab) => void;
+  closeAuth: () => void;
 }
 
-type AuthContextType = {
-  user: User | null
-  loading: boolean
-  login: (email: string, password: string) => Promise<void>
-  register: (username: string, email: string, password: string, phone?: string) => Promise<void>
-  logout: () => Promise<void>
-  refreshUser: () => Promise<void>
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<AuthModalTab>("signin");
 
-  const refreshUser = async () => {
-    try {
-      const res = await fetch("/api/auth/me")
-      const data = await res.json()
-      if (data.user) setUser(data.user)
-    } catch {}
-  }
+  const openAuth = useCallback((initialTab?: AuthModalTab) => {
+    setTab(initialTab ?? "signin");
+    setOpen(true);
+  }, []);
 
-  useEffect(() => {
-    refreshUser().finally(() => setLoading(false))
-  }, [])
-
-  const login = async (email: string, password: string) => {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error ?? "Login failed")
-    }
-    const data = await res.json()
-    setUser(data.user)
-  }
-
-  const register = async (username: string, email: string, password: string, phone?: string) => {
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password, phone }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error ?? "Registration failed")
-    }
-    const data = await res.json()
-    setUser(data.user)
-  }
-
-  const logout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" })
-    } catch {}
-    setUser(null)
-    window.location.href = "/"
-  }
+  const closeAuth = useCallback(() => setOpen(false), []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ open, tab, openAuth, closeAuth }}>
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider")
-  return ctx
+export function useAuthModal() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuthModal must be used within AuthProvider");
+  return ctx;
+}
+
+export function AuthUrlHandler() {
+  const { openAuth } = useAuthModal();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const auth = searchParams.get("auth");
+    if (auth === "signin") {
+      openAuth("signin");
+    } else if (auth === "join") {
+      openAuth("join");
+    }
+  }, [searchParams, openAuth]);
+
+  return null;
 }

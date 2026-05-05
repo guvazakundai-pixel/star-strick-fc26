@@ -1,102 +1,65 @@
-import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
-import { registerUser, generateToken } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { randomBytes } from "crypto"
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { hashPassword } from "@/lib/auth";
+import { setSessionCookie } from "@/lib/session";
 
-const registerSchema = z.object({
-  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/),
-  email: z.string().email(),
-  password: z.string().min(6),
-  phone: z.string().optional(),
-})
+const PLATFORMS = ["CROSSPLAY", "PS5", "XBOX", "PC"] as const;
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const parsed = registerSchema.safeParse(body)
+const RegisterSchema = z.object({
+  username: z
+    .string()
+    .min(3)
+    .max(20)
+    .regex(/^[a-zA-Z0-9_]+$/, "letters, numbers, underscores only"),
+  email: z.string().email().toLowerCase(),
+  password: z.string().min(8).max(100),
+  displayName: z.string().min(3).max(30),
+  platform: z.enum(PLATFORMS).default("CROSSPLAY"),
+});
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.errors },
-        { status: 400 }
-      )
-    }
-
-    const { username, email, password, phone } = parsed.data
-
-    const existing = await prisma.user.findFirst({
-      where: { OR: [{ username }, { email }] },
-    })
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "Username or email already exists" },
-        { status: 409 }
-      )
-    }
-
-    const { user, token } = await registerUser(username, email, password, phone)
-
-    const verificationToken = randomBytes(32).toString("hex")
-    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        verificationToken,
-        verificationTokenExpiry,
-        playerStats: {
-          create: {
-            matchesPlayed: 0,
-            wins: 0,
-            losses: 0,
-            draws: 0,
-            goalsScored: 0,
-            goalsConceded: 0,
-            skillRating: 1000,
-            formScore: 0,
-            winStreak: 0,
-            mvpCount: 0,
-            formHistory: "",
-          },
-        },
-      },
-    })
-
-    const fullUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        phone: true,
-        role: true,
-        playerStatus: true,
-        avatarUrl: true,
-        isVerified: true,
-        onboardingComplete: true,
-      },
-    })
-
-    const response = NextResponse.json({ user: fullUser, token }, { status: 201 })
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60,
-    })
-
-    try {
-      const { sendWelcomeEmail, sendVerificationEmail } = await import("@/lib/email")
-      await sendWelcomeEmail(email, username)
-      await sendVerificationEmail(email, username, verificationToken)
-    } catch {
-    }
-
-    return response
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Registration failed"
-    return NextResponse.json({ error: message }, { status: 500 })
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => null);
+  const parsed = RegisterSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 }
+    );
   }
+  const { username, email, password, displayName, platform } = parsed.data;
+
+  const existing = await prisma.user.findFirst({
+    where: { OR: [{ username }, { email }] },
+    select: { id: true },
+  });
+  if (existing) {
+    return NextResponse.json(
+      { error: "Username or email already taken" },
+      { status: 409 }
+    );
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const loginsToday = await prisma.loginAttempt.count({
+    where: { ip: req.headers.get("x-forwarded-for") ?? "unknown", success: true, createdAt: { gte: today } },
+  });
+  if (loginsToday >= 3) {
+    return NextResponse.json(
+      { error: "Account limit reached for this device. Contact an admin." },
+      { status: 429 }
+    );
+  }
+
+  const passwordHash = await hashPassword(password);
+  const user = await prisma.user.create({
+    data: { username, email, passwordHash, displayName, platform, role: "PLAYER" },
+    select: { id: true, username: true, email: true, role: true, displayName: true, platform: true },
+  });
+
+  await setSessionCookie({ userId: user.id, username: user.username, role: "PLAYER" });
+
+  return NextResponse.json({ user });
 }
