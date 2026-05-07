@@ -19,7 +19,7 @@ export default async function AdminLayout({
   const [userCount, clubCount, matchCount] = await Promise.all([
     prisma.user.count(),
     prisma.club.count(),
-    prisma.match.count(),
+    prisma.matchReport.count(),
   ]);
 
   return (

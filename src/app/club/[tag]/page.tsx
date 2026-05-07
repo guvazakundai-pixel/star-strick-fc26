@@ -10,20 +10,26 @@ export default async function ClubProfilePage({
   params: Promise<{ tag: string }>;
 }) {
   const { tag } = await params;
-  const club = await prisma.club.findUnique({
-    where: { tag: tag.toUpperCase() },
+  const club = await prisma.club.findFirst({
+    where: {
+      OR: [
+        { tag: tag.toUpperCase() },
+        { slug: tag.toLowerCase() },
+      ],
+    },
     select: {
       id: true,
       name: true,
       tag: true,
+      slug: true,
       logoUrl: true,
       bannerUrl: true,
       description: true,
       city: true,
       country: true,
       isVerified: true,
-      isInviteOnly: true,
-      createdByUserId: true,
+      membersInviteOnly: true,
+      manager: { select: { id: true, username: true, displayName: true } },
       createdAt: true,
     },
   });
@@ -57,10 +63,7 @@ export default async function ClubProfilePage({
     }),
   ]);
 
-  const creator = await prisma.user.findUnique({
-    where: { id: club.createdByUserId },
-    select: { username: true, displayName: true },
-  });
+  const manager = club.manager;
 
   return (
     <div className="broadcast-theme min-h-screen bc-noise">
@@ -92,7 +95,7 @@ export default async function ClubProfilePage({
                     Verified
                   </span>
                 ) : null}
-                {club.isInviteOnly && (
+                {club.membersInviteOnly && (
                   <span className="inline-flex items-center rounded bg-[#ffb800]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#ffb800]">
                     Invite Only
                   </span>
@@ -163,10 +166,10 @@ export default async function ClubProfilePage({
         <div className="text-center font-mono text-[10px] text-[#666]">
           Founded {club.createdAt.toLocaleDateString()} by{" "}
           <Link
-            href={`/player/${creator?.username ?? ""}`}
+            href={`/player/${manager?.username ?? ""}`}
             className="text-[#9a9a9a] hover:text-[#00ff85]"
           >
-            {creator?.displayName ?? creator?.username ?? "Unknown"}
+            {manager?.displayName ?? manager?.username ?? "Unknown"}
           </Link>
         </div>
       </div>

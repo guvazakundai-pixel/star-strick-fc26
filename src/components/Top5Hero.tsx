@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { PLAYERS, type Player } from "@/lib/players";
-import { clubByPlayerId } from "@/lib/clubs";
+import { prisma } from "@/lib/prisma";
 
 type Tone = "champion" | "runner" | "challenger" | "base";
 
@@ -12,15 +11,40 @@ const TONES: Record<number, Tone> = {
   5: "base",
 };
 
-export function Top5Hero() {
-  const top5 = PLAYERS.slice(0, 5);
+export async function Top5Hero() {
+  const top5 = await prisma.playerRanking.findMany({
+    orderBy: { rankPosition: "asc" },
+    take: 5,
+    select: {
+      id: true,
+      rankPosition: true,
+      points: true,
+      prevPosition: true,
+      user: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          clubId: true,
+        },
+      },
+    },
+  });
+
+  const clubIds = top5.map((p) => p.user.clubId).filter(Boolean) as string[];
+  const clubs = await prisma.club.findMany({
+    where: { id: { in: clubIds } },
+    select: { id: true, name: true },
+  });
+  const clubMap = new Map(clubs.map((c) => [c.id, c.name]));
 
   return (
     <section aria-labelledby="top5-heading" className="relative">
       <div className="mb-4 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-black tracking-[0.28em] text-[#00ff85] uppercase">
-            Live · Season 1 · Week 12
+            Live · Season 1
           </p>
           <h2
             id="top5-heading"
@@ -40,110 +64,106 @@ export function Top5Hero() {
       </div>
 
       <ol className="space-y-2 sm:space-y-2.5">
-        {top5.map((p, i) => (
-          <Top5Row key={p.id} player={p} index={i} />
-        ))}
+        {top5.map((player, i) => {
+          const tone = TONES[player.rankPosition] ?? "base";
+          const t = toneTokens(tone);
+          const delta = (player.prevPosition ?? player.rankPosition) - player.rankPosition;
+          const clubName = player.user.clubId ? clubMap.get(player.user.clubId) : null;
+
+          return (
+            <li
+              key={player.id}
+              className="bc-slide-in-left bc-row-glow group relative isolate overflow-hidden rounded-sm border transition-all duration-300"
+              style={{
+                animationDelay: `${i * 80}ms`,
+                background: t.bg,
+                borderColor: t.border,
+                ["--row-glow" as string]: t.glow,
+              }}
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-0 w-1.5 transition-all duration-300 group-hover:w-2"
+                style={{ background: t.edge }}
+              />
+
+              <div className="relative z-10 flex items-stretch gap-3 sm:gap-5 pl-4 sm:pl-6 pr-3 sm:pr-5 py-4 sm:py-5">
+                <div className="shrink-0 flex items-center min-w-[64px] sm:min-w-[96px]">
+                  <span
+                    className="bc-headline leading-none tabular-nums text-[68px] sm:text-[104px]"
+                    style={{
+                      color: t.rankColor,
+                      textShadow: t.rankShadow,
+                      letterSpacing: "-0.06em",
+                    }}
+                  >
+                    {player.rankPosition}
+                  </span>
+                </div>
+
+                <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3
+                      className="bc-headline truncate text-2xl sm:text-4xl leading-none text-white"
+                      title={player.user.username}
+                    >
+                      {player.user.displayName || player.user.username}
+                    </h3>
+                    {delta !== 0 && (
+                      <span
+                        className={
+                          "shrink-0 inline-flex items-center gap-0.5 text-[10px] font-black tabular-nums " +
+                          (delta > 0 ? "text-[#00ff85]" : "text-[#ff4d4d]")
+                        }
+                        aria-label={delta > 0 ? `Up ${delta}` : `Down ${Math.abs(delta)}`}
+                      >
+                        <span aria-hidden>{delta > 0 ? "▲" : "▼"}</span>
+                        {Math.abs(delta)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-white/60">
+                    @{player.user.username}
+                    {clubName && (
+                      <>
+                        <span className="mx-2 text-[#333]">•</span>
+                        {clubName}
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="shrink-0 flex flex-col items-end justify-center text-right">
+                  <span
+                    className="bc-headline tabular-nums leading-none text-2xl sm:text-4xl"
+                    style={{ color: t.pointsColor }}
+                  >
+                    {player.points.toLocaleString()}
+                  </span>
+                  <span className="mt-1 text-[9px] sm:text-[10px] font-black tracking-[0.28em] uppercase text-white/40">
+                    Pts
+                  </span>
+                </div>
+              </div>
+
+              {tone === "champion" && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -top-3 right-4 inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[9px] font-black tracking-[0.25em] uppercase"
+                  style={{
+                    background: "#ffb800",
+                    color: "#0a0a0a",
+                    boxShadow: "0 6px 18px -6px rgba(255,184,0,0.6)",
+                  }}
+                >
+                  ★ Champion
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </section>
-  );
-}
-
-function Top5Row({ player, index }: { player: Player; index: number }) {
-  const club = clubByPlayerId(player.id);
-  const tone = TONES[player.rank] ?? "base";
-  const t = toneTokens(tone);
-  const delta = player.prev - player.rank;
-
-  return (
-    <li
-      className="bc-slide-in-left bc-row-glow group relative isolate overflow-hidden rounded-sm border transition-all duration-300"
-      style={{
-        animationDelay: `${index * 80}ms`,
-        background: t.bg,
-        borderColor: t.border,
-        // CSS var consumed by .bc-row-glow:hover for the neon halo
-        ["--row-glow" as string]: t.glow,
-      }}
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-1.5 transition-all duration-300 group-hover:w-2"
-        style={{ background: t.edge }}
-      />
-
-      <div className="relative z-10 flex items-stretch gap-3 sm:gap-5 pl-4 sm:pl-6 pr-3 sm:pr-5 py-4 sm:py-5">
-        <div className="shrink-0 flex items-center min-w-[64px] sm:min-w-[96px]">
-          <span
-            className="bc-headline leading-none tabular-nums text-[68px] sm:text-[104px]"
-            style={{
-              color: t.rankColor,
-              textShadow: t.rankShadow,
-              letterSpacing: "-0.06em",
-            }}
-          >
-            {player.rank}
-          </span>
-        </div>
-
-        <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <h3
-              className="bc-headline truncate text-2xl sm:text-4xl leading-none text-white"
-              title={player.gamertag}
-            >
-              {player.gamertag}
-            </h3>
-            {delta !== 0 && (
-              <span
-                className={
-                  "shrink-0 inline-flex items-center gap-0.5 text-[10px] font-black tabular-nums " +
-                  (delta > 0 ? "text-[#00ff85]" : "text-[#ff4d4d]")
-                }
-                aria-label={delta > 0 ? `Up ${delta}` : `Down ${Math.abs(delta)}`}
-              >
-                <span aria-hidden>{delta > 0 ? "▲" : "▼"}</span>
-                {Math.abs(delta)}
-              </span>
-            )}
-          </div>
-          <p className="truncate text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-white/60">
-            {player.name}
-            {club && (
-              <>
-                <span className="mx-2 text-[#333]">•</span>
-                {club.name}
-              </>
-            )}
-          </p>
-        </div>
-
-        <div className="shrink-0 flex flex-col items-end justify-center text-right">
-          <span
-            className="bc-headline tabular-nums leading-none text-2xl sm:text-4xl"
-            style={{ color: t.pointsColor }}
-          >
-            {player.points.toLocaleString()}
-          </span>
-          <span className="mt-1 text-[9px] sm:text-[10px] font-black tracking-[0.28em] uppercase text-white/40">
-            Pts
-          </span>
-        </div>
-      </div>
-
-      {tone === "champion" && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -top-3 right-4 inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[9px] font-black tracking-[0.25em] uppercase"
-          style={{
-            background: "#ffb800",
-            color: "#0a0a0a",
-            boxShadow: "0 6px 18px -6px rgba(255,184,0,0.6)",
-          }}
-        >
-          ★ Champion
-        </span>
-      )}
-    </li>
   );
 }
 

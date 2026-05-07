@@ -15,7 +15,7 @@ type Member = {
     avatarUrl: string | null;
     country: string | null;
     platform: string | null;
-    stats: { points: number; wins: number; losses: number; winStreak: number } | null;
+    playerStats: { points: number; wins: number; losses: number; winStreak: number } | null;
   };
 };
 
@@ -218,11 +218,11 @@ function MemberCard({
           </span>
         )}
       </div>
-      {u.stats && (
+      {u.playerStats && (
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <Stat label="Pts" value={u.stats.points} />
-          <Stat label="W-L" value={`${u.stats.wins}-${u.stats.losses}`} />
-          <Stat label="Streak" value={u.stats.winStreak} />
+          <Stat label="Pts" value={u.playerStats.points} />
+          <Stat label="W-L" value={`${u.playerStats.wins}-${u.playerStats.losses}`} />
+          <Stat label="Streak" value={u.playerStats.winStreak} />
         </div>
       )}
       <div className="mt-4 flex flex-wrap gap-2">{children}</div>

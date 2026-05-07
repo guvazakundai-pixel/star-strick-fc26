@@ -13,7 +13,7 @@ type Row = {
     username: string;
     displayName: string | null;
     avatarUrl: string | null;
-    stats: { wins: number; losses: number; winStreak: number } | null;
+    playerStats: { wins: number; losses: number; winStreak: number } | null;
   };
 };
 
@@ -181,10 +181,10 @@ function RankingRow({
             <p className="font-bold text-white truncate">{u.displayName ?? u.username}</p>
             <p className="font-mono text-[11px] text-[var(--bc-text-soft)] truncate">
               @{u.username}
-              {u.stats && (
+              {u.playerStats && (
                 <>
                   {" · "}
-                  {u.stats.wins}W-{u.stats.losses}L · streak {u.stats.winStreak}
+                  {u.playerStats.wins}W-{u.playerStats.losses}L · streak {u.playerStats.winStreak}
                 </>
               )}
             </p>

@@ -14,16 +14,16 @@ export default async function PlayerDashboard() {
     select: {
       id: true, username: true, displayName: true, email: true, role: true,
       platform: true, country: true, bio: true, avatarUrl: true, clubId: true,
-      isBanned: true, emailVerified: true, createdAt: true,
+      isBanned: true, createdAt: true,
     },
   });
   if (!user) redirect("/login");
 
-  const [playerRanking, playerStats, club, pointEvents] = await Promise.all([
+  const [playerRanking, playerStats, club, pointsLogs] = await Promise.all([
     prisma.playerRanking.findUnique({ where: { userId: user.id } }),
     prisma.playerStats.findUnique({ where: { userId: user.id } }),
-    user.clubId ? prisma.club.findUnique({ where: { id: user.clubId }, select: { id: true, name: true, tag: true, logoUrl: true } }) : Promise.resolve(null),
-    prisma.pointEvent.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, points: true, reason: true, createdAt: true } }),
+    user.clubId ? prisma.club.findUnique({ where: { id: user.clubId }, select: { id: true, name: true, slug: true, tag: true, logoUrl: true } }) : Promise.resolve(null),
+    prisma.pointsLog.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, pointsChange: true, reason: true, createdAt: true } }),
   ]);
 
   const isAdmin = session.role === "ADMIN" || session.role === "MANAGER";
@@ -66,7 +66,7 @@ export default async function PlayerDashboard() {
           <div className="px-4 py-3 border-b border-[#333]"><h2 className="font-mono text-[11px] uppercase tracking-wider text-[#9a9a9a]">Club</h2></div>
           <div className="p-4">
             {club ? (
-              <Link href={`/club/${club.tag}`} className="flex items-center gap-3 group">
+              <Link href={`/club/${club.slug}`} className="flex items-center gap-3 group">
                 <div className="h-12 w-12 rounded-lg border border-[#333] bg-black bg-cover bg-center shrink-0" style={{ backgroundImage: club.logoUrl ? `url(${club.logoUrl})` : undefined }} />
                 <div>
                   <p className="bc-headline text-lg text-white group-hover:text-[#00ff85] transition-colors">{club.name}</p>
@@ -82,14 +82,14 @@ export default async function PlayerDashboard() {
         </section>
         <section className="rounded-xl border border-[#333] bg-[#1a1a1a]/60 overflow-hidden">
           <div className="px-4 py-3 border-b border-[#333]"><h2 className="font-mono text-[11px] uppercase tracking-wider text-[#9a9a9a]">Recent Points</h2></div>
-          {pointEvents.length === 0 ? (
+          {pointsLogs.length === 0 ? (
             <div className="p-4 text-center text-sm text-[#9a9a9a]">No points yet.</div>
           ) : (
             <ul className="divide-y divide-[#333]">
-              {pointEvents.map((pe) => (
+              {pointsLogs.map((pe) => (
                 <li key={pe.id} className="px-4 py-3 flex items-center justify-between">
                   <span className="text-sm text-white">{pe.reason}</span>
-                  <span className={"font-mono text-sm font-bold " + (pe.points >= 0 ? "text-[#00ff85]" : "text-red-400")}>{pe.points >= 0 ? "+" : ""}{pe.points}</span>
+                  <span className={"font-mono text-sm font-bold " + (pe.pointsChange >= 0 ? "text-[#00ff85]" : "text-red-400")}>{pe.pointsChange >= 0 ? "+" : ""}{pe.pointsChange}</span>
                 </li>
               ))}
             </ul>

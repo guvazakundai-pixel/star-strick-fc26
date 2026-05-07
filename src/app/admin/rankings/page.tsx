@@ -25,7 +25,7 @@ export default async function AdminRankingsPage() {
           username: true,
           displayName: true,
           avatarUrl: true,
-          stats: { select: { wins: true, losses: true, winStreak: true } },
+          playerStats: { select: { wins: true, losses: true, winStreak: true } },
         },
       },
     },

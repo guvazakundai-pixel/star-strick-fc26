@@ -62,8 +62,8 @@ async function main() {
     const playerUser = await prisma.user.findUniqueOrThrow({ where: { username } });
     await prisma.playerStats.upsert({
       where: { userId: playerUser.id },
-      update: { matchesPlayed: p.wins + p.losses + p.draws, wins: p.wins, draws: p.draws, losses: p.losses, goalsScored: p.goalsFor, goalsAgainst: p.goalsAgainst, points: p.points, winStreak: p.winStreak, skillRating: 1000 + p.points },
-      create: { userId: playerUser.id, matchesPlayed: p.wins + p.losses + p.draws, wins: p.wins, draws: p.draws, losses: p.losses, goalsScored: p.goalsFor, goalsAgainst: p.goalsAgainst, points: p.points, winStreak: p.winStreak, skillRating: 1000 + p.points },
+      update: { matchesPlayed: p.wins + p.losses + p.draws, wins: p.wins, draws: p.draws, losses: p.losses, goalsScored: p.goalsFor, goalsConceded: p.goalsAgainst, points: p.points, winStreak: p.winStreak, skillRating: 1000 + p.points },
+      create: { userId: playerUser.id, matchesPlayed: p.wins + p.losses + p.draws, wins: p.wins, draws: p.draws, losses: p.losses, goalsScored: p.goalsFor, goalsConceded: p.goalsAgainst, points: p.points, winStreak: p.winStreak, skillRating: 1000 + p.points },
     });
     await prisma.playerRanking.upsert({
       where: { userId: playerUser.id },
@@ -91,10 +91,11 @@ async function main() {
   for (const c of CLUBS) {
     const manager = managerByClubId.get(c.id)!;
     const tag = generateTag(c.name);
+    const slug = c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     await prisma.club.upsert({
       where: { name: c.name },
-      update: { tag, city: c.city, country: "Zimbabwe", createdByUserId: manager.id, globalRanking: { upsert: { create: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst }, update: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst } } } },
-      create: { name: c.name, tag, city: c.city, country: "Zimbabwe", createdByUserId: manager.id, globalRanking: { create: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst } } },
+      update: { tag, slug, city: c.city, country: "Zimbabwe", createdBy: { connect: { id: manager.id } }, globalRank: { upsert: { create: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst }, update: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst } } } },
+      create: { name: c.name, tag, slug, city: c.city, country: "Zimbabwe", createdBy: { connect: { id: manager.id } }, manager: { connect: { id: manager.id } }, globalRank: { create: { rankPosition: c.rank, prevPosition: c.prev, totalPoints: c.points, played: c.played, wins: c.wins, draws: c.draws, losses: c.losses, goalsFor: c.goalsFor, goalsAgainst: c.goalsAgainst } } },
     });
   }
   console.log(`✓ clubs → ${CLUBS.length} with global rankings`);

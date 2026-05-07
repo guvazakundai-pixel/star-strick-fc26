@@ -19,7 +19,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState("")
 
   useEffect(() => {
-    fetch("/api/admin?type=users")
+    fetch("/api/admin/users")
       .then((r) => r.json())
       .then((data) => setUsers(data.users ?? []))
       .catch(() => {})

@@ -27,7 +27,7 @@ export default async function AdminMembersPage() {
           avatarUrl: true,
           country: true,
           platform: true,
-          stats: { select: { points: true, wins: true, losses: true, winStreak: true } },
+          playerStats: { select: { points: true, wins: true, losses: true, winStreak: true } },
         },
       },
     },

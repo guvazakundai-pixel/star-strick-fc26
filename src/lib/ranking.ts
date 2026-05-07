@@ -1,13 +1,11 @@
 import { prisma } from "./prisma";
 
-// ─── Player ranking ───────────────────────────────────────────────────────
-
 export type PlayerStatsInput = {
   wins: number;
   losses: number;
   draws?: number;
   goalsScored: number;
-  goalsAgainst?: number;
+  goalsConceded?: number;
   skillRating?: number;
   formScore?: number;
 };
@@ -26,10 +24,6 @@ export function playerCorePoints(s: PlayerStatsInput): number {
   return s.wins * BASE_POINTS_WIN + s.goalsScored * BASE_POINTS_GOAL - s.losses * BASE_POINTS_LOSS;
 }
 
-/**
- * Form score from the last up-to-5 results, most-recent first.
- * +10 win, -5 loss, +2 draw.
- */
 export function formScoreFromRecent(recent: RecentResult[]): number {
   return recent.slice(0, 5).reduce((acc, r) => {
     if (r === "W") return acc + FORM_WIN;
@@ -38,10 +32,6 @@ export function formScoreFromRecent(recent: RecentResult[]): number {
   }, 0);
 }
 
-/**
- * Final score used to sort the global leaderboard.
- * final = corePoints + (skill * 10) + form
- */
 export function playerFinalScore(s: PlayerStatsInput): number {
   const core = playerCorePoints(s);
   const skill = s.skillRating ?? 1000;
@@ -49,11 +39,6 @@ export function playerFinalScore(s: PlayerStatsInput): number {
   return core + skill * 10 + form;
 }
 
-/**
- * ELO-style update.
- * Returns updated skill ratings for both players after a single decisive match.
- * `result` is the score for player A: 1 win, 0.5 draw, 0 loss.
- */
 export function eloUpdate(
   ratingA: number,
   ratingB: number,
@@ -69,10 +54,8 @@ export function eloUpdate(
   };
 }
 
-// ─── Club ranking ─────────────────────────────────────────────────────────
-
 export type ClubStrengthInput = {
-  topPlayerScores: number[]; // pre-sorted desc, take top 5
+  topPlayerScores: number[];
   recentWins: number;
   recentLosses: number;
   activePlayers: number;
@@ -112,12 +95,6 @@ export function clubFinalScore(c: ClubStrengthInput): {
   };
 }
 
-// ─── Recompute global leaderboards (transactional) ────────────────────────
-
-/**
- * Recompute every player's PlayerRanking row.
- * Reads PlayerStats, computes finalScore, sorts, persists rank + rankChange.
- */
 export async function recomputePlayerRankings(): Promise<{ updated: number }> {
   const stats = await prisma.playerStats.findMany({
     select: {
@@ -126,7 +103,7 @@ export async function recomputePlayerRankings(): Promise<{ updated: number }> {
       losses: true,
       draws: true,
       goalsScored: true,
-      goalsAgainst: true,
+      goalsConceded: true,
       skillRating: true,
       formScore: true,
       points: true,
@@ -142,7 +119,7 @@ export async function recomputePlayerRankings(): Promise<{ updated: number }> {
         losses: s.losses,
         draws: s.draws,
         goalsScored: s.goalsScored,
-        goalsAgainst: s.goalsAgainst,
+        goalsConceded: s.goalsConceded,
         skillRating: s.skillRating,
         formScore: s.formScore,
       }),
@@ -178,20 +155,12 @@ export async function recomputePlayerRankings(): Promise<{ updated: number }> {
           finalScore: s.finalScore,
         },
       });
-      await tx.playerStats.update({
-        where: { userId: s.userId },
-        data: { rank: newRank, prevRank: prev ?? undefined },
-      });
     }
   });
 
   return { updated: scored.length };
 }
 
-/**
- * Recompute every club's GlobalClubRanking row.
- * Strength = SUM(top-5 player finalScores in the club) + momentum + activity bonus.
- */
 export async function recomputeClubRankings(): Promise<{ updated: number }> {
   const clubs = await prisma.club.findMany({
     select: {
@@ -199,25 +168,10 @@ export async function recomputeClubRankings(): Promise<{ updated: number }> {
       members: {
         where: { status: "APPROVED" },
         select: {
-          user: {
-            select: {
-              stats: {
-                select: {
-                  wins: true,
-                  losses: true,
-                  draws: true,
-                  goalsScored: true,
-                  goalsAgainst: true,
-                  skillRating: true,
-                  formScore: true,
-                  winStreak: true,
-                },
-              },
-            },
-          },
+          userId: true,
         },
       },
-      globalRanking: {
+      globalRank: {
         select: {
           rankPosition: true,
           wins: true,
@@ -231,30 +185,57 @@ export async function recomputeClubRankings(): Promise<{ updated: number }> {
     },
   });
 
+  const allUserIds = clubs.flatMap((c) => c.members.map((m) => m.userId));
+  const allStats = await prisma.playerStats.findMany({
+    where: { userId: { in: allUserIds } },
+    select: {
+      userId: true,
+      wins: true,
+      losses: true,
+      draws: true,
+      goalsScored: true,
+      goalsConceded: true,
+      skillRating: true,
+      formScore: true,
+      winStreak: true,
+    },
+  });
+  const statsMap = new Map(allStats.map((s) => [s.userId, s]));
+
   const computed = clubs.map((c) => {
-    const stats = c.members
-      .map((m) => m.user.stats)
+    const memberStats = c.members
+      .map((m) => statsMap.get(m.userId))
       .filter((s): s is NonNullable<typeof s> => s != null);
-    const scores = stats.map((s) => playerFinalScore(s));
-    const winStreak = stats.reduce((m, s) => Math.max(m, s.winStreak), 0);
-    const recentWins = c.globalRanking?.wins ?? 0;
-    const recentLosses = c.globalRanking?.losses ?? 0;
+    const scores = memberStats.map((s) =>
+      playerFinalScore({
+        wins: s.wins,
+        losses: s.losses,
+        draws: s.draws,
+        goalsScored: s.goalsScored,
+        goalsConceded: s.goalsConceded,
+        skillRating: s.skillRating,
+        formScore: s.formScore,
+      }),
+    );
+    const winStreak = memberStats.reduce((m, s) => Math.max(m, s.winStreak), 0);
+    const recentWins = c.globalRank?.wins ?? 0;
+    const recentLosses = c.globalRank?.losses ?? 0;
     const out = clubFinalScore({
       topPlayerScores: scores,
       recentWins,
       recentLosses,
-      activePlayers: stats.length,
+      activePlayers: memberStats.length,
       winStreak,
     });
     return {
       clubId: c.id,
-      prevPosition: c.globalRanking?.rankPosition ?? null,
-      played: c.globalRanking?.played ?? 0,
-      wins: c.globalRanking?.wins ?? 0,
-      draws: c.globalRanking?.draws ?? 0,
-      losses: c.globalRanking?.losses ?? 0,
-      goalsFor: c.globalRanking?.goalsFor ?? 0,
-      goalsAgainst: c.globalRanking?.goalsAgainst ?? 0,
+      prevPosition: c.globalRank?.rankPosition ?? null,
+      played: c.globalRank?.played ?? 0,
+      wins: c.globalRank?.wins ?? 0,
+      draws: c.globalRank?.draws ?? 0,
+      losses: c.globalRank?.losses ?? 0,
+      goalsFor: c.globalRank?.goalsFor ?? 0,
+      goalsAgainst: c.globalRank?.goalsAgainst ?? 0,
       ...out,
     };
   });
@@ -272,10 +253,8 @@ export async function recomputeClubRankings(): Promise<{ updated: number }> {
           clubId: c.clubId,
           rankPosition: newRank,
           prevPosition: c.prevPosition,
-          rankChange,
           totalPoints: c.totalPoints,
-          momentumScore: c.momentum,
-          activityBonus: c.activityBonus,
+          momentum: c.momentum,
           played: c.played,
           wins: c.wins,
           draws: c.draws,
@@ -286,10 +265,8 @@ export async function recomputeClubRankings(): Promise<{ updated: number }> {
         update: {
           rankPosition: newRank,
           prevPosition: c.prevPosition,
-          rankChange,
           totalPoints: c.totalPoints,
-          momentumScore: c.momentum,
-          activityBonus: c.activityBonus,
+          momentum: c.momentum,
         },
       });
     }

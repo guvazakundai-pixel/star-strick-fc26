@@ -4,8 +4,23 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 
+type ClubItem = {
+  id: string
+  name: string
+  slug: string
+  tag: string
+  logoUrl: string | null
+  city: string
+  country: string
+  isVerified: boolean
+  membersInviteOnly: boolean
+  memberCount: number
+  globalRank: { rankPosition: number; totalPoints: number } | null
+  manager: { username: string; displayName: string | null }
+}
+
 export default function ClubsPage() {
-  const [clubs, setClubs] = useState<{ id: string; name: string; slug: string; city: string; country: string; globalRank: { rankPosition: number; totalPoints: number } | null; _count: { members: number }; manager: { username: string } }[]>([])
+  const [clubs, setClubs] = useState<ClubItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -35,7 +50,7 @@ export default function ClubsPage() {
                 transition={{ delay: i * 0.05 }}
               >
                 <Link
-                  href={`/clubs/${club.slug}`}
+                  href={`/club/${club.slug}`}
                   className="block rounded-sm border border-[#1a1a1a] bg-[#0a0a0a] p-5 hover:border-[#00ff85] transition group"
                 >
                   <div className="flex items-start justify-between">
@@ -48,7 +63,7 @@ export default function ClubsPage() {
                     )}
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs text-white/30">
-                    <span>{club._count.members} members</span>
+                    <span>{club.memberCount} members</span>
                     <span>→</span>
                   </div>
                 </Link>

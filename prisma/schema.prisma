@@ -41,6 +41,7 @@ model User {
 
   memberships       ClubMember[]
   clubRankings      ClubRanking[]
+  playerRanking     PlayerRanking?
   playerStats       PlayerStats?
   mediaUploads      Media[]
   applications      ManagerApplication[] @relation("UserApplications")
@@ -163,9 +164,12 @@ model GlobalClubRanking {
   rankPosition Int      @map("rank_position")
   prevPosition Int?     @map("prev_position")
   totalPoints  Int      @default(0) @map("total_points")
+  played       Int      @default(0)
   wins         Int      @default(0)
   losses       Int      @default(0)
   draws        Int      @default(0)
+  goalsFor     Int      @default(0) @map("goals_for")
+  goalsAgainst Int      @default(0) @map("goals_against")
   momentum     Int      @default(50)
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -213,6 +217,21 @@ model PlayerStats {
   pointsLogs   PointsLog[] @relation("PointsLogPlayerStats")
 
   @@map("player_stats")
+}
+
+model PlayerRanking {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  rankPosition Int      @map("rank_position")
+  prevPosition  Int?     @map("prev_position")
+  rankChange   Int      @default(0) @map("rank_change")
+  points       Int      @default(0)
+  finalScore   Float    @default(0) @map("final_score")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@map("player_rankings")
 }
 
 model Media {
