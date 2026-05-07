@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 type Tone = "champion" | "runner" | "challenger" | "base";
 
@@ -11,33 +11,33 @@ const TONES: Record<number, Tone> = {
   5: "base",
 };
 
-export async function Top5Hero() {
-  const top5 = await prisma.playerRanking.findMany({
-    orderBy: { rankPosition: "asc" },
-    take: 5,
-    select: {
-      id: true,
-      rankPosition: true,
-      points: true,
-      prevPosition: true,
-      user: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          avatarUrl: true,
-          clubId: true,
-        },
-      },
-    },
-  });
+type Top5Row = {
+  pr_id: string;
+  rank_position: number;
+  points: number;
+  prev_position: number | null;
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  club_id: string | null;
+  club_name: string | null;
+};
 
-  const clubIds = top5.map((p) => p.user.clubId).filter(Boolean) as string[];
-  const clubs = await prisma.club.findMany({
-    where: { id: { in: clubIds } },
-    select: { id: true, name: true },
-  });
-  const clubMap = new Map(clubs.map((c) => [c.id, c.name]));
+export async function Top5Hero() {
+  const result = await db.execute(`
+    SELECT
+      pr.id as pr_id, pr.rank_position, pr.points, pr.prev_position,
+      u.id as user_id, u.username, u.display_name, u.avatar_url, u.club_id,
+      c.name as club_name
+    FROM player_rankings pr
+    JOIN users u ON u.id = pr.user_id
+    LEFT JOIN clubs c ON c.id = u.club_id
+    ORDER BY pr.rank_position ASC
+    LIMIT 5
+  `);
+
+  const top5 = result.rows as unknown as Top5Row[];
 
   return (
     <section aria-labelledby="top5-heading" className="relative">
@@ -65,14 +65,13 @@ export async function Top5Hero() {
 
       <ol className="space-y-2 sm:space-y-2.5">
         {top5.map((player, i) => {
-          const tone = TONES[player.rankPosition] ?? "base";
+          const tone = TONES[player.rank_position] ?? "base";
           const t = toneTokens(tone);
-          const delta = (player.prevPosition ?? player.rankPosition) - player.rankPosition;
-          const clubName = player.user.clubId ? clubMap.get(player.user.clubId) : null;
+          const delta = (player.prev_position ?? player.rank_position) - player.rank_position;
 
           return (
             <li
-              key={player.id}
+              key={player.pr_id}
               className="bc-slide-in-left bc-row-glow group relative isolate overflow-hidden rounded-sm border transition-all duration-300"
               style={{
                 animationDelay: `${i * 80}ms`,
@@ -97,7 +96,7 @@ export async function Top5Hero() {
                       letterSpacing: "-0.06em",
                     }}
                   >
-                    {player.rankPosition}
+                    {player.rank_position}
                   </span>
                 </div>
 
@@ -105,9 +104,9 @@ export async function Top5Hero() {
                   <div className="flex items-center gap-2 min-w-0">
                     <h3
                       className="bc-headline truncate text-2xl sm:text-4xl leading-none text-white"
-                      title={player.user.username}
+                      title={player.username}
                     >
-                      {player.user.displayName || player.user.username}
+                      {player.display_name || player.username}
                     </h3>
                     {delta !== 0 && (
                       <span
@@ -123,11 +122,11 @@ export async function Top5Hero() {
                     )}
                   </div>
                   <p className="truncate text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-white/60">
-                    @{player.user.username}
-                    {clubName && (
+                    @{player.username}
+                    {player.club_name && (
                       <>
                         <span className="mx-2 text-[#333]">•</span>
-                        {clubName}
+                        {player.club_name}
                       </>
                     )}
                   </p>

@@ -1,17 +1,22 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { Top5Hero } from "@/components/Top5Hero";
 import { AuthModalCTA } from "@/components/AuthModalCTA";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [totalMatches, totalGoals, playerCount, clubCount] = await Promise.all([
-    prisma.playerStats.aggregate({ _sum: { matchesPlayed: true } }).then((r) => r._sum.matchesPlayed ?? 0),
-    prisma.playerStats.aggregate({ _sum: { goalsScored: true } }).then((r) => r._sum.goalsScored ?? 0),
-    prisma.playerStats.count(),
-    prisma.club.count(),
+  const [matchesRes, goalsRes, playersRes, clubsRes] = await Promise.all([
+    db.execute("SELECT COALESCE(SUM(matches_played),0) as v FROM player_stats"),
+    db.execute("SELECT COALESCE(SUM(goals_scored),0) as v FROM player_stats"),
+    db.execute("SELECT count(*) as v FROM player_stats"),
+    db.execute("SELECT count(*) as v FROM clubs"),
   ]);
+
+  const totalMatches = Number(matchesRes.rows[0].v);
+  const totalGoals = Number(goalsRes.rows[0].v);
+  const playerCount = Number(playersRes.rows[0].v);
+  const clubCount = Number(clubsRes.rows[0].v);
 
   return (
     <div className="broadcast-theme min-h-screen bc-noise">

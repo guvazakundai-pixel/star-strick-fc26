@@ -1,56 +1,48 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Rankings · Star Strick FC26",
-  description:
-    "Live rankings for Zimbabwe's competitive EA Sports FC season.",
+  description: "Live rankings for Zimbabwe's competitive EA Sports FC season.",
+};
+
+type PlayerRow = {
+  pr_id: string;
+  rank_position: number;
+  points: number;
+  rank_change: number;
+  final_score: number;
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  platform: string | null;
+  club_id: string | null;
+  club_name: string | null;
+  club_tag: string | null;
+  wins: number;
+  draws: number;
+  losses: number;
+  win_streak: number;
 };
 
 export default async function RankingsPage() {
-  const players = await prisma.playerRanking.findMany({
-    orderBy: { rankPosition: "asc" },
-    select: {
-      id: true,
-      rankPosition: true,
-      points: true,
-      rankChange: true,
-      finalScore: true,
-      user: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          avatarUrl: true,
-          platform: true,
-          clubId: true,
-        },
-      },
-    },
-    take: 50,
-  });
+  const result = await db.execute(`
+    SELECT
+      pr.id as pr_id, pr.rank_position, pr.points, pr.rank_change, pr.final_score,
+      u.id as user_id, u.username, u.display_name, u.avatar_url, u.platform, u.club_id,
+      c.name as club_name, c.tag as club_tag,
+      ps.wins, ps.draws, ps.losses, ps.win_streak
+    FROM player_rankings pr
+    JOIN users u ON u.id = pr.user_id
+    LEFT JOIN clubs c ON c.id = u.club_id
+    LEFT JOIN player_stats ps ON ps.user_id = u.id
+    ORDER BY pr.rank_position ASC
+    LIMIT 50
+  `);
 
-  const playerIds = players.map((p) => p.user.id);
-  const stats = await prisma.playerStats.findMany({
-    where: { userId: { in: playerIds } },
-    select: {
-      userId: true,
-      matchesPlayed: true,
-      wins: true,
-      draws: true,
-      losses: true,
-      winStreak: true,
-    },
-  });
-  const statsMap = new Map(stats.map((s) => [s.userId, s]));
-
-  const clubIds = players.map((p) => p.user.clubId).filter(Boolean) as string[];
-  const clubs = await prisma.club.findMany({
-    where: { id: { in: clubIds } },
-    select: { id: true, name: true, tag: true, logoUrl: true },
-  });
-  const clubMap = new Map(clubs.map((c) => [c.id, c]));
+  const players = result.rows as unknown as PlayerRow[];
 
   return (
     <div className="broadcast-theme min-h-screen bc-noise">
@@ -78,13 +70,11 @@ export default async function RankingsPage() {
 
         <div className="space-y-2">
           {players.map((player, idx) => {
-            const s = statsMap.get(player.user.id);
-            const club = player.user.clubId ? clubMap.get(player.user.clubId) : null;
-            const change = player.rankChange;
+            const change = player.rank_change;
             return (
               <Link
-                key={player.id}
-                href={`/player/${player.user.username}`}
+                key={player.pr_id}
+                href={`/player/${player.username}`}
                 className="block rounded-lg border border-[#333] bg-[#1a1a1a]/60 p-3 sm:p-4 hover:border-[#00ff85]/30 transition-colors group bc-stagger-in"
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
@@ -93,40 +83,40 @@ export default async function RankingsPage() {
                     <span
                       className={
                         "bc-headline text-xl tabular-nums " +
-                        (player.rankPosition === 1
+                        (player.rank_position === 1
                           ? "text-[#ffb800]"
-                          : player.rankPosition === 2
+                          : player.rank_position === 2
                             ? "text-[#c0c0c0]"
-                            : player.rankPosition === 3
+                            : player.rank_position === 3
                               ? "text-[#cd7f32]"
                               : "text-white")
                       }
                     >
-                      #{player.rankPosition}
+                      #{player.rank_position}
                     </span>
                   </div>
                   <div
                     className="h-10 w-10 rounded-lg border border-[#333] bg-black shrink-0 flex items-center justify-center bg-cover bg-center"
                     style={{
-                      backgroundImage: player.user.avatarUrl
-                        ? `url(${player.user.avatarUrl})`
+                      backgroundImage: player.avatar_url
+                        ? `url(${player.avatar_url})`
                         : undefined,
                     }}
                   >
-                    {!player.user.avatarUrl && (
+                    {!player.avatar_url && (
                       <span className="text-[10px] font-bold text-[#00ff85]">
-                        {(player.user.displayName || player.user.username)[0].toUpperCase()}
+                        {(player.display_name || player.username)[0].toUpperCase()}
                       </span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-white group-hover:text-[#00ff85] transition-colors truncate">
-                      {player.user.displayName || player.user.username}
+                      {player.display_name || player.username}
                     </p>
                     <div className="flex items-center gap-2 font-mono text-[10px] text-[#9a9a9a]">
-                      <span>@{player.user.username}</span>
-                      {club && <span>[{club.tag}]</span>}
-                      <span>{player.user.platform}</span>
+                      <span>@{player.username}</span>
+                      {player.club_tag && <span>[{player.club_tag}]</span>}
+                      <span>{player.platform}</span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -144,14 +134,14 @@ export default async function RankingsPage() {
                       </p>
                     )}
                   </div>
-                  {s && (
+                  {player.wins != null && (
                     <div className="hidden sm:flex items-center gap-3 font-mono text-[10px] text-[#666] shrink-0">
-                      <span>{s.wins}W</span>
-                      <span>{s.draws}D</span>
-                      <span>{s.losses}L</span>
-                      {s.winStreak > 0 && (
+                      <span>{player.wins}W</span>
+                      <span>{player.draws}D</span>
+                      <span>{player.losses}L</span>
+                      {player.win_streak > 0 && (
                         <span className="text-[#00ff85]">
-                          🔥{s.winStreak}
+                          🔥{player.win_streak}
                         </span>
                       )}
                     </div>
