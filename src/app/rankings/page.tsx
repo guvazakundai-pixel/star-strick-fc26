@@ -48,19 +48,19 @@ export default async function RankingsPage() {
     <div className="broadcast-theme min-h-screen bc-noise">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:py-8">
         <header className="mb-8">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-accent">
+          <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-accent">
             Live Rankings
           </p>
           <h1 className="cinematic-heading mt-2 text-5xl sm:text-7xl text-ink leading-[0.88]">
             Player Rankings
           </h1>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-2 text-sm text-muted max-w-lg">
             Season 1 standings — top 50 players in Zimbabwe
           </p>
         </header>
 
         {players.length === 0 && (
-          <div className="glass p-12 text-center space-y-3">
+          <div className="glass p-12 text-center space-y-4">
             <p className="cinematic-heading text-3xl text-ink">No rankings yet</p>
             <p className="text-sm text-muted">
               Sign up and compete to appear on the leaderboard!
@@ -76,32 +76,33 @@ export default async function RankingsPage() {
               <Link
                 key={player.pr_id}
                 href={`/player/${player.username}`}
-                className="block frosted-card-sm p-4 sm:p-5 hover:border-accent/20 transition-all duration-200 group bc-stagger-in"
+                className="block frosted-card-sm p-4 sm:p-5 hover:border-accent/18 transition-all duration-200 group bc-stagger-in"
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className="w-10 text-center shrink-0">
                     <span
                       className={
-                        "cinematic-heading text-xl tabular-nums " +
+                        "bc-headline tabular-nums " +
                         (player.rank_position === 1
-                          ? "text-gradient-gold"
+                          ? "text-2xl sm:text-3xl text-gradient-gold rank-glow-gold"
                           : player.rank_position === 2
-                            ? "text-[#C0C0C0]"
+                            ? "text-2xl sm:text-3xl text-[#C8C8D2] rank-glow-silver"
                             : player.rank_position === 3
-                              ? "text-[#CD7F32]"
-                              : "text-muted-faint")
+                              ? "text-2xl sm:text-3xl text-[#CD7F32] rank-glow-bronze"
+                            : "text-xl text-muted-faint")
                       }
                     >
-                      #{player.rank_position}
+                      {player.rank_position}
                     </span>
                   </div>
                   <div
-                    className="h-10 w-10 rounded-[12px] border border-border-faint bg-bg-elevated shrink-0 flex items-center justify-center bg-cover bg-center"
+                    className="h-10 w-10 rounded-[12px] border border-border-faint bg-bg-elevated shrink-0 flex items-center justify-center bg-cover bg-center overflow-hidden"
                     style={{
                       backgroundImage: player.avatar_url
                         ? `url(${player.avatar_url})`
                         : undefined,
+                      ...(isTop3 ? { boxShadow: `0 0 16px ${player.rank_position === 1 ? "rgba(255,184,0,0.15)" : player.rank_position === 2 ? "rgba(200,200,210,0.12)" : "rgba(205,127,50,0.12)"}` } : {}),
                     }}
                   >
                     {!player.avatar_url && (
@@ -116,19 +117,18 @@ export default async function RankingsPage() {
                     </p>
                     <div className="flex items-center gap-2 font-mono text-[10px] text-muted-soft">
                       <span>@{player.username}</span>
-                      {player.club_tag && <span>[{player.club_tag}]</span>}
-                      <span>{player.platform}</span>
+                      {player.club_tag && <span className="text-accent/60">[{player.club_tag}]</span>}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="cinematic-heading text-lg text-accent tabular-nums">
+                    <p className="bc-headline text-lg text-accent tabular-nums">
                       {player.points}
                     </p>
                     {change !== 0 && (
                       <p
                         className={
                           "font-mono text-[10px] tabular-nums " +
-                          (change > 0 ? "text-accent" : "text-negative")
+                          (change > 0 ? "text-accent" : "text-negative/80")
                         }
                       >
                         {change > 0 ? "▲" : "▼"} {Math.abs(change)}
@@ -136,13 +136,13 @@ export default async function RankingsPage() {
                     )}
                   </div>
                   {player.wins != null && (
-                    <div className="hidden sm:flex items-center gap-3 font-mono text-[10px] text-muted-soft shrink-0">
-                      <span>{player.wins}W</span>
-                      <span>{player.draws}D</span>
-                      <span>{player.losses}L</span>
+                    <div className="hidden sm:flex items-center gap-2.5 font-mono text-[10px] text-muted-soft shrink-0">
+                      <span className="text-emerald">{player.wins}<span className="text-muted-faint">W</span></span>
+                      <span>{player.draws}<span className="text-muted-faint">D</span></span>
+                      <span className="text-negative/70">{player.losses}<span className="text-muted-faint">L</span></span>
                       {player.win_streak > 0 && (
                         <span className="text-accent">
-                          {player.win_streak}
+                          🔥{player.win_streak}
                         </span>
                       )}
                     </div>

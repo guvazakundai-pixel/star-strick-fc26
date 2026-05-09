@@ -39,21 +39,32 @@ export function AuthModal() {
       onClick={(e) => {
         if (e.target === backdropRef.current) closeAuth();
       }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0D0D0F]/80 backdrop-blur-md p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: "rgba(10,10,12,0.82)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
     >
-      <div className="w-full max-w-md rounded-[22px] border border-border-faint bg-bg-elevated/90 backdrop-blur-2xl overflow-hidden bc-slide-fade" style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-        <div className="flex border-b border-border-faint">
+      <div
+        className="w-full max-w-md overflow-hidden bc-slide-fade"
+        style={{
+          borderRadius: "24px",
+          background: "rgba(18,20,24,0.88)",
+          backdropFilter: "blur(32px) saturate(1.5)",
+          WebkitBackdropFilter: "blur(32px) saturate(1.5)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.50), 0 0 0 0.5px rgba(255,255,255,0.04) inset, 0 1px 0 rgba(255,255,255,0.06) inset",
+        }}
+      >
+        <div className="flex border-b border-white/[0.04]">
           <TabButton active={tab === "signin"} onClick={() => setTab("signin")} label="Sign In" />
           <TabButton active={tab === "join"} onClick={() => setTab("join")} label="Join" />
           <button
             onClick={closeAuth}
-            className="ml-auto px-4 text-[#8A8F99] hover:text-[#EDEDED] transition-colors duration-200"
+            className="ml-auto px-5 text-[#6B6D78] hover:text-[#EDEDED] transition-colors duration-200"
             aria-label="Close"
           >
             ✕
           </button>
         </div>
-        <div className="p-5">
+        <div className="p-6">
           {tab === "signin" ? <SignInForm onClose={closeAuth} /> : <JoinForm onClose={closeAuth} />}
         </div>
       </div>
@@ -66,11 +77,12 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
     <button
       onClick={onClick}
       className={
-        "flex-1 py-3 text-xs font-bold uppercase tracking-[0.22em] transition-all duration-200 " +
+        "flex-1 py-3.5 text-xs font-bold uppercase tracking-[0.22em] transition-all duration-250 " +
         (active
-          ? "text-[#00ff85] border-b-2 border-[#00ff85] bg-[#00ff85]/5"
-          : "text-[#8A8F99] hover:text-[#D6D6D6]")
+          ? "text-accent border-b-2 border-accent"
+          : "text-[#6B6D78] hover:text-[#BFC3C9]")
       }
+      style={active ? { background: "rgba(0,255,133,0.04)" } : undefined}
     >
       {label}
     </button>
@@ -110,28 +122,15 @@ function SignInForm({ onClose }: { onClose: () => void }) {
         <p className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">
           Star Strick FC26
         </p>
-        <h2 className="heading-cinematic text-2xl text-[#EDEDED]">Welcome back</h2>
+        <h2 className="heading-cinematic text-2xl text-ink mt-1">Welcome back</h2>
       </div>
       {error && <ErrorBox message={error} />}
-      <FieldInput
-        label="Username or email"
-        value={identifier}
-        onChange={setIdentifier}
-        autoComplete="username"
-        required
-      />
-      <FieldInput
-        label="Password"
-        type="password"
-        value={password}
-        onChange={setPassword}
-        autoComplete="current-password"
-        required
-      />
+      <FieldInput label="Username or email" value={identifier} onChange={setIdentifier} autoComplete="username" required />
+      <FieldInput label="Password" type="password" value={password} onChange={setPassword} autoComplete="current-password" required />
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-[14px] cta-primary py-2.5 font-bold uppercase tracking-wider disabled:opacity-50 disabled:transform-none"
+        className="w-full rounded-[14px] cta-primary py-3 font-bold uppercase tracking-wider disabled:opacity-50 disabled:transform-none"
       >
         {pending ? "Signing in…" : "Sign In"}
       </button>
@@ -176,108 +175,35 @@ function JoinForm({ onClose }: { onClose: () => void }) {
         <p className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">
           Star Strick FC26
         </p>
-        <h2 className="heading-cinematic text-2xl text-[#EDEDED]">Create account</h2>
+        <h2 className="heading-cinematic text-2xl text-ink mt-1">Create account</h2>
       </div>
       {error && <ErrorBox message={error} />}
-      <FieldInput
-        label="Display Name"
-        value={displayName}
-        onChange={setDisplayName}
-        hint="3-30 characters"
-        minLength={3}
-        maxLength={30}
-        required
-      />
-      <FieldInput
-        label="EA FC Username"
-        value={username}
-        onChange={setUsername}
-        hint="3-20 chars, letters/numbers/underscores, unique"
-        minLength={3}
-        maxLength={20}
-        required
-      />
-      <FieldInput
-        label="Email"
-        type="email"
-        value={email}
-        onChange={setEmail}
-        autoComplete="email"
-        required
-      />
-      <FieldInput
-        label="Password"
-        type="password"
-        value={password}
-        onChange={setPassword}
-        hint="8+ characters"
-        minLength={8}
-        autoComplete="new-password"
-        required
-      />
+      <FieldInput label="Display Name" value={displayName} onChange={setDisplayName} hint="3-30 characters" minLength={3} maxLength={30} required />
+      <FieldInput label="EA FC Username" value={username} onChange={setUsername} hint="3-20 chars, letters/numbers/underscores" minLength={3} maxLength={20} required />
+      <FieldInput label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
+      <FieldInput label="Password" type="password" value={password} onChange={setPassword} hint="8+ characters" minLength={8} autoComplete="new-password" required />
       <div>
-        <label className="block text-xs uppercase tracking-wider text-[#8A8F99] mb-1">
-          Platform
-        </label>
-        <select
-          value={platform}
-          onChange={(e) => setPlatform(e.target.value)}
-          className="w-full apple-input px-3 py-2.5 text-ink text-sm cursor-pointer"
-        >
-          {PLATFORMS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
+        <label className="block text-xs uppercase tracking-wider text-muted-soft mb-1">Platform</label>
+        <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full apple-input px-3 py-2.5 text-ink text-sm cursor-pointer">
+          {PLATFORMS.map((p) => (<option key={p.value} value={p.value}>{p.label}</option>))}
         </select>
       </div>
       <label className="flex items-start gap-2.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={terms}
-          onChange={(e) => setTerms(e.target.checked)}
-          required
-            className="mt-0.5 h-4 w-4 rounded border-white/[0.12] accent-[#00ff85]"
-        />
-        <span className="text-xs text-[#8A8F99] leading-snug">
-          I agree to the Star Strick FC26 rules and community guidelines
-        </span>
+        <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} required className="mt-0.5 h-4 w-4 rounded border-white/[0.12] accent-[#00ff85]" />
+        <span className="text-xs text-[#8E909A] leading-snug">I agree to the Star Strick FC26 rules and community guidelines</span>
       </label>
-      <button
-        type="submit"
-        disabled={pending || !terms}
-        className="w-full rounded-[14px] cta-primary py-2.5 font-bold uppercase tracking-wider disabled:opacity-50 disabled:transform-none"
-      >
+      <button type="submit" disabled={pending || !terms} className="w-full rounded-[14px] cta-primary py-3 font-bold uppercase tracking-wider disabled:opacity-50 disabled:transform-none">
         {pending ? "Creating account…" : "Join Star Strick FC26"}
       </button>
     </form>
   );
 }
 
-function FieldInput({
-  label,
-  type = "text",
-  value,
-  onChange,
-  hint,
-  ...rest
-}: {
-  label: string;
-  type?: string;
-  value: string;
-  onChange: (v: string) => void;
-  hint?: string;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "type" | "value">) {
+function FieldInput({ label, type = "text", value, onChange, hint, ...rest }: { label: string; type?: string; value: string; onChange: (v: string) => void; hint?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "type" | "value">) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wider text-muted-soft mb-1">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full apple-input px-3 py-2.5 text-ink text-sm"
-        {...rest}
-      />
+      <span className="block text-xs uppercase tracking-wider text-muted-soft mb-1.5">{label}</span>
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full apple-input px-3 py-2.5 text-ink text-sm" {...rest} />
       {hint && <span className="block text-[10px] text-muted-faint mt-1">{hint}</span>}
     </label>
   );
@@ -285,7 +211,7 @@ function FieldInput({
 
 function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="rounded-[12px] border border-negative/30 bg-negative/8 px-3 py-2 text-sm text-negative/90">
+    <div className="rounded-[12px] border border-negative/25 px-3 py-2.5 text-sm text-negative/90" style={{ background: "rgba(255,77,77,0.06)" }}>
       {message}
     </div>
   );
