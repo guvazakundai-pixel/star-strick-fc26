@@ -72,11 +72,10 @@ export async function PATCH(
 
   await prisma.auditLog.create({
     data: {
-      actorId: auth.session.userId,
-      actionType: "CLUB_UPDATE",
-      entityType: "CLUB",
-      entityId: clubId,
-      metadata: JSON.stringify(parsed.data),
+      adminId: auth.session.userId,
+      action: "CLUB_UPDATE",
+      target: `CLUB:${clubId}`,
+      details: parsed.data,
     },
   });
 

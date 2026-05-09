@@ -23,7 +23,7 @@ export default async function AdminLayout({
   ]);
 
   return (
-    <div className="broadcast-theme min-h-screen -mb-24">
+    <div className="broadcast-theme min-h-screen bc-noise -mb-24">
       <div className="mx-auto max-w-7xl flex flex-col md:flex-row">
         <AdminSidebar
           role={session.role}

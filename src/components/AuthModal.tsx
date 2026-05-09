@@ -39,15 +39,15 @@ export function AuthModal() {
       onClick={(e) => {
         if (e.target === backdropRef.current) closeAuth();
       }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0D0D0F]/80 backdrop-blur-md p-4"
     >
-      <div className="w-full max-w-md rounded-xl border border-[#333] bg-[#1a1a1a] overflow-hidden bc-slide-fade">
-        <div className="flex border-b border-[#333]">
+      <div className="w-full max-w-md rounded-[22px] border border-border-faint bg-bg-elevated/90 backdrop-blur-2xl overflow-hidden bc-slide-fade" style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+        <div className="flex border-b border-border-faint">
           <TabButton active={tab === "signin"} onClick={() => setTab("signin")} label="Sign In" />
           <TabButton active={tab === "join"} onClick={() => setTab("join")} label="Join" />
           <button
             onClick={closeAuth}
-            className="ml-auto px-4 text-[#9a9a9a] hover:text-white transition-colors"
+            className="ml-auto px-4 text-[#8A8F99] hover:text-[#EDEDED] transition-colors duration-200"
             aria-label="Close"
           >
             ✕
@@ -66,10 +66,10 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
     <button
       onClick={onClick}
       className={
-        "flex-1 py-3 text-xs font-black uppercase tracking-[0.22em] transition-colors " +
+        "flex-1 py-3 text-xs font-bold uppercase tracking-[0.22em] transition-all duration-200 " +
         (active
           ? "text-[#00ff85] border-b-2 border-[#00ff85] bg-[#00ff85]/5"
-          : "text-[#9a9a9a] hover:text-white")
+          : "text-[#8A8F99] hover:text-[#D6D6D6]")
       }
     >
       {label}
@@ -107,10 +107,10 @@ function SignInForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-wider text-[#9a9a9a]">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">
           Star Strick FC26
         </p>
-        <h2 className="bc-headline text-2xl text-white">Welcome back</h2>
+        <h2 className="heading-cinematic text-2xl text-[#EDEDED]">Welcome back</h2>
       </div>
       {error && <ErrorBox message={error} />}
       <FieldInput
@@ -131,7 +131,7 @@ function SignInForm({ onClose }: { onClose: () => void }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded bg-[#00ff85] py-2.5 font-bold uppercase tracking-wider text-[#050505] hover:bg-white transition disabled:opacity-50"
+        className="w-full rounded-[14px] cta-primary py-2.5 font-bold uppercase tracking-wider disabled:opacity-50 disabled:transform-none"
       >
         {pending ? "Signing in…" : "Sign In"}
       </button>
@@ -173,10 +173,10 @@ function JoinForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={onSubmit} className="space-y-3.5">
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-wider text-[#9a9a9a]">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">
           Star Strick FC26
         </p>
-        <h2 className="bc-headline text-2xl text-white">Create account</h2>
+        <h2 className="heading-cinematic text-2xl text-[#EDEDED]">Create account</h2>
       </div>
       {error && <ErrorBox message={error} />}
       <FieldInput
@@ -216,13 +216,13 @@ function JoinForm({ onClose }: { onClose: () => void }) {
         required
       />
       <div>
-        <label className="block text-xs uppercase tracking-wider text-[#9a9a9a] mb-1">
+        <label className="block text-xs uppercase tracking-wider text-[#8A8F99] mb-1">
           Platform
         </label>
         <select
           value={platform}
           onChange={(e) => setPlatform(e.target.value)}
-          className="w-full rounded border border-[#333] bg-black/40 px-3 py-2.5 text-white outline-none focus:border-[#00ff85] text-sm"
+          className="w-full apple-input px-3 py-2.5 text-ink text-sm cursor-pointer"
         >
           {PLATFORMS.map((p) => (
             <option key={p.value} value={p.value}>
@@ -237,16 +237,16 @@ function JoinForm({ onClose }: { onClose: () => void }) {
           checked={terms}
           onChange={(e) => setTerms(e.target.checked)}
           required
-          className="mt-0.5 h-4 w-4 rounded border-[#333] accent-[#00ff85]"
+            className="mt-0.5 h-4 w-4 rounded border-white/[0.12] accent-[#00ff85]"
         />
-        <span className="text-xs text-[#9a9a9a] leading-snug">
+        <span className="text-xs text-[#8A8F99] leading-snug">
           I agree to the Star Strick FC26 rules and community guidelines
         </span>
       </label>
       <button
         type="submit"
         disabled={pending || !terms}
-        className="w-full rounded bg-[#00ff85] py-2.5 font-bold uppercase tracking-wider text-[#050505] hover:bg-white transition disabled:opacity-50"
+        className="w-full rounded-[14px] cta-primary py-2.5 font-bold uppercase tracking-wider disabled:opacity-50 disabled:transform-none"
       >
         {pending ? "Creating account…" : "Join Star Strick FC26"}
       </button>
@@ -270,22 +270,22 @@ function FieldInput({
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "type" | "value">) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wider text-[#9a9a9a] mb-1">{label}</span>
+      <span className="block text-xs uppercase tracking-wider text-muted-soft mb-1">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded border border-[#333] bg-black/40 px-3 py-2.5 text-white outline-none focus:border-[#00ff85] text-sm"
+        className="w-full apple-input px-3 py-2.5 text-ink text-sm"
         {...rest}
       />
-      {hint && <span className="block text-[10px] text-[#666] mt-1">{hint}</span>}
+      {hint && <span className="block text-[10px] text-muted-faint mt-1">{hint}</span>}
     </label>
   );
 }
 
 function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+    <div className="rounded-[12px] border border-negative/30 bg-negative/8 px-3 py-2 text-sm text-negative/90">
       {message}
     </div>
   );

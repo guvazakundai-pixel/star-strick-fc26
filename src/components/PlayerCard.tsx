@@ -30,12 +30,17 @@ export const PlayerCard = forwardRef<HTMLLIElement, Props>(function PlayerCard(
         "bc-row bc-stagger-in group relative isolate cursor-pointer " +
         "border-l-4 transition-all duration-300 will-change-transform " +
         (active
-          ? "border-[#00ff85] bg-[#0a0a0a] bc-halo scale-[1.015]"
-          : "border-transparent bg-transparent hover:border-[#00ff85]/50 hover:bg-[#0a0a0a]/60")
+          ? "border-accent bg-bg-elevated/80 scale-[1.015]"
+          : "border-transparent bg-bg-elevated/40 hover:border-accent/40 hover:bg-bg-elevated/60")
       }
       style={{
         animationDelay: `${Math.min(index, 12) * 38}ms`,
         transformOrigin: "left center",
+        backdropFilter: active ? "blur(12px)" : undefined,
+        WebkitBackdropFilter: active ? "blur(12px)" : undefined,
+        boxShadow: active
+          ? "0 0 20px 2px rgba(0, 255, 133, 0.15), 0 8px 32px rgba(0,0,0,0.20)"
+          : undefined,
       }}
     >
       <span
@@ -44,8 +49,8 @@ export const PlayerCard = forwardRef<HTMLLIElement, Props>(function PlayerCard(
         style={{
           fontSize: "150px",
           color: podium ?? "#ffffff",
-          opacity: active ? (podium ? 0.22 : 0.08) : podium ? 0.14 : 0.04,
-          textShadow: podium ? `0 0 30px ${podium}40` : "none",
+          opacity: active ? (podium ? 0.16 : 0.06) : podium ? 0.10 : 0.03,
+          textShadow: podium ? `0 0 30px ${podium}30` : "none",
         }}
       >
         {rankStr}
@@ -63,7 +68,7 @@ export const PlayerCard = forwardRef<HTMLLIElement, Props>(function PlayerCard(
             <span
               className={
                 "bc-headline truncate text-2xl sm:text-3xl leading-none " +
-                (active ? "text-white" : "text-white/90")
+                (active ? "text-ink" : "text-ink-soft")
               }
             >
               {player.gamertag}
@@ -72,7 +77,7 @@ export const PlayerCard = forwardRef<HTMLLIElement, Props>(function PlayerCard(
               <span
                 className={
                   "shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold tabular-nums " +
-                  (delta > 0 ? "text-[#00ff85]" : "text-[#ff4d4d]")
+                  (delta > 0 ? "text-accent" : "text-negative")
                 }
               >
                 <Triangle up={delta > 0} />
@@ -80,16 +85,16 @@ export const PlayerCard = forwardRef<HTMLLIElement, Props>(function PlayerCard(
               </span>
             )}
             {topMover && (
-              <span className="shrink-0 inline-flex items-center text-[9px] font-black tracking-[0.2em] px-1.5 py-0.5 rounded-sm bg-[#00ff85]/15 text-[#00ff85] ring-1 ring-[#00ff85]/40">
+              <span className="shrink-0 inline-flex items-center text-[9px] font-black tracking-[0.2em] px-1.5 py-0.5 rounded-[6px] pill-accent">
                 RISER
               </span>
             )}
           </div>
-          <p className="mt-1 truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.18em] text-[#9a9a9a]">
+          <p className="mt-1 truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.18em] text-muted-soft">
             {player.name}
             {club && (
               <>
-                <span className="mx-2 text-[#333]">•</span>
+                <span className="mx-2 text-border-strong">•</span>
                 {club.name}
               </>
             )}
@@ -102,10 +107,10 @@ export const PlayerCard = forwardRef<HTMLLIElement, Props>(function PlayerCard(
         </div>
 
         <div className="shrink-0 text-right tabular-nums">
-          <p className="bc-headline text-xl sm:text-3xl leading-none text-white">
+          <p className="bc-headline text-xl sm:text-3xl leading-none text-ink">
             {player.points.toLocaleString()}
           </p>
-          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.22em] text-[#9a9a9a]">
+          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.22em] text-muted-faint">
             Pts
           </p>
         </div>
@@ -145,33 +150,33 @@ function Avatar({
 
   return (
     <div
-      className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-md overflow-hidden transition-all duration-300"
+      className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-[12px] overflow-hidden transition-all duration-300"
       style={{
         background: `linear-gradient(135deg, ${a} 0%, ${b} 100%)`,
-        boxShadow: `inset 0 0 0 2px ${ring}${active ? "" : "80"}`,
+        boxShadow: `inset 0 0 0 2px ${ring}${active ? "" : "60"}`,
       }}
     >
       <svg
         viewBox="0 0 40 40"
-        className="absolute inset-0 h-full w-full opacity-50"
+        className="absolute inset-0 h-full w-full opacity-40"
         aria-hidden
       >
         <polygon
           points={`${(seed * 7) % 40},0 40,${(seed * 11) % 40} 40,40 0,40`}
-          fill="rgba(255,255,255,0.06)"
+          fill="rgba(255,255,255,0.04)"
         />
         <circle
           cx={(seed * 13) % 40}
           cy={(seed * 17) % 40}
           r="14"
-          fill="rgba(255,255,255,0.04)"
+          fill="rgba(255,255,255,0.03)"
         />
       </svg>
       <span
         className="absolute inset-0 grid place-items-center bc-headline text-xl sm:text-2xl"
         style={{
-          color: active ? "#00ff85" : podium ?? "#ffffff",
-          textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+          color: active ? "#00ff85" : podium ?? "#F0F0F2",
+          textShadow: "0 1px 2px rgba(0,0,0,0.40)",
         }}
       >
         {initials}
@@ -190,10 +195,10 @@ function Pill({ label, accent = false }: { label: string; accent?: boolean }) {
   return (
     <span
       className={
-        "inline-flex items-center justify-center min-w-[40px] h-7 px-2 rounded-sm text-[10px] font-black tracking-[0.15em] " +
+        "inline-flex items-center justify-center min-w-[40px] h-7 px-2 rounded-[8px] text-[10px] font-black tracking-[0.15em] " +
         (accent
-          ? "bg-[#00ff85] text-[#050505]"
-          : "bg-[#1a1a1a] text-white/80 ring-1 ring-[#333333]")
+          ? "pill-accent"
+          : "bg-bg-highlight text-ink-soft border border-border-faint")
       }
     >
       {label}

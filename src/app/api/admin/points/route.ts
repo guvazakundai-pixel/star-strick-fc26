@@ -62,11 +62,10 @@ export async function POST(req: Request) {
 
   await prisma.auditLog.create({
     data: {
-      actorId: auth.session.userId,
-      actionType: "POINTS_AWARD",
-      entityType: "USER",
-      entityId: user.id,
-      metadata: JSON.stringify({ points, reason }),
+      adminId: auth.session.userId,
+      action: "POINTS_AWARD",
+      target: `USER:${user.id}`,
+      details: { points, reason },
     },
   });
 

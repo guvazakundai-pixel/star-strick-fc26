@@ -47,22 +47,22 @@ export default async function RankingsPage() {
   return (
     <div className="broadcast-theme min-h-screen bc-noise">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:py-8">
-        <header className="mb-6">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-[#9a9a9a]">
+        <header className="mb-8">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-accent">
             Live Rankings
           </p>
-          <h1 className="bc-headline mt-1 text-3xl sm:text-5xl text-white">
+          <h1 className="cinematic-heading mt-2 text-5xl sm:text-7xl text-ink leading-[0.88]">
             Player Rankings
           </h1>
-          <p className="mt-1 text-sm text-[#9a9a9a]">
+          <p className="mt-2 text-sm text-muted">
             Season 1 standings — top 50 players in Zimbabwe
           </p>
         </header>
 
         {players.length === 0 && (
-          <div className="rounded-xl border border-[#333] bg-[#1a1a1a]/60 p-10 text-center space-y-3">
-            <p className="bc-headline text-2xl text-white">No rankings yet</p>
-            <p className="text-sm text-[#9a9a9a]">
+          <div className="glass p-12 text-center space-y-3">
+            <p className="cinematic-heading text-3xl text-ink">No rankings yet</p>
+            <p className="text-sm text-muted">
               Sign up and compete to appear on the leaderboard!
             </p>
           </div>
@@ -71,32 +71,33 @@ export default async function RankingsPage() {
         <div className="space-y-2">
           {players.map((player, idx) => {
             const change = player.rank_change;
+            const isTop3 = player.rank_position <= 3;
             return (
               <Link
                 key={player.pr_id}
                 href={`/player/${player.username}`}
-                className="block rounded-lg border border-[#333] bg-[#1a1a1a]/60 p-3 sm:p-4 hover:border-[#00ff85]/30 transition-colors group bc-stagger-in"
+                className="block frosted-card-sm p-4 sm:p-5 hover:border-accent/20 transition-all duration-200 group bc-stagger-in"
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className="w-10 text-center shrink-0">
                     <span
                       className={
-                        "bc-headline text-xl tabular-nums " +
+                        "cinematic-heading text-xl tabular-nums " +
                         (player.rank_position === 1
-                          ? "text-[#ffb800]"
+                          ? "text-gradient-gold"
                           : player.rank_position === 2
-                            ? "text-[#c0c0c0]"
+                            ? "text-[#C0C0C0]"
                             : player.rank_position === 3
-                              ? "text-[#cd7f32]"
-                              : "text-white")
+                              ? "text-[#CD7F32]"
+                              : "text-muted-faint")
                       }
                     >
                       #{player.rank_position}
                     </span>
                   </div>
                   <div
-                    className="h-10 w-10 rounded-lg border border-[#333] bg-black shrink-0 flex items-center justify-center bg-cover bg-center"
+                    className="h-10 w-10 rounded-[12px] border border-border-faint bg-bg-elevated shrink-0 flex items-center justify-center bg-cover bg-center"
                     style={{
                       backgroundImage: player.avatar_url
                         ? `url(${player.avatar_url})`
@@ -104,30 +105,30 @@ export default async function RankingsPage() {
                     }}
                   >
                     {!player.avatar_url && (
-                      <span className="text-[10px] font-bold text-[#00ff85]">
+                      <span className="text-[10px] font-bold text-accent">
                         {(player.display_name || player.username)[0].toUpperCase()}
                       </span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white group-hover:text-[#00ff85] transition-colors truncate">
+                    <p className="text-sm font-semibold text-ink group-hover:text-accent transition-colors duration-200 truncate">
                       {player.display_name || player.username}
                     </p>
-                    <div className="flex items-center gap-2 font-mono text-[10px] text-[#9a9a9a]">
+                    <div className="flex items-center gap-2 font-mono text-[10px] text-muted-soft">
                       <span>@{player.username}</span>
                       {player.club_tag && <span>[{player.club_tag}]</span>}
                       <span>{player.platform}</span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="bc-headline text-lg text-[#00ff85] tabular-nums">
+                    <p className="cinematic-heading text-lg text-accent tabular-nums">
                       {player.points}
                     </p>
                     {change !== 0 && (
                       <p
                         className={
                           "font-mono text-[10px] tabular-nums " +
-                          (change > 0 ? "text-[#00ff85]" : "text-red-400")
+                          (change > 0 ? "text-accent" : "text-negative")
                         }
                       >
                         {change > 0 ? "▲" : "▼"} {Math.abs(change)}
@@ -135,13 +136,13 @@ export default async function RankingsPage() {
                     )}
                   </div>
                   {player.wins != null && (
-                    <div className="hidden sm:flex items-center gap-3 font-mono text-[10px] text-[#666] shrink-0">
+                    <div className="hidden sm:flex items-center gap-3 font-mono text-[10px] text-muted-soft shrink-0">
                       <span>{player.wins}W</span>
                       <span>{player.draws}D</span>
                       <span>{player.losses}L</span>
                       {player.win_streak > 0 && (
-                        <span className="text-[#00ff85]">
-                          🔥{player.win_streak}
+                        <span className="text-accent">
+                          {player.win_streak}
                         </span>
                       )}
                     </div>

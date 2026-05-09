@@ -35,11 +35,10 @@ export async function POST(
 
   await prisma.auditLog.create({
     data: {
-      actorId: auth.session.userId,
-      actionType: "RANKING_REORDER",
-      entityType: "CLUB",
-      entityId: clubId,
-      metadata: JSON.stringify({ count: updates.length }),
+      adminId: auth.session.userId,
+      action: "RANKING_REORDER",
+      target: `CLUB:${clubId}`,
+      details: { count: updates.length },
     },
   });
 

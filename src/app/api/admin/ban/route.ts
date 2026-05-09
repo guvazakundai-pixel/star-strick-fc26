@@ -27,11 +27,10 @@ export async function POST(req: Request) {
 
   await prisma.auditLog.create({
     data: {
-      actorId: auth.session.userId,
-      actionType: banned ? "USER_BAN" : "USER_UNBAN",
-      entityType: "USER",
-      entityId: userId,
-      metadata: JSON.stringify({ username: user.username }),
+      adminId: auth.session.userId,
+      action: banned ? "USER_BAN" : "USER_UNBAN",
+      target: `USER:${userId}`,
+      details: { username: user.username },
     },
   });
 

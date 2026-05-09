@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Bebas_Neue, JetBrains_Mono, Exo_2, Barlow } from "next/font/google";
+import { Bebas_Neue, JetBrains_Mono, Inter, Barlow } from "next/font/google";
 import { BottomNav } from "@/components/BottomNav";
 import { TopBar } from "@/components/TopBar";
 import { AuthProvider, AuthUrlHandler } from "@/lib/auth-context";
 import { AuthModal } from "@/components/AuthModal";
+import { AmbientBackground } from "@/components/AmbientBackground";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -20,9 +21,9 @@ const jbMono = JetBrains_Mono({
   display: "swap",
 });
 
-const exo = Exo_2({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-exo",
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -67,7 +68,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7f8fa",
+  themeColor: "#0c0c10",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -79,16 +80,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bebas.variable} ${jbMono.variable} ${exo.variable} ${barlow.variable} h-full`}
+      className={`${bebas.variable} ${jbMono.variable} ${inter.variable} ${barlow.variable} h-full`}
     >
       <body className="min-h-full bg-bg text-ink antialiased">
         <AuthProvider>
           <Suspense fallback={null}>
             <AuthUrlHandler />
           </Suspense>
-          <div className="min-h-screen flex flex-col">
+          <AmbientBackground />
+          <div className="relative z-10 min-h-screen flex flex-col">
             <TopBar />
-            <main className="flex-1 pb-24">{children}</main>
+            <main className="flex-1 pb-28">{children}</main>
             <BottomNav />
           </div>
           <AuthModal />

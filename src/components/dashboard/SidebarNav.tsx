@@ -14,12 +14,12 @@ const ITEMS: ReadonlyArray<{ href: string; label: string; exact?: boolean }> = [
 export function SidebarNav({ clubName }: { clubName: string }) {
   const pathname = usePathname();
   return (
-    <aside className="md:sticky md:top-14 md:h-[calc(100vh-3.5rem)] md:w-60 shrink-0 border-r border-[var(--bc-border)] bg-[var(--bc-surface)]/40">
-      <div className="p-4 border-b border-[var(--bc-border)]">
-        <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--bc-text-soft)]">
+    <aside className="md:sticky md:top-14 md:h-[calc(100vh-3.5rem)] md:w-60 shrink-0 border-r border-border-faint bg-bg-elevated/40 backdrop-blur-xl">
+      <div className="p-4 border-b border-border-faint">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">
           Control Panel
         </p>
-        <p className="bc-headline text-lg text-white truncate" title={clubName}>
+        <p className="bc-headline text-lg text-ink truncate" title={clubName}>
           {clubName}
         </p>
       </div>
@@ -33,10 +33,10 @@ export function SidebarNav({ clubName }: { clubName: string }) {
               key={it.href}
               href={it.href}
               className={
-                "rounded px-3 py-2 text-sm uppercase tracking-wider font-bold transition-colors text-center md:text-left " +
+                "rounded-[12px] px-3 py-2 text-sm uppercase tracking-wider font-bold transition-all duration-200 text-center md:text-left " +
                 (active
-                  ? "bg-[var(--bc-accent)]/15 text-[var(--bc-accent)] border border-[var(--bc-accent)]/40"
-                  : "text-white/80 hover:text-white hover:bg-white/5 border border-transparent")
+                  ? "bg-accent/8 text-accent border border-accent/20"
+                  : "text-muted-soft hover:text-ink hover:bg-bg-highlight/50 border border-transparent")
               }
             >
               {it.label}

@@ -9,24 +9,26 @@ export type AuditAction =
   | "RANKING_REORDER"
   | "MEDIA_UPLOAD"
   | "MEDIA_DELETE"
-  | "RANK_RECOMPUTE";
-
-export type AuditEntity = "CLUB" | "CLUB_MEMBER" | "CLUB_RANKING" | "MEDIA" | "USER";
+  | "RANK_RECOMPUTE"
+  | "MATCH_CONFIRM"
+  | "MATCH_APPROVE"
+  | "MATCH_DISPUTE"
+  | "MATCH_REQUEST_ACCEPT"
+  | "MATCH_REQUEST_DECLINE"
+  | "MATCH_REQUEST_CANCEL";
 
 export async function audit(
-  actorId: string,
-  actionType: AuditAction,
-  entityType: AuditEntity,
-  entityId: string,
-  metadata?: Record<string, unknown>,
+  adminId: string,
+  action: AuditAction,
+  target: string,
+  details?: Record<string, unknown>,
 ): Promise<void> {
   await prisma.auditLog.create({
     data: {
-      actorId,
-      actionType,
-      entityType,
-      entityId,
-      metadata: metadata ? JSON.stringify(metadata) : null,
+      adminId,
+      action,
+      target,
+      details: details ?? undefined,
     },
   });
 }

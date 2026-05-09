@@ -16,7 +16,7 @@ export function Tabs<T extends string>({
     <>
       <div
         role="tablist"
-        className="mb-5 -mx-4 sm:mx-0 px-4 sm:px-0 border-b border-border overflow-x-auto"
+        className="mb-5 -mx-4 sm:mx-0 px-4 sm:px-0 border-b border-border-faint overflow-x-auto"
       >
         <div className="flex items-center gap-6 min-w-max">
           {tabs.map((t) => {
@@ -28,10 +28,10 @@ export function Tabs<T extends string>({
                 aria-selected={on}
                 onClick={() => setActive(t)}
                 className={
-                  "shrink-0 -mb-px border-b-2 py-2.5 text-[13px] font-medium tracking-wide transition " +
+                  "shrink-0 -mb-px border-b-2 py-2.5 text-[13px] font-semibold tracking-wide transition-all duration-200 " +
                   (on
                     ? "border-accent text-ink"
-                    : "border-transparent text-muted hover:text-ink-soft")
+                    : "border-transparent text-muted-soft hover:text-ink-soft")
                 }
               >
                 {t}

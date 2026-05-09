@@ -44,10 +44,9 @@ export async function PATCH(
 
   await prisma.auditLog.create({
     data: {
-      actorId: auth.session.userId,
-      actionType: status === "APPROVED" ? "MEMBER_APPROVE" : status === "REJECTED" ? "MEMBER_REJECT" : "MEMBER_PROMOTE",
-      entityType: "CLUB_MEMBER",
-      entityId: memberId,
+      adminId: auth.session.userId,
+      action: status === "APPROVED" ? "MEMBER_APPROVE" : status === "REJECTED" ? "MEMBER_REJECT" : "MEMBER_PROMOTE",
+      target: `CLUB_MEMBER:${memberId}`,
     },
   });
 
@@ -76,10 +75,9 @@ export async function DELETE(
 
   await prisma.auditLog.create({
     data: {
-      actorId: auth.session.userId,
-      actionType: "MEMBER_REMOVE",
-      entityType: "CLUB_MEMBER",
-      entityId: memberId,
+      adminId: auth.session.userId,
+      action: "MEMBER_REMOVE",
+      target: `CLUB_MEMBER:${memberId}`,
     },
   });
 

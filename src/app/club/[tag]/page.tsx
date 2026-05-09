@@ -36,7 +36,7 @@ export default async function ClubProfilePage({
 
   if (!club) notFound();
 
-  const [memberCount, globalRanking, members] = await Promise.all([
+  const [memberCount, globalRanking, members, recentMatches] = await Promise.all([
     prisma.clubMember.count({
       where: { clubId: club.id, status: "APPROVED" },
     }),
@@ -61,6 +61,19 @@ export default async function ClubProfilePage({
         },
       },
     }),
+    prisma.matchReport.findMany({
+      where: {
+        clubId: club.id,
+        status: { in: ["CONFIRMED", "APPROVED"] },
+      },
+      include: {
+        player1: { select: { id: true, username: true, displayName: true } },
+        player2: { select: { id: true, username: true, displayName: true } },
+        winner: { select: { id: true, username: true, displayName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
   ]);
 
   const manager = club.manager;
@@ -68,40 +81,40 @@ export default async function ClubProfilePage({
   return (
     <div className="broadcast-theme min-h-screen bc-noise">
       <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
-        <div className="relative overflow-hidden rounded-xl border border-[#333]">
+        <div className="relative overflow-hidden rounded-[20px] border border-border-faint">
           <div
-            className="aspect-[16/5] w-full bg-cover bg-center bc-noise"
+            className="aspect-[16/5] w-full bg-cover bg-center"
             style={{
               backgroundImage: club.bannerUrl
                 ? `url(${club.bannerUrl})`
-                : "linear-gradient(135deg,#0a0a0a,#1a1a1a 60%,#050505)",
+                : "linear-gradient(135deg, #0D0D0F, #16181D 60%, #111214)",
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-bg/90 via-bg/30 to-transparent" />
           <div className="absolute left-4 bottom-4 flex items-end gap-4">
             <div
-              className="h-20 w-20 rounded-lg border border-[#333] bg-black bg-cover bg-center shrink-0 flex items-center justify-center"
-              style={{ backgroundImage: club.logoUrl ? `url(${club.logoUrl})` : undefined }}
+              className="h-20 w-20 rounded-[14px] border border-border-faint bg-bg-elevated bg-cover bg-center shrink-0 flex items-center justify-center"
+              style={{ backgroundImage: club.logoUrl ? `url(${club.logoUrl})` : undefined, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}
             >
               {!club.logoUrl && (
-                <span className="bc-headline text-3xl text-[#00ff85]">{club.tag[0]}</span>
+                <span className="bc-headline text-3xl text-accent">{club.tag?.[0] ?? club.name[0]}</span>
               )}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="bc-headline text-2xl sm:text-3xl text-white">{club.name}</h1>
-                {club.isVerified ? (
-                  <span className="inline-flex items-center rounded bg-[#00ff85]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#00ff85]">
+                <h1 className="bc-headline text-2xl sm:text-3xl text-ink">{club.name}</h1>
+                {club.isVerified && (
+                  <span className="pill-accent text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full">
                     Verified
                   </span>
-                ) : null}
+                )}
                 {club.membersInviteOnly && (
-                  <span className="inline-flex items-center rounded bg-[#ffb800]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#ffb800]">
+                  <span className="pill-gold text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full">
                     Invite Only
                   </span>
                 )}
               </div>
-              <p className="font-mono text-[11px] text-[#9a9a9a]">
+              <p className="font-mono text-[11px] text-muted-soft">
                 [{club.tag}] · {club.city}, {club.country}
               </p>
             </div>
@@ -109,7 +122,7 @@ export default async function ClubProfilePage({
         </div>
 
         {club.description && (
-          <p className="text-sm text-[#9a9a9a] leading-relaxed">{club.description}</p>
+          <p className="text-sm text-muted leading-relaxed">{club.description}</p>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -119,20 +132,29 @@ export default async function ClubProfilePage({
           <StatBox label="Wins" value={globalRanking?.wins ?? 0} />
         </div>
 
-        <section className="rounded-xl border border-[#333] bg-[#1a1a1a]/60 overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#333]">
-            <h2 className="font-mono text-[11px] uppercase tracking-wider text-[#9a9a9a]">
-              Roster
+        {globalRanking && globalRanking.played > 0 && (
+          <div className="grid grid-cols-4 gap-3">
+            <MiniStat label="Played" value={globalRanking.played} />
+            <MiniStat label="Draws" value={globalRanking.draws} />
+            <MiniStat label="Losses" value={globalRanking.losses} />
+            <MiniStat label="GD" value={(globalRanking.goalsFor - globalRanking.goalsAgainst) >= 0 ? `+${globalRanking.goalsFor - globalRanking.goalsAgainst}` : `${globalRanking.goalsFor - globalRanking.goalsAgainst}`} />
+          </div>
+        )}
+
+        <section className="frosted-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border-faint">
+            <h2 className="font-mono text-[11px] uppercase tracking-wider text-muted-soft">
+              Roster ({memberCount})
             </h2>
           </div>
-          <ul className="divide-y divide-[#333]">
+          <ul className="divide-y divide-border-faint">
             {members.map((m) => (
-              <li key={m.id} className="px-4 py-3 flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg border border-[#333] bg-black bg-cover bg-center shrink-0 flex items-center justify-center">
+              <li key={m.id} className="px-4 py-3 flex items-center gap-3 transition-colors duration-200 hover:bg-bg-highlight/50">
+                <div className="h-9 w-9 rounded-[10px] border border-border-faint bg-bg-elevated bg-cover bg-center shrink-0 flex items-center justify-center">
                   {m.user.avatarUrl ? (
-                    <img src={m.user.avatarUrl} alt="" className="h-full w-full rounded-lg object-cover" />
+                    <img src={m.user.avatarUrl} alt="" className="h-full w-full rounded-[10px] object-cover" />
                   ) : (
-                    <span className="text-[10px] font-bold text-[#00ff85]">
+                    <span className="text-[10px] font-bold text-accent">
                       {(m.user.displayName || m.user.username)[0].toUpperCase()}
                     </span>
                   )}
@@ -140,20 +162,20 @@ export default async function ClubProfilePage({
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/player/${m.user.username}`}
-                    className="text-sm text-white hover:text-[#00ff85] transition-colors font-medium"
+                    className="text-sm text-ink hover:text-accent transition-colors duration-200 font-medium"
                   >
                     {m.user.displayName || m.user.username}
                   </Link>
-                  <p className="font-mono text-[10px] text-[#9a9a9a]">@{m.user.username}</p>
+                  <p className="font-mono text-[10px] text-muted-soft">@{m.user.username}</p>
                 </div>
                 <span
                   className={
                     "text-[10px] font-bold uppercase tracking-wider " +
                     (m.role === "MANAGER"
-                      ? "text-[#00ff85]"
+                      ? "text-accent"
                       : m.role === "CAPTAIN"
-                        ? "text-[#ffb800]"
-                        : "text-[#666]")
+                        ? "text-gold"
+                        : "text-muted-faint")
                   }
                 >
                   {m.role}
@@ -163,11 +185,48 @@ export default async function ClubProfilePage({
           </ul>
         </section>
 
-        <div className="text-center font-mono text-[10px] text-[#666]">
+        {recentMatches.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">
+              Recent Matches
+            </h2>
+            <div className="space-y-2">
+              {recentMatches.map((m) => {
+                const p1Name = m.player1.displayName || m.player1.username;
+                const p2Name = m.player2.displayName || m.player2.username;
+                const isP1Win = m.winnerId === m.player1.id;
+                const isP2Win = m.winnerId === m.player2.id;
+                return (
+                  <Link
+                    key={m.id}
+                    href={`/matches/${m.id}`}
+                    className="block frosted-card-sm p-3 hover:border-accent/15 transition-all duration-200"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-medium ${isP1Win ? "text-accent" : "text-ink"}`}>
+                        {p1Name}
+                      </span>
+                      <div className="flex items-center gap-1.5 font-mono text-sm tabular-nums">
+                        <span className={isP1Win ? "text-accent" : "text-ink"}>{m.score1}</span>
+                        <span className="text-muted-faint">:</span>
+                        <span className={isP2Win ? "text-accent" : "text-ink"}>{m.score2}</span>
+                      </div>
+                      <span className={`text-xs font-medium ${isP2Win ? "text-accent" : "text-ink"}`}>
+                        {p2Name}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <div className="text-center font-mono text-[10px] text-muted-faint">
           Founded {club.createdAt.toLocaleDateString()} by{" "}
           <Link
             href={`/player/${manager?.username ?? ""}`}
-            className="text-[#9a9a9a] hover:text-[#00ff85]"
+            className="text-muted-soft hover:text-accent transition-colors duration-200"
           >
             {manager?.displayName ?? manager?.username ?? "Unknown"}
           </Link>
@@ -189,12 +248,21 @@ function StatBox({
   return (
     <div
       className={
-        "rounded-lg border p-3 " +
-        (accent ? "border-[#00ff85]/30 bg-[#00ff85]/5" : "border-[#333] bg-[#1a1a1a]/50")
+        "frosted-card-sm p-3 " +
+        (accent ? "!border-accent/15 !bg-accent/5" : "")
       }
     >
-      <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a9a9a]">{label}</p>
-      <p className="bc-headline text-2xl text-white mt-1 tabular-nums">{value}</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-soft">{label}</p>
+      <p className={"bc-headline text-2xl mt-1 tabular-nums " + (accent ? "text-accent" : "text-ink")}>{value}</p>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="frosted-card-sm p-3 text-center">
+      <p className="bc-headline text-xl tabular-nums text-ink">{value}</p>
+      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">{label}</p>
     </div>
   );
 }

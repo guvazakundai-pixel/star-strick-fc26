@@ -61,11 +61,10 @@ export async function POST(req: Request) {
 
   await prisma.auditLog.create({
     data: {
-      actorId: auth.session.userId,
-      actionType: "CLUB_CREATE",
-      entityType: "CLUB",
-      entityId: club.id,
-      metadata: JSON.stringify({ name, tag }),
+      adminId: auth.session.userId,
+      action: "CLUB_CREATE",
+      target: `CLUB:${club.id}`,
+      details: { name, tag },
     },
   });
 

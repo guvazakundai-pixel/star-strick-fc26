@@ -38,10 +38,6 @@ const SORT_LABELS: Record<SortKey, string> = {
   streak: "Streak",
 };
 
-/* ════════════════════════════════════════════════════════════════
- * Main page
- * ════════════════════════════════════════════════════════════════ */
-
 export function RankingPage() {
   const [query, setQuery] = useState("");
   const [city, setCity] = useState<City | "All">("All");
@@ -188,46 +184,42 @@ export function RankingPage() {
   );
 }
 
-/* ════════════════════════════════════════════════════════════════
- * Header (disappearing) + JOIN RANKING CTA
- * ════════════════════════════════════════════════════════════════ */
-
 function BroadcastHeader({ hidden }: { hidden: boolean }) {
   return (
     <header
       className={
-        "fixed inset-x-0 top-0 z-40 border-b border-[#1a1a1a] backdrop-blur-md " +
+        "fixed inset-x-0 top-0 z-40 border-b border-border-faint backdrop-blur-xl " +
         "transition-transform duration-300 ease-out " +
         (hidden ? "-translate-y-full" : "translate-y-0")
       }
-      style={{ background: "rgba(0, 0, 0, 0.65)" }}
+      style={{ background: "rgba(13, 13, 15, 0.75)" }}
     >
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center gap-2 shrink-0">
-            <span className="bc-pulse-red h-2 w-2 rounded-full bg-[#ff3333]" />
-            <span className="text-[10px] font-black tracking-[0.25em] text-[#ff3333]">
+            <span className="bc-pulse-red h-2 w-2 rounded-full bg-negative" />
+            <span className="text-[10px] font-black tracking-[0.25em] text-negative">
               LIVE
             </span>
           </div>
-          <span className="h-5 w-px bg-[#333333]" />
-          <span className="bc-headline truncate text-base sm:text-lg leading-none text-white">
+          <span className="h-5 w-px bg-border-strong" />
+          <span className="bc-headline truncate text-base sm:text-lg leading-none text-ink">
             Star Strick
-            <span className="text-[#00ff85]">·</span>
-            <span className="text-white/60">FC26</span>
+            <span className="text-accent">·</span>
+            <span className="text-muted-soft">FC26</span>
           </span>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.22em] text-[#9a9a9a]">
+          <div className="hidden md:flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-soft">
             <span>S1</span>
-            <span className="h-3 w-px bg-[#333333]" />
+            <span className="h-3 w-px bg-border-strong" />
             <span>Wk 12</span>
           </div>
           <button
             type="button"
             onClick={() => alert("Player onboarding launches with Phase 2 auth.")}
-            className="bc-pulse-cta inline-flex items-center gap-1.5 h-9 px-3 sm:px-4 rounded-sm bg-[#00ff85] text-[#050505] bc-headline text-sm leading-none hover:bg-white transition-colors"
+            className="bc-pulse-cta inline-flex items-center gap-1.5 h-9 px-3 sm:px-4 rounded-[10px] cta-primary text-sm leading-none"
           >
             Join Ranking
             <svg
@@ -249,10 +241,6 @@ function BroadcastHeader({ hidden }: { hidden: boolean }) {
     </header>
   );
 }
-
-/* ════════════════════════════════════════════════════════════════
- * Filter bar (sticky) — search + chips + sort
- * ════════════════════════════════════════════════════════════════ */
 
 function FilterBar({
   query,
@@ -287,16 +275,16 @@ function FilterBar({
 }) {
   return (
     <div
-      className="sticky z-30 backdrop-blur-md border-b border-[#1a1a1a] transition-[top] duration-300"
+      className="sticky z-30 backdrop-blur-xl border-b border-border-faint transition-[top] duration-300"
       style={{
         top: headerHidden ? 0 : 56,
-        background: "rgba(5, 5, 5, 0.85)",
+        background: "rgba(13, 13, 15, 0.80)",
       }}
     >
       <div className="mx-auto max-w-[1400px] px-3 sm:px-6 py-3 space-y-2.5">
         <div className="flex items-center gap-2">
           <label className="relative flex-1 min-w-0">
-            <span className="absolute inset-y-0 left-3 flex items-center text-[#9a9a9a]">
+            <span className="absolute inset-y-0 left-3 flex items-center text-muted-soft">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -317,12 +305,12 @@ function FilterBar({
               placeholder="Search for a Pro, Gamertag, or Club..."
               value={query}
               onChange={(e) => onQuery(e.target.value)}
-              className="w-full h-10 rounded-sm bg-[#0a0a0a] ring-1 ring-[#1a1a1a] focus:ring-[#00ff85] focus:outline-none pl-10 pr-3 text-sm font-medium text-white placeholder:text-[#666] tracking-wide transition"
+              className="w-full h-10 apple-input pl-10 pr-3 text-sm font-medium"
             />
           </label>
-          <span className="hidden sm:inline-block text-[10px] font-black tracking-[0.2em] text-[#9a9a9a] px-2 tabular-nums">
+          <span className="hidden sm:inline-block text-[10px] font-black tracking-[0.2em] text-muted-soft px-2 tabular-nums">
             {totalShown}
-            <span className="text-[#444]">/</span>
+            <span className="text-muted-faint">/</span>
             {totalAll}
           </span>
         </div>
@@ -363,7 +351,7 @@ function FilterBar({
                 onDivision("All");
                 onClubId("All");
               }}
-              className="shrink-0 inline-flex items-center h-8 px-2.5 text-[10px] font-black tracking-[0.2em] text-[#ff4d4d] hover:text-white transition"
+              className="shrink-0 inline-flex items-center h-8 px-2.5 text-[10px] font-black tracking-[0.2em] text-negative/80 hover:text-ink transition-colors duration-200"
             >
               CLEAR
             </button>
@@ -371,7 +359,7 @@ function FilterBar({
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto bc-no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
-          <span className="shrink-0 text-[10px] font-black tracking-[0.22em] text-[#666] uppercase">
+          <span className="shrink-0 text-[10px] font-black tracking-[0.22em] text-muted-faint uppercase">
             Sort
           </span>
           {(["rank", "points", "winRate", "gd", "streak"] as const).map((k) => {
@@ -382,10 +370,10 @@ function FilterBar({
                 type="button"
                 onClick={() => onSort(k)}
                 className={
-                  "shrink-0 inline-flex items-center gap-1 h-7 px-2.5 rounded-sm text-[10px] font-black tracking-[0.18em] uppercase transition " +
+                  "shrink-0 inline-flex items-center gap-1 h-7 px-2.5 rounded-[8px] text-[10px] font-black tracking-[0.18em] uppercase transition-all duration-200 " +
                   (active
-                    ? "bg-[#00ff85] text-[#050505]"
-                    : "bg-[#0a0a0a] text-[#9a9a9a] ring-1 ring-[#1a1a1a] hover:text-white hover:ring-[#333]")
+                    ? "bg-accent/12 text-accent border border-accent/20"
+                    : "bg-bg-elevated/60 text-muted-soft border border-border-faint hover:text-ink hover:border-border-strong")
                 }
               >
                 {SORT_LABELS[k]}
@@ -419,17 +407,17 @@ function FilterChip({
   return (
     <label
       className={
-        "shrink-0 relative inline-flex items-center h-9 pl-3 pr-8 rounded-sm cursor-pointer " +
-        "text-[11px] font-black tracking-[0.18em] uppercase transition " +
+        "shrink-0 relative inline-flex items-center h-9 pl-3 pr-8 rounded-[10px] cursor-pointer " +
+        "text-[11px] font-black tracking-[0.18em] uppercase transition-all duration-200 " +
         (active
-          ? "bg-[#0a0a0a] text-white ring-1 ring-[#00ff85]"
-          : "bg-[#0a0a0a]/80 text-[#9a9a9a] ring-1 ring-[#1a1a1a] hover:text-white hover:ring-[#333]")
+          ? "bg-bg-elevated/80 text-ink border border-accent/20"
+          : "bg-bg-elevated/50 text-muted-soft border border-border-faint hover:text-ink hover:border-border-strong")
       }
     >
-      <span className={active ? "text-[#00ff85] mr-1.5" : "mr-1.5"}>
+      <span className={active ? "text-accent mr-1.5" : "mr-1.5"}>
         {label}
       </span>
-      <span className="text-white/90 max-w-[100px] truncate">{current}</span>
+      <span className="text-ink-soft">{current}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -444,7 +432,7 @@ function FilterChip({
       </select>
       <svg
         viewBox="0 0 24 24"
-        className="absolute right-2 h-3 w-3 text-[#666] pointer-events-none"
+        className="absolute right-2 h-3 w-3 text-muted-faint pointer-events-none"
         fill="none"
         stroke="currentColor"
         strokeWidth={2.5}
@@ -457,10 +445,6 @@ function FilterChip({
     </label>
   );
 }
-
-/* ════════════════════════════════════════════════════════════════
- * List (master) — division-grouped with sticky tier banners
- * ════════════════════════════════════════════════════════════════ */
 
 function RankingsList({
   grouped,
@@ -482,21 +466,21 @@ function RankingsList({
       <div className="px-2 sm:px-0 mb-3 sm:mb-4 flex items-end justify-between">
         <h1
           id="rankings-heading"
-          className="bc-headline text-3xl sm:text-5xl leading-[0.9] text-white"
+          className="bc-headline text-3xl sm:text-5xl leading-[0.9] text-ink"
         >
           World
           <br />
-          <span className="text-[#00ff85]">Rankings</span>
+          <span className="text-accent">Rankings</span>
         </h1>
-        <p className="hidden sm:block max-w-[260px] text-[11px] font-medium uppercase tracking-[0.18em] text-[#9a9a9a] text-right">
+        <p className="hidden sm:block max-w-[260px] text-[11px] font-medium uppercase tracking-[0.18em] text-muted-soft text-right">
           Use ↑↓ to step through — Enter opens detail
         </p>
       </div>
 
       {empty ? (
-        <div className="border border-dashed border-[#1a1a1a] rounded-sm p-12 text-center">
-          <p className="bc-headline text-2xl text-white/60">No players match</p>
-          <p className="mt-1 text-[11px] font-bold tracking-[0.18em] text-[#666] uppercase">
+        <div className="frosted-card p-12 text-center">
+          <p className="bc-headline text-2xl text-muted">No players match</p>
+          <p className="mt-1 text-[11px] font-bold tracking-[0.18em] text-muted-faint uppercase">
             Adjust filters or clear search
           </p>
         </div>
@@ -508,7 +492,7 @@ function RankingsList({
           runningIndex += players.length;
           return (
             <DivisionSection key={d} division={d} count={players.length}>
-              <ul className="bc-list divide-y divide-[#1a1a1a] border-t border-b border-[#1a1a1a] bg-black/30">
+              <ul className="bc-list divide-y divide-border-faint border-t border-b border-border-faint rounded-[16px] overflow-hidden">
                 {players.map((p, i) => (
                   <PlayerCard
                     key={p.id}
@@ -552,18 +536,18 @@ function DivisionSection({
           >
             {division}
           </h2>
-          <span className="text-[10px] font-black tracking-[0.22em] text-[#666] uppercase">
+          <span className="text-[10px] font-black tracking-[0.22em] text-muted-faint uppercase">
             {count} {count === 1 ? "Pro" : "Pros"}
           </span>
         </div>
         <span
           className="hidden sm:block text-[10px] font-black tracking-[0.22em] uppercase"
-          style={{ color: tier.color, opacity: 0.7 }}
+          style={{ color: tier.color, opacity: 0.6 }}
         >
           {tier.tag}
         </span>
       </div>
-      <div className="h-[3px] w-full" style={{ background: tier.color }} />
+      <div className="h-[3px] w-full rounded-full" style={{ background: `linear-gradient(90deg, ${tier.color}, transparent)` }} />
       {children}
     </div>
   );
@@ -578,13 +562,9 @@ function tierStyle(d: Division): { color: string; tag: string } {
     case "Challenger":
       return { color: "#9a9a9a", tag: "Climbing" };
     case "Rookie":
-      return { color: "#666666", tag: "Entry tier" };
+      return { color: "#6B6D78", tag: "Entry tier" };
   }
 }
-
-/* ════════════════════════════════════════════════════════════════
- * Detail content (shared between desktop panel + mobile sheet)
- * ════════════════════════════════════════════════════════════════ */
 
 function DetailContent({
   player,
@@ -601,13 +581,13 @@ function DetailContent({
   return (
     <div
       key={player.id}
-      className="bc-slide-fade relative overflow-hidden rounded-sm border border-[#1a1a1a] bg-[#0a0a0a]"
+      className="bc-slide-fade relative overflow-hidden rounded-[20px] border border-border-faint bg-bg-elevated/80 backdrop-blur-xl"
     >
       <div
         className="absolute inset-0 opacity-50 pointer-events-none"
         style={{
           background:
-            "radial-gradient(600px 400px at 90% -10%, rgba(0,255,133,0.18), transparent 60%), radial-gradient(500px 400px at -10% 110%, rgba(255,255,255,0.04), transparent 55%)",
+            "radial-gradient(600px 400px at 90% -10%, rgba(0,255,133,0.12), transparent 60%), radial-gradient(500px 400px at -10% 110%, rgba(255,255,255,0.03), transparent 55%)",
         }}
       />
 
@@ -617,7 +597,7 @@ function DetailContent({
         style={{
           fontSize: ghostSize,
           color: "transparent",
-          WebkitTextStroke: "1px rgba(255,255,255,0.08)",
+          WebkitTextStroke: "1px rgba(255,255,255,0.06)",
           letterSpacing: "-0.06em",
         }}
       >
@@ -627,47 +607,47 @@ function DetailContent({
       <div className="relative z-10 p-6 xl:p-8">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black tracking-[0.25em] text-[#00ff85]">
+            <span className="text-[10px] font-black tracking-[0.25em] text-accent">
               ACTIVE
             </span>
-            <span className="h-3 w-px bg-[#333333]" />
-            <span className="text-[10px] font-bold tracking-[0.22em] text-[#9a9a9a] uppercase">
+            <span className="h-3 w-px bg-border-strong" />
+            <span className="text-[10px] font-bold tracking-[0.22em] text-muted-soft uppercase">
               {player.division}
             </span>
           </div>
-          <span className="bc-headline text-5xl leading-none text-[#00ff85] tabular-nums">
+          <span className="bc-headline text-5xl leading-none text-accent tabular-nums">
             #{player.rank.toString().padStart(2, "0")}
           </span>
         </div>
 
         <div className="mt-6 flex items-end gap-4">
-          <div className="grid place-items-center h-24 w-24 rounded-full bg-[#1a1a1a] ring-2 ring-[#00ff85] shadow-[0_0_40px_-6px_rgba(0,255,133,0.55)]">
-            <span className="bc-headline text-5xl text-[#00ff85] leading-none">
+          <div className="grid place-items-center h-24 w-24 rounded-full bg-bg-highlight border-2 border-accent/30" style={{ boxShadow: '0 0 40px -6px rgba(0,255,133,0.40)' }}>
+            <span className="bc-headline text-5xl text-accent leading-none">
               {player.gamertag.charAt(0)}
             </span>
           </div>
           <div className="min-w-0 pb-1">
-            <p className="text-[10px] font-black tracking-[0.25em] text-[#9a9a9a] uppercase">
+            <p className="text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase">
               {player.city}
-              <span className="mx-2 text-[#333333]">•</span>
+              <span className="mx-2 text-border-strong">•</span>
               ZWE
             </p>
-            <p className="mt-1 text-base font-bold text-white/90 truncate">
+            <p className="mt-1 text-base font-bold text-ink-soft truncate">
               {player.name}
             </p>
             {club && (
-              <p className="text-[11px] font-bold tracking-[0.18em] text-[#9a9a9a] uppercase">
+              <p className="text-[11px] font-bold tracking-[0.18em] text-muted-soft uppercase">
                 {club.name}
               </p>
             )}
           </div>
         </div>
 
-        <h2 className="bc-headline mt-6 leading-[0.85] text-white text-[44px] xl:text-[56px] break-words">
+        <h2 className="bc-headline mt-6 leading-[0.85] text-ink text-[44px] xl:text-[56px] break-words">
           {player.gamertag}
         </h2>
 
-        <div className="mt-6 grid grid-cols-2 gap-px bg-[#1a1a1a] border border-[#1a1a1a]">
+        <div className="mt-6 grid grid-cols-2 gap-px bg-bg-highlight border border-border-faint rounded-[14px] overflow-hidden">
           <Metric
             label="Streak"
             value={player.winStreak.toString()}
@@ -689,7 +669,7 @@ function DetailContent({
         </div>
 
         <div className="mt-5">
-          <p className="text-[10px] font-black tracking-[0.25em] text-[#9a9a9a] uppercase mb-2">
+          <p className="text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase mb-2">
             Form
           </p>
           <div className="flex items-center gap-1.5">
@@ -697,12 +677,12 @@ function DetailContent({
               <span
                 key={i}
                 className={
-                  "inline-grid place-items-center h-8 w-8 text-xs font-black italic " +
+                  "inline-grid place-items-center h-8 w-8 rounded-[8px] text-xs font-black italic " +
                   (r === "W"
-                    ? "bg-[#00ff85] text-[#050505]"
+                    ? "bg-accent/15 text-accent border border-accent/25"
                     : r === "L"
-                      ? "bg-[#ff3333] text-white"
-                      : "bg-[#333333] text-white/80")
+                      ? "bg-negative/12 text-negative border border-negative/20"
+                      : "bg-bg-highlight text-muted-soft border border-border-faint")
                 }
               >
                 {r}
@@ -711,23 +691,23 @@ function DetailContent({
           </div>
         </div>
 
-        <div className="mt-6 pt-5 border-t border-[#1a1a1a] grid grid-cols-2 gap-4">
+        <div className="mt-6 pt-5 border-t border-border-faint grid grid-cols-2 gap-4">
           <div>
-            <p className="text-[10px] font-black tracking-[0.25em] text-[#9a9a9a] uppercase">
+            <p className="text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase">
               Prize Pool
             </p>
-            <p className="mt-1 bc-headline text-2xl text-white tabular-nums">
+            <p className="mt-1 bc-headline text-2xl text-ink tabular-nums">
               ${player.prizeMoney.toLocaleString()}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-black tracking-[0.25em] text-[#9a9a9a] uppercase">
+            <p className="text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase">
               Rig
             </p>
-            <p className="mt-1 text-[11px] text-white/80 leading-tight truncate">
+            <p className="mt-1 text-[11px] text-ink-soft leading-tight truncate">
               {player.hardware.console}
             </p>
-            <p className="text-[10px] text-[#9a9a9a] truncate">
+            <p className="text-[10px] text-muted-soft truncate">
               {player.hardware.controller}
             </p>
           </div>
@@ -760,15 +740,15 @@ function Metric({
 }) {
   const valueClass =
     tone === "positive"
-      ? "text-[#00ff85]"
+      ? "text-accent"
       : tone === "negative"
-        ? "text-[#ff4d4d]"
+        ? "text-negative"
         : accent
-          ? "text-[#00ff85]"
-          : "text-white";
+          ? "text-accent"
+          : "text-ink";
   return (
-    <div className="bg-[#050505] px-4 py-4">
-      <p className="flex items-center gap-1.5 text-[10px] font-black tracking-[0.25em] text-[#9a9a9a] uppercase">
+    <div className="bg-bg/60 px-4 py-4">
+      <p className="flex items-center gap-1.5 text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase">
         {icon}
         {label}
       </p>
@@ -784,17 +764,13 @@ function FireIcon() {
     <svg
       viewBox="0 0 24 24"
       fill="currentColor"
-      className="h-3.5 w-3.5 text-[#ff7a00]"
+      className="h-3.5 w-3.5 text-orange"
       aria-hidden
     >
       <path d="M12 2c.5 4-2.5 5-2.5 8 0 1.66 1.12 3 2.5 3s2.5-1.34 2.5-3c0-1.5-1-2-1-3 2 .5 4.5 3.5 4.5 7 0 3.87-3.13 7-7 7s-7-3.13-7-7c0-4 4-6.5 4-9 0-1.5-.5-2.5-1-3 2 0 5 1 5 0Z" />
     </svg>
   );
 }
-
-/* ════════════════════════════════════════════════════════════════
- * Desktop sticky detail panel
- * ════════════════════════════════════════════════════════════════ */
 
 function DesktopDetailPanel({
   player,
@@ -811,10 +787,6 @@ function DesktopDetailPanel({
     </aside>
   );
 }
-
-/* ════════════════════════════════════════════════════════════════
- * Mobile bottom sheet
- * ════════════════════════════════════════════════════════════════ */
 
 function MobileBottomSheet({
   open,
@@ -866,7 +838,7 @@ function MobileBottomSheet({
         aria-label="Close"
         onClick={onClose}
         className={
-          "absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300 " +
+          "absolute inset-0 bg-bg/60 backdrop-blur-sm transition-opacity duration-300 " +
           (open ? "opacity-100" : "opacity-0")
         }
       />
@@ -874,21 +846,22 @@ function MobileBottomSheet({
         role="dialog"
         aria-modal="true"
         className={
-          "absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-xl " +
-          "bg-[#050505] border-t border-[#1a1a1a] " +
+          "absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-[24px] " +
+          "bg-bg-elevated/95 backdrop-blur-2xl border-t border-border-faint " +
           "transition-transform duration-300 ease-out"
         }
         style={{
           transform: open
             ? `translateY(${dragY}px)`
             : "translateY(100%)",
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.30)',
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-center pt-3 pb-2 bg-[#050505]">
-          <span className="h-1 w-10 rounded-full bg-[#333]" />
+        <div className="sticky top-0 z-10 flex items-center justify-center pt-3 pb-2 bg-bg-elevated/90">
+          <span className="h-1 w-10 rounded-full bg-border-strong" />
         </div>
         <div className="px-3 pb-6">
           <DetailContent player={player} club={club} />
@@ -897,10 +870,6 @@ function MobileBottomSheet({
     </div>
   );
 }
-
-/* ════════════════════════════════════════════════════════════════
- * Hooks: active player tracking, URL sync, keyboard nav, scroll dir
- * ════════════════════════════════════════════════════════════════ */
 
 function useActivePlayer(orderedIds: string[]) {
   const [activeId, setActiveId] = useState<string | null>(
@@ -1077,10 +1046,6 @@ function useScrollDirection() {
 
   return hidden;
 }
-
-/* ════════════════════════════════════════════════════════════════
- * Sort comparator
- * ════════════════════════════════════════════════════════════════ */
 
 function compareBy(
   a: Player,

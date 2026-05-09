@@ -8,7 +8,7 @@ import { useSession } from "@/lib/session-client";
 const ITEMS = [
   { href: "/", label: "Home", icon: HomeIcon },
   { href: "/rankings", label: "Rankings", icon: RankIcon },
-  { href: "/matches/find", label: "Play", icon: PlayIcon },
+  { href: "/matches", label: "Play", icon: PlayIcon },
   { href: "/clubs", label: "Clubs", icon: ShieldIcon },
 ] as const;
 
@@ -21,30 +21,36 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-0 inset-x-0 z-50 bg-surface border-t border-border pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 inset-x-0 z-50 pb-[env(safe-area-inset-bottom)] dock-glow"
     >
-      <ul className="mx-auto max-w-2xl grid grid-cols-5">
-        {ITEMS.map(({ href, label, icon: Icon }) => {
-          const active =
-            href === "/" ? pathname === "/" : pathname.startsWith(href);
-          return (
-            <li key={href}>
+      <div
+        className="mx-auto max-w-lg px-2 pb-1"
+      >
+        <div className="flex items-center justify-around rounded-t-2xl bg-bg-elevated/70 backdrop-blur-2xl border border-b-0 border-border-faint px-1 py-1"
+          style={{ boxShadow: '0 -4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03)' }}
+        >
+          {ITEMS.map(({ href, label, icon: Icon }) => {
+            const active =
+              href === "/" ? pathname === "/" : pathname.startsWith(href);
+            return (
               <Link
+                key={href}
                 href={href}
-                className="relative flex flex-col items-center justify-center gap-1 py-2.5 px-1 text-[10px] font-medium uppercase tracking-wider"
+                className="relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-2xl transition-all duration-200"
+                style={active ? { background: 'rgba(0, 255, 133, 0.06)' } : undefined}
               >
                 <span
                   className={
-                    "h-5 w-5 grid place-items-center transition-colors " +
-                    (active ? "text-accent" : "text-muted")
+                    "h-5 w-5 grid place-items-center transition-colors duration-200 " +
+                    (active ? "text-accent" : "text-muted-soft")
                   }
                 >
                   <Icon />
                 </span>
                 <span
                   className={
-                    "transition-colors " +
-                    (active ? "text-accent" : "text-muted")
+                    "text-[9px] font-semibold uppercase tracking-wider transition-colors duration-200 " +
+                    (active ? "text-accent" : "text-muted-soft")
                   }
                 >
                   {label}
@@ -52,35 +58,35 @@ export function BottomNav() {
                 {active && (
                   <span
                     aria-hidden
-                    className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 bg-accent"
+                    className="absolute -top-0.5 left-1/2 -translate-x-1/2 h-[2px] w-6 rounded-full bg-accent"
+                    style={{ boxShadow: '0 0 8px rgba(0, 255, 133, 0.5)' }}
                   />
                 )}
               </Link>
-            </li>
-          );
-        })}
-        <li>
+            );
+          })}
           {loggedIn ? (
             <Link
               href="/dashboard"
-              className="relative flex flex-col items-center justify-center gap-1 py-2.5 px-1 text-[10px] font-medium uppercase tracking-wider"
+              className="relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-2xl transition-all duration-200"
+              style={(pathname.startsWith("/dashboard") || pathname === "/profile") ? { background: 'rgba(0, 255, 133, 0.06)' } : undefined}
             >
               <span
                 className={
-                  "h-5 w-5 grid place-items-center transition-colors " +
+                  "h-5 w-5 grid place-items-center transition-colors duration-200 " +
                   (pathname.startsWith("/dashboard") || pathname === "/profile"
                     ? "text-accent"
-                    : "text-muted")
+                    : "text-muted-soft")
                 }
               >
                 <UserIcon />
               </span>
               <span
                 className={
-                  "transition-colors " +
+                  "text-[9px] font-semibold uppercase tracking-wider transition-colors duration-200 " +
                   (pathname.startsWith("/dashboard") || pathname === "/profile"
                     ? "text-accent"
-                    : "text-muted")
+                    : "text-muted-soft")
                 }
               >
                 Me
@@ -88,23 +94,24 @@ export function BottomNav() {
               {(pathname.startsWith("/dashboard") || pathname === "/profile") && (
                 <span
                   aria-hidden
-                  className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 bg-accent"
+                  className="absolute -top-0.5 left-1/2 -translate-x-1/2 h-[2px] w-6 rounded-full bg-accent"
+                  style={{ boxShadow: '0 0 8px rgba(0, 255, 133, 0.5)' }}
                 />
               )}
             </Link>
           ) : (
             <button
               onClick={() => openAuth("signin")}
-              className="relative flex flex-col items-center justify-center gap-1 py-2.5 px-1 text-[10px] font-medium uppercase tracking-wider w-full"
+              className="relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-2xl w-full transition-all duration-200"
             >
-              <span className="h-5 w-5 grid place-items-center text-muted">
+              <span className="h-5 w-5 grid place-items-center text-muted-soft">
                 <UserIcon />
               </span>
-              <span className="text-muted">Me</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-soft">Me</span>
             </button>
           )}
-        </li>
-      </ul>
+        </div>
+      </div>
     </nav>
   );
 }
@@ -124,17 +131,6 @@ function RankIcon() {
       <path d="M10 20V4" />
       <path d="M16 20v-8" />
       <path d="M22 20H2" />
-    </svg>
-  );
-}
-function TrophyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-      <path d="M8 21h8" />
-      <path d="M12 17v4" />
-      <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
-      <path d="M17 5h3v3a3 3 0 0 1-3 3" />
-      <path d="M7 5H4v3a3 3 0 0 0 3 3" />
     </svg>
   );
 }

@@ -113,10 +113,10 @@ function Toolbar({
   resultCount: number;
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface">
+    <div className="frosted-card-sm overflow-hidden">
       <div className="p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
         <label className="relative flex-1 min-w-[200px]">
-          <span className="absolute inset-y-0 left-3 flex items-center text-muted">
+          <span className="absolute inset-y-0 left-3 flex items-center text-muted-soft">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
               <circle cx="11" cy="11" r="7" />
               <path d="M21 21l-4.3-4.3" />
@@ -128,7 +128,7 @@ function Toolbar({
             placeholder="Search player, gamertag, club…"
             value={query}
             onChange={(e) => onQuery(e.target.value)}
-            className="w-full h-9 rounded-md border border-border bg-surface pl-9 pr-3 text-sm text-ink placeholder:text-muted-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition"
+            className="w-full h-9 apple-input pl-9 pr-3 text-sm"
           />
         </label>
 
@@ -157,7 +157,7 @@ function Toolbar({
         </div>
       </div>
 
-      <div className="px-3 sm:px-4 py-2 border-t border-border flex flex-wrap items-center gap-2 text-xs text-muted">
+      <div className="px-3 sm:px-4 py-2 border-t border-border-faint flex flex-wrap items-center gap-2 text-xs text-muted-soft">
         <span className="font-medium uppercase tracking-wide text-[11px]">Sort</span>
         {(["rank", "points", "wins"] as const).map((k) => {
           const active = sortKey === k;
@@ -171,10 +171,10 @@ function Toolbar({
               key={k}
               onClick={() => onSort(k)}
               className={
-                "inline-flex items-center gap-1 h-7 px-2.5 rounded text-[12px] border transition " +
+                "inline-flex items-center gap-1 h-7 px-2.5 rounded-[8px] text-[12px] transition-all duration-200 " +
                 (active
-                  ? "border-accent text-accent bg-accent-soft"
-                  : "border-border text-ink-soft hover:border-border-strong hover:bg-surface-2")
+                  ? "bg-accent/12 text-accent border border-accent/20"
+                  : "border border-border-faint text-muted-soft hover:border-border-strong hover:bg-bg-highlight/50")
               }
             >
               {labels[k]}
@@ -184,7 +184,7 @@ function Toolbar({
             </button>
           );
         })}
-        <span className="ml-auto font-mono text-[11px] text-muted">
+        <span className="ml-auto font-mono text-[11px] text-muted-soft">
           {resultCount} of {PLAYERS.length} players
         </span>
       </div>
@@ -205,13 +205,13 @@ function Select({
 }) {
   return (
     <label className="relative inline-flex items-center">
-      <span className="absolute -top-2 left-2 px-1 bg-surface text-[9px] font-medium uppercase tracking-wider text-muted">
+      <span className="absolute -top-2 left-2 px-1 bg-bg-elevated/80 text-[9px] font-medium uppercase tracking-wider text-muted-soft">
         {label}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none h-9 rounded-md border border-border bg-surface pl-3 pr-8 text-xs text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition cursor-pointer"
+        className="appearance-none h-9 apple-input pl-3 pr-8 text-xs cursor-pointer"
       >
         {options.map((o) => {
           const v = typeof o === "string" ? o : o.value;
@@ -223,7 +223,7 @@ function Select({
           );
         })}
       </select>
-      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted-soft">
+      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted-faint">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -240,33 +240,33 @@ function RankingsTable({
   onOpen: (id: string) => void;
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface overflow-hidden">
+    <div className="frosted-card-sm overflow-hidden">
       <div className="overflow-x-auto" style={{ scrollBehavior: "smooth" }}>
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="text-left text-muted text-[11px] uppercase tracking-wider">
+            <tr className="text-left text-muted-soft text-[11px] uppercase tracking-wider">
               <th
                 scope="col"
-                className="sticky left-0 z-20 bg-surface-2 border-b border-border w-12 px-3 py-2.5 font-medium"
+                className="sticky left-0 z-20 bg-bg-highlight/80 backdrop-blur-sm border-b border-border-faint w-12 px-3 py-2.5 font-medium"
               >
                 #
               </th>
               <th
                 scope="col"
-                className="sticky left-12 z-20 bg-surface-2 sticky-shadow border-b border-border min-w-[210px] px-3 py-2.5 font-medium"
+                className="sticky left-12 z-20 bg-bg-highlight/80 backdrop-blur-sm sticky-shadow border-b border-border-faint min-w-[210px] px-3 py-2.5 font-medium"
               >
                 Player
               </th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">Pts</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium">Form</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">P</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right text-positive">W</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">D</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right text-negative">L</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">GF</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">GA</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right">GD</th>
-              <th scope="col" className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right pr-4">G/M</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right">Pts</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium">Form</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right">P</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right text-accent">W</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right">D</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right text-negative">L</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right">GF</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right">GA</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right">GD</th>
+              <th scope="col" className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right pr-4">G/M</th>
             </tr>
           </thead>
           <tbody>
@@ -275,7 +275,7 @@ function RankingsTable({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-12 text-center text-muted">
+                <td colSpan={12} className="px-4 py-12 text-center text-muted-soft">
                   No players match these filters.
                 </td>
               </tr>
@@ -299,18 +299,17 @@ function PlayerRow({
   const club = clubByPlayerId(player.id);
   const matches = player.wins + player.losses + player.draws;
   const gd = player.goalsFor - player.goalsAgainst;
-  const isLast = index < 0; // placeholder; we use border-b on each row
   const topThree = player.rank <= 3;
-  const rowBg = topThree ? "bg-accent-soft/40" : "bg-surface";
-  const stickyBg = topThree ? "bg-accent-soft/40" : "bg-surface";
+  const rowBg = topThree ? "bg-accent-soft/30" : "bg-transparent";
+  const stickyBg = topThree ? "bg-accent-soft/30" : "bg-transparent";
 
   return (
     <tr
       onClick={onOpen}
       className={
-        "cursor-pointer border-b border-border last:border-b-0 transition-colors " +
+        "cursor-pointer border-b border-border-faint last:border-b-0 transition-colors duration-200 " +
         rowBg +
-        " hover:bg-surface-2"
+        " hover:bg-bg-highlight/50"
       }
     >
       <td
@@ -337,7 +336,7 @@ function PlayerRow({
               </p>
               <DivisionTag division={player.division} />
             </div>
-            <p className="truncate text-[11px] text-muted">
+            <p className="truncate text-[11px] text-muted-soft">
               <span className="font-mono">@{player.gamertag}</span>
               {club && <> · {club.name}</>}
             </p>
@@ -355,7 +354,7 @@ function PlayerRow({
       <td className="px-3 py-2.5 text-right align-middle font-mono text-ink-soft tabular-nums">
         {matches}
       </td>
-      <td className="px-3 py-2.5 text-right align-middle font-mono text-positive tabular-nums">
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-accent tabular-nums">
         {player.wins}
       </td>
       <td className="px-3 py-2.5 text-right align-middle font-mono text-ink-soft tabular-nums">
@@ -373,7 +372,7 @@ function PlayerRow({
       <td
         className={
           "px-3 py-2.5 text-right align-middle font-mono tabular-nums " +
-          (gd > 0 ? "text-positive" : gd < 0 ? "text-negative" : "text-ink-soft")
+          (gd > 0 ? "text-accent" : gd < 0 ? "text-negative" : "text-ink-soft")
         }
       >
         {gd > 0 ? `+${gd}` : gd}
@@ -389,7 +388,7 @@ function RankDelta({ rank, prev }: { rank: number; prev: number }) {
   const diff = prev - rank;
   if (diff === 0) {
     return (
-      <span className="inline-flex items-center justify-center w-5 text-muted-soft" aria-label="No change">
+      <span className="inline-flex items-center justify-center w-5 text-muted-faint" aria-label="No change">
         —
       </span>
     );
@@ -399,7 +398,7 @@ function RankDelta({ rank, prev }: { rank: number; prev: number }) {
     <span
       className={
         "inline-flex items-center gap-0.5 font-mono text-[11px] tabular-nums " +
-        (up ? "text-positive" : "text-negative")
+        (up ? "text-accent" : "text-negative")
       }
       aria-label={up ? `Up ${Math.abs(diff)}` : `Down ${Math.abs(diff)}`}
     >
@@ -411,15 +410,15 @@ function RankDelta({ rank, prev }: { rank: number; prev: number }) {
 
 function DivisionTag({ division }: { division: Division }) {
   const cls: Record<Division, string> = {
-    Elite: "border-gold/60 text-gold bg-gold/5",
-    Pro: "border-accent/40 text-accent bg-accent-soft",
-    Challenger: "border-border-strong text-ink-soft bg-surface-2",
-    Rookie: "border-border text-muted bg-surface",
+    Elite: "border-gold/40 text-gold bg-gold/5",
+    Pro: "border-accent/30 text-accent bg-accent-soft",
+    Challenger: "border-border-strong text-ink-soft bg-bg-highlight/80",
+    Rookie: "border-border text-muted-soft bg-transparent",
   };
   return (
     <span
       className={
-        "shrink-0 inline-flex items-center rounded border px-1.5 py-px text-[9px] font-medium uppercase tracking-wider " +
+        "shrink-0 inline-flex items-center rounded-[6px] border px-1.5 py-px text-[9px] font-medium uppercase tracking-wider " +
         cls[division]
       }
     >
@@ -434,16 +433,16 @@ function FormStrip({ form }: { form: FormResult[] }) {
       {form.map((r, i) => {
         const cls =
           r === "W"
-            ? "bg-positive text-surface"
+            ? "bg-accent/15 text-accent border border-accent/25"
             : r === "L"
-              ? "bg-negative text-surface"
-              : "bg-border-strong text-ink-soft";
+              ? "bg-negative/12 text-negative border border-negative/20"
+              : "bg-bg-highlight text-ink-soft border border-border-faint";
         return (
           <span
             key={i}
             title={r === "W" ? "Win" : r === "L" ? "Loss" : "Draw"}
             className={
-              "inline-grid place-items-center h-5 w-5 rounded text-[10px] font-bold " +
+              "inline-grid place-items-center h-5 w-5 rounded-[6px] text-[10px] font-bold " +
               cls
             }
           >
@@ -484,15 +483,16 @@ function PlayerDrawer({
       <button
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-ink/30"
+        className="absolute inset-0 bg-bg/50 backdrop-blur-sm"
       />
       <aside
         role="dialog"
         aria-modal="true"
         className={
-          "absolute right-0 top-0 h-full w-full sm:max-w-md bg-surface border-l border-border transition-transform duration-300 ease-out " +
+          "absolute right-0 top-0 h-full w-full sm:max-w-md bg-bg-elevated/95 backdrop-blur-2xl border-l border-border-faint transition-transform duration-300 ease-out " +
           (player ? "translate-x-0" : "translate-x-full")
         }
+        style={{ boxShadow: '-8px 0 40px rgba(0,0,0,0.25)' }}
       >
         {player && <DrawerBody player={player} onClose={onClose} />}
       </aside>
@@ -508,13 +508,13 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-5 h-12 border-b border-border">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
+      <div className="flex items-center justify-between px-5 h-12 border-b border-border-faint">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-soft">
           Player Profile
         </p>
         <button
           onClick={onClose}
-          className="h-8 w-8 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2 transition"
+          className="h-8 w-8 grid place-items-center rounded-[10px] text-muted-soft hover:text-ink hover:bg-bg-highlight transition-all duration-200"
           aria-label="Close drawer"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -535,23 +535,23 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
           <p className="mt-3 text-2xl font-semibold text-ink leading-tight">
             {player.name}
           </p>
-          <p className="mt-0.5 font-mono text-sm text-muted">
+          <p className="mt-0.5 font-mono text-sm text-muted-soft">
             @{player.gamertag}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <DivisionTag division={player.division} />
-            <span className="inline-flex items-center rounded border border-border px-1.5 py-px text-[10px] font-medium uppercase tracking-wider text-ink-soft bg-surface-2">
+            <span className="inline-flex items-center rounded-[6px] border border-border-faint px-1.5 py-px text-[10px] font-medium uppercase tracking-wider text-ink-soft bg-bg-highlight/80">
               {player.city}
             </span>
             {club && (
-              <span className="inline-flex items-center rounded border border-border px-1.5 py-px text-[10px] font-medium uppercase tracking-wider text-ink-soft bg-surface-2">
+              <span className="inline-flex items-center rounded-[6px] border border-border-faint px-1.5 py-px text-[10px] font-medium uppercase tracking-wider text-ink-soft bg-bg-highlight/80">
                 {club.name}
               </span>
             )}
           </div>
         </header>
 
-        <section className="grid grid-cols-2 sm:grid-cols-3 border border-border rounded-md overflow-hidden divide-x divide-y divide-border bg-surface">
+        <section className="grid grid-cols-2 sm:grid-cols-3 border border-border-faint rounded-[14px] overflow-hidden divide-x divide-y divide-border-faint bg-bg-elevated/60">
           <Stat label="Points" value={player.points.toLocaleString()} />
           <Stat label="Win Rate" value={`${winRate.toFixed(1)}%`} />
           <Stat label="G / Match" value={player.gpm.toFixed(2)} />
@@ -565,7 +565,7 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
         </section>
 
         <section>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted mb-2">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-soft mb-2">
             Form (last 5)
           </p>
           <div className="flex items-center gap-1.5">
@@ -573,12 +573,12 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
               <span
                 key={i}
                 className={
-                  "inline-grid place-items-center h-9 w-9 rounded text-sm font-bold " +
+                  "inline-grid place-items-center h-9 w-9 rounded-[8px] text-sm font-bold " +
                   (r === "W"
-                    ? "bg-positive text-surface"
+                    ? "bg-accent/15 text-accent border border-accent/25"
                     : r === "L"
-                      ? "bg-negative text-surface"
-                      : "bg-border-strong text-ink-soft")
+                      ? "bg-negative/12 text-negative border border-negative/20"
+                      : "bg-bg-highlight text-ink-soft border border-border-faint")
                 }
               >
                 {r}
@@ -593,26 +593,26 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
         </section>
 
         <section>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted mb-2">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-soft mb-2">
             Goals
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-md border border-border bg-surface px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wider text-muted">Scored</p>
+            <div className="frosted-card-sm px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-soft">Scored</p>
               <p className="font-mono text-base text-ink tabular-nums">{player.goalsFor}</p>
             </div>
-            <div className="rounded-md border border-border bg-surface px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wider text-muted">Conceded</p>
+            <div className="frosted-card-sm px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-soft">Conceded</p>
               <p className="font-mono text-base text-ink tabular-nums">{player.goalsAgainst}</p>
             </div>
           </div>
         </section>
 
         <section>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted mb-2">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-soft mb-2">
             Hardware
           </p>
-          <dl className="rounded-md border border-border bg-surface divide-y divide-border text-xs">
+          <dl className="frosted-card-sm divide-y divide-border-faint text-xs">
             <SpecRow label="Console" value={player.hardware.console} />
             <SpecRow label="Controller" value={player.hardware.controller} />
             <SpecRow label="Display" value={player.hardware.monitor} />
@@ -623,10 +623,10 @@ function DrawerBody({ player, onClose }: { player: Player; onClose: () => void }
           disabled
           aria-disabled="true"
           title="Challenges arrive in Phase 2"
-          className="w-full h-10 rounded-md border border-border bg-surface-2 text-muted text-sm font-medium tracking-wide cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full h-10 rounded-[14px] border border-border-faint bg-bg-highlight/50 text-muted-soft text-sm font-medium tracking-wide cursor-not-allowed flex items-center justify-center gap-2"
         >
           Challenge Player
-          <span className="text-[9px] font-medium uppercase tracking-wider rounded border border-border px-1.5 py-0.5 text-muted">
+          <span className="pill-accent text-[8px] rounded-full px-1.5 py-0.5">
             Phase 2
           </span>
         </button>
@@ -646,13 +646,13 @@ function Stat({
 }) {
   const cls =
     tone === "positive"
-      ? "text-positive"
+      ? "text-accent"
       : tone === "negative"
         ? "text-negative"
         : "text-ink";
   return (
     <div className="px-3 py-2.5">
-      <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
+      <p className="text-[10px] uppercase tracking-wider text-muted-soft">{label}</p>
       <p className={"mt-0.5 font-mono text-base tabular-nums " + cls}>{value}</p>
     </div>
   );
@@ -669,13 +669,13 @@ function ResultPill({
 }) {
   const cls =
     tone === "positive"
-      ? "text-positive"
+      ? "text-accent"
       : tone === "negative"
         ? "text-negative"
         : "text-ink-soft";
   return (
-    <div className="rounded-md border border-border bg-surface px-2.5 py-1.5 flex items-center justify-between">
-      <span className="text-[10px] uppercase tracking-wider text-muted">{label}</span>
+    <div className="frosted-card-sm px-2.5 py-1.5 flex items-center justify-between">
+      <span className="text-[10px] uppercase tracking-wider text-muted-soft">{label}</span>
       <span className={"font-mono tabular-nums " + cls}>{value}</span>
     </div>
   );
@@ -684,7 +684,7 @@ function ResultPill({
 function SpecRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2">
-      <dt className="text-[10px] uppercase tracking-wider text-muted">{label}</dt>
+      <dt className="text-[10px] uppercase tracking-wider text-muted-soft">{label}</dt>
       <dd className="text-ink text-right truncate font-mono">{value}</dd>
     </div>
   );

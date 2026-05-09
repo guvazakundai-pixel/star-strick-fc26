@@ -83,10 +83,10 @@ function Toolbar({
   resultCount: number;
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface">
+    <div className="frosted-card-sm overflow-hidden">
       <div className="p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
         <label className="relative flex-1 min-w-[200px]">
-          <span className="absolute inset-y-0 left-3 flex items-center text-muted">
+          <span className="absolute inset-y-0 left-3 flex items-center text-muted-soft">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -106,7 +106,7 @@ function Toolbar({
             placeholder="Search club, manager, city…"
             value={query}
             onChange={(e) => onQuery(e.target.value)}
-            className="w-full h-9 rounded-md border border-border bg-surface pl-9 pr-3 text-sm text-ink placeholder:text-muted-soft focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition"
+            className="w-full h-9 apple-input pl-9 pr-3 text-sm"
           />
         </label>
         <div className="flex flex-wrap gap-2">
@@ -118,7 +118,7 @@ function Toolbar({
           />
         </div>
       </div>
-      <div className="px-3 sm:px-4 py-2 border-t border-border flex flex-wrap items-center gap-2 text-xs text-muted">
+      <div className="px-3 sm:px-4 py-2 border-t border-border-faint flex flex-wrap items-center gap-2 text-xs text-muted-soft">
         <span className="font-medium uppercase tracking-wide text-[11px]">Sort</span>
         {(["rank", "points", "wins"] as const).map((k) => {
           const active = sortKey === k;
@@ -132,10 +132,10 @@ function Toolbar({
               key={k}
               onClick={() => onSort(k)}
               className={
-                "inline-flex items-center gap-1 h-7 px-2.5 rounded text-[12px] border transition " +
+                "inline-flex items-center gap-1 h-7 px-2.5 rounded-[8px] text-[12px] transition-all duration-200 " +
                 (active
-                  ? "border-accent text-accent bg-accent-soft"
-                  : "border-border text-ink-soft hover:border-border-strong hover:bg-surface-2")
+                  ? "bg-accent/12 text-accent border border-accent/20"
+                  : "border border-border-faint text-muted-soft hover:border-border-strong hover:bg-bg-highlight/50")
               }
             >
               {labels[k]}
@@ -145,7 +145,7 @@ function Toolbar({
             </button>
           );
         })}
-        <span className="ml-auto font-mono text-[11px] text-muted">
+        <span className="ml-auto font-mono text-[11px] text-muted-soft">
           {resultCount} of {CLUBS.length} clubs
         </span>
       </div>
@@ -166,13 +166,13 @@ function SelectField({
 }) {
   return (
     <label className="relative inline-flex items-center">
-      <span className="absolute -top-2 left-2 px-1 bg-surface text-[9px] font-medium uppercase tracking-wider text-muted">
+      <span className="absolute -top-2 left-2 px-1 bg-bg-elevated/80 text-[9px] font-medium uppercase tracking-wider text-muted-soft">
         {label}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none h-9 rounded-md border border-border bg-surface pl-3 pr-8 text-xs text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition cursor-pointer"
+        className="appearance-none h-9 apple-input pl-3 pr-8 text-xs cursor-pointer"
       >
         {options.map((o) => (
           <option key={o} value={o}>
@@ -180,7 +180,7 @@ function SelectField({
           </option>
         ))}
       </select>
-      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted-soft">
+      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted-faint">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -205,74 +205,74 @@ function Table({
   onOpen: (id: string) => void;
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface overflow-hidden">
+    <div className="frosted-card-sm overflow-hidden">
       <div className="overflow-x-auto" style={{ scrollBehavior: "smooth" }}>
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="text-left text-muted text-[11px] uppercase tracking-wider">
+            <tr className="text-left text-muted-soft text-[11px] uppercase tracking-wider">
               <th
                 scope="col"
-                className="sticky left-0 z-20 bg-surface-2 border-b border-border w-12 px-3 py-2.5 font-medium"
+                className="sticky left-0 z-20 bg-bg-highlight/80 backdrop-blur-sm border-b border-border-faint w-12 px-3 py-2.5 font-medium"
               >
                 #
               </th>
               <th
                 scope="col"
-                className="sticky left-12 z-20 bg-surface-2 sticky-shadow border-b border-border min-w-[230px] px-3 py-2.5 font-medium"
+                className="sticky left-12 z-20 bg-bg-highlight/80 backdrop-blur-sm sticky-shadow border-b border-border-faint min-w-[230px] px-3 py-2.5 font-medium"
               >
                 Club
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right"
               >
                 Pts
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right"
               >
                 Sq
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right"
               >
                 P
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right text-positive"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right text-accent"
               >
                 W
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right"
               >
                 D
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right text-negative"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right text-negative"
               >
                 L
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right"
               >
                 GF
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right"
               >
                 GA
               </th>
               <th
                 scope="col"
-                className="bg-surface-2 border-b border-border px-3 py-2.5 font-medium text-right pr-4"
+                className="bg-bg-highlight/80 border-b border-border-faint px-3 py-2.5 font-medium text-right pr-4"
               >
                 GD
               </th>
@@ -284,7 +284,7 @@ function Table({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-12 text-center text-muted">
+                <td colSpan={11} className="px-4 py-12 text-center text-muted-soft">
                   No clubs match these filters.
                 </td>
               </tr>
@@ -299,16 +299,16 @@ function Table({
 function ClubRow({ club, onOpen }: { club: Club; onOpen: () => void }) {
   const gd = club.goalsFor - club.goalsAgainst;
   const topThree = club.rank <= 3;
-  const rowBg = topThree ? "bg-accent-soft/40" : "bg-surface";
+  const rowBg = topThree ? "bg-accent-soft/30" : "bg-transparent";
   const stickyBg = rowBg;
 
   return (
     <tr
       onClick={onOpen}
       className={
-        "cursor-pointer border-b border-border last:border-b-0 transition-colors " +
+        "cursor-pointer border-b border-border-faint last:border-b-0 transition-colors duration-200 " +
         rowBg +
-        " hover:bg-surface-2"
+        " hover:bg-bg-highlight/50"
       }
     >
       <td className={"sticky left-0 z-10 w-12 px-3 py-2.5 align-middle " + stickyBg}>
@@ -324,7 +324,7 @@ function ClubRow({ club, onOpen }: { club: Club; onOpen: () => void }) {
           <ClubBadge short={club.shortName} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-ink">{club.name}</p>
-            <p className="truncate text-[11px] text-muted">
+            <p className="truncate text-[11px] text-muted-soft">
               {club.manager} · {club.city}
             </p>
           </div>
@@ -342,7 +342,7 @@ function ClubRow({ club, onOpen }: { club: Club; onOpen: () => void }) {
       <td className="px-3 py-2.5 text-right align-middle font-mono text-ink-soft tabular-nums">
         {club.played}
       </td>
-      <td className="px-3 py-2.5 text-right align-middle font-mono text-positive tabular-nums">
+      <td className="px-3 py-2.5 text-right align-middle font-mono text-accent tabular-nums">
         {club.wins}
       </td>
       <td className="px-3 py-2.5 text-right align-middle font-mono text-ink-soft tabular-nums">
@@ -360,7 +360,7 @@ function ClubRow({ club, onOpen }: { club: Club; onOpen: () => void }) {
       <td
         className={
           "px-3 py-2.5 text-right align-middle font-mono tabular-nums pr-4 " +
-          (gd > 0 ? "text-positive" : gd < 0 ? "text-negative" : "text-ink-soft")
+          (gd > 0 ? "text-accent" : gd < 0 ? "text-negative" : "text-ink-soft")
         }
       >
         {gd > 0 ? `+${gd}` : gd}
@@ -371,7 +371,7 @@ function ClubRow({ club, onOpen }: { club: Club; onOpen: () => void }) {
 
 function ClubBadge({ short }: { short: string }) {
   return (
-    <span className="shrink-0 inline-grid place-items-center h-8 w-8 rounded border border-border bg-surface-2 font-mono text-[10px] font-bold tracking-wider text-ink-soft">
+    <span className="shrink-0 inline-grid place-items-center h-8 w-8 rounded-[8px] border border-border-faint bg-bg-highlight font-mono text-[10px] font-bold tracking-wider text-ink-soft">
       {short}
     </span>
   );
@@ -382,7 +382,7 @@ function RankDelta({ rank, prev }: { rank: number; prev: number }) {
   if (diff === 0) {
     return (
       <span
-        className="ml-auto inline-flex items-center justify-center w-5 text-muted-soft"
+        className="ml-auto inline-flex items-center justify-center w-5 text-muted-faint"
         aria-label="No change"
       >
         —
@@ -394,7 +394,7 @@ function RankDelta({ rank, prev }: { rank: number; prev: number }) {
     <span
       className={
         "ml-auto inline-flex items-center gap-0.5 font-mono text-[11px] tabular-nums " +
-        (up ? "text-positive" : "text-negative")
+        (up ? "text-accent" : "text-negative")
       }
       aria-label={up ? `Up ${Math.abs(diff)}` : `Down ${Math.abs(diff)}`}
     >
@@ -433,15 +433,16 @@ function ClubDrawer({
       <button
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-ink/30"
+        className="absolute inset-0 bg-bg/50 backdrop-blur-sm"
       />
       <aside
         role="dialog"
         aria-modal="true"
         className={
-          "absolute right-0 top-0 h-full w-full sm:max-w-md bg-surface border-l border-border transition-transform duration-300 ease-out " +
+          "absolute right-0 top-0 h-full w-full sm:max-w-md bg-bg-elevated/95 backdrop-blur-2xl border-l border-border-faint transition-transform duration-300 ease-out " +
           (club ? "translate-x-0" : "translate-x-full")
         }
+        style={{ boxShadow: '-8px 0 40px rgba(0,0,0,0.25)' }}
       >
         {club && <DrawerBody club={club} onClose={onClose} />}
       </aside>
@@ -459,13 +460,13 @@ function DrawerBody({ club, onClose }: { club: Club; onClose: () => void }) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-5 h-12 border-b border-border">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
+      <div className="flex items-center justify-between px-5 h-12 border-b border-border-faint">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-soft">
           Club Profile
         </p>
         <button
           onClick={onClose}
-          className="h-8 w-8 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2 transition"
+          className="h-8 w-8 grid place-items-center rounded-[10px] text-muted-soft hover:text-ink hover:bg-bg-highlight transition-all duration-200"
           aria-label="Close drawer"
         >
           <svg
@@ -488,7 +489,7 @@ function DrawerBody({ club, onClose }: { club: Club; onClose: () => void }) {
           <div className="flex items-center gap-3">
             <ClubBadge short={club.shortName} />
             <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-soft">
                 Rank #{club.rank} · Founded {club.founded}
               </p>
               <p className="mt-0.5 text-xl font-semibold text-ink leading-tight">
@@ -496,12 +497,12 @@ function DrawerBody({ club, onClose }: { club: Club; onClose: () => void }) {
               </p>
             </div>
           </div>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-2 text-sm text-muted-soft">
             {club.city} · Manager <span className="text-ink-soft">{club.manager}</span>
           </p>
         </header>
 
-        <section className="grid grid-cols-2 sm:grid-cols-3 border border-border rounded-md overflow-hidden divide-x divide-y divide-border bg-surface">
+        <section className="grid grid-cols-2 sm:grid-cols-3 border border-border-faint rounded-[14px] overflow-hidden divide-x divide-y divide-border-faint bg-bg-elevated/60">
           <Stat label="Points" value={club.points.toString()} />
           <Stat label="Win Rate" value={`${winRate.toFixed(1)}%`} />
           <Stat label="Squad" value={club.playerIds.length.toString()} />
@@ -515,24 +516,24 @@ function DrawerBody({ club, onClose }: { club: Club; onClose: () => void }) {
         </section>
 
         <section>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted mb-2">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-soft mb-2">
             Roster
           </p>
           {roster.length === 0 ? (
-            <p className="text-sm text-muted">No registered players.</p>
+            <p className="text-sm text-muted-soft">No registered players.</p>
           ) : (
-            <ol className="rounded-md border border-border divide-y divide-border bg-surface">
+            <ol className="frosted-card-sm divide-y divide-border-faint">
               {roster.map((p) => (
                 <li
                   key={p.id}
                   className="px-3 py-2 flex items-center gap-3 text-sm"
                 >
-                  <span className="w-6 text-right font-mono text-xs tabular-nums text-muted">
+                  <span className="w-6 text-right font-mono text-xs tabular-nums text-muted-soft">
                     {p.rank}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-ink">{p.name}</p>
-                    <p className="truncate text-[11px] text-muted">
+                    <p className="truncate text-[11px] text-muted-soft">
                       <span className="font-mono">@{p.gamertag}</span> · {p.division}
                     </p>
                   </div>
@@ -560,13 +561,13 @@ function Stat({
 }) {
   const cls =
     tone === "positive"
-      ? "text-positive"
+      ? "text-accent"
       : tone === "negative"
         ? "text-negative"
         : "text-ink";
   return (
     <div className="px-3 py-2.5">
-      <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
+      <p className="text-[10px] uppercase tracking-wider text-muted-soft">{label}</p>
       <p className={"mt-0.5 font-mono text-base tabular-nums " + cls}>{value}</p>
     </div>
   );

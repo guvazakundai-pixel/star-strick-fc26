@@ -69,6 +69,12 @@ model User {
   sentMatchRequests  MatchRequest[] @relation("SentMatchRequest")
   receivedMatchRequests MatchRequest[] @relation("ReceivedMatchRequest")
 
+  organizedTournaments  Tournament[]    @relation("TournamentOrganizer")
+  tournamentParticipations TournamentParticipant[] @relation("TournamentParticipantUser")
+  tournMatches1  TournamentMatch[] @relation("TournMatchP1")
+  tournMatches2  TournamentMatch[] @relation("TournMatchP2")
+  tournWins       TournamentMatch[] @relation("TournMatchWinner")
+
   @@map("users")
 }
 
@@ -470,4 +476,68 @@ model SystemHealth {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("system_health")
+}
+
+model Tournament {
+  id            String       @id @default(uuid())
+  name          String
+  slug          String       @unique
+  description   String?
+  type          String       @default("KNOCKOUT")  // KNOCKOUT, ROUND_ROBIN, GROUPS
+  status        String       @default("DRAFT")  // DRAFT, REGISTRATION, LIVE, COMPLETED
+  city          String?
+  prizePool     Int          @default(0) @map("prize_pool")
+  maxPlayers    Int          @default(32) @map("max_players")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  startAt       DateTime?    @map("start_at")
+  endAt         DateTime?     @map("end_at")
+
+  organizerId   String       @map("organizer_id")
+  organizer     User         @relation("TournamentOrganizer", fields: [organizerId], references: [id])
+
+  participants  TournamentParticipant[]
+  matches       TournamentMatch[]
+
+  @@map("tournaments")
+}
+
+model TournamentParticipant {
+  id            String   @id @default(uuid())
+  tournamentId  String   @map("tournament_id")
+  userId        String   @map("user_id")
+  seed          Int      @default(0)
+  status        String   @default("REGISTERED")  // REGISTERED, ELIMINATED, ACTIVE, WITHDRAWN
+  finalPosition Int?     @map("final_position")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user          User       @relation("TournamentParticipantUser", fields: [userId], references: [id])
+
+  @@unique([tournamentId, userId])
+  @@map("tournament_participants")
+}
+
+model TournamentMatch {
+  id            String    @id @default(uuid())
+  tournamentId  String    @map("tournament_id")
+  round         Int       @default(1)
+  matchIndex    Int       @default(0) @map("match_index")
+  player1Id     String?   @map("player1_id")
+  player2Id     String?   @map("player2_id")
+  winnerId      String?   @map("winner_id")
+  score1        Int?      @map("score1")
+  score2        Int?      @map("score2")
+  status        String    @default("PENDING")  // PENDING, READY, LIVE, COMPLETED
+  matchReportId String?   @map("match_report_id")
+  scheduledAt   DateTime? @map("scheduled_at")
+  completedAt   DateTime? @map("completed_at")
+
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player1       User?      @relation("TournMatchP1", fields: [player1Id], references: [id])
+  player2       User?      @relation("TournMatchP2", fields: [player2Id], references: [id])
+  winner        User?      @relation("TournMatchWinner", fields: [winnerId], references: [id])
+
+  @@index([tournamentId, round])
+  @@map("tournament_matches")
 }

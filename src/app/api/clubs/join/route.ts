@@ -56,11 +56,10 @@ export async function POST(req: Request) {
 
   await prisma.auditLog.create({
     data: {
-      actorId: auth.session.userId,
-      actionType: club.isInviteOnly ? "CLUB_APPLY" : "CLUB_JOIN",
-      entityType: "CLUB",
-      entityId: clubId,
-      metadata: JSON.stringify({ clubName: club.name }),
+      adminId: auth.session.userId,
+      action: club.isInviteOnly ? "CLUB_APPLY" : "CLUB_JOIN",
+      target: `CLUB:${clubId}`,
+      details: { clubName: club.name },
     },
   });
 
