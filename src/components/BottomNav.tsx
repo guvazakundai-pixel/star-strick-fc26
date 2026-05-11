@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthModal } from "@/lib/auth-context";
 import { useSession } from "@/lib/session-client";
+import { motion } from "framer-motion";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: HomeIcon },
@@ -20,14 +21,14 @@ export function BottomNav() {
 
   return (
     <nav aria-label="Primary" className="fixed bottom-0 inset-x-0 z-50 pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto max-w-lg px-3 pb-1.5 pt-0.5">
+      <div className="mx-auto max-w-lg px-3 pb-2 pt-1">
         <div
-          className="flex items-center justify-around rounded-[22px] border border-b-0 px-1 py-1.5"
+          className="flex items-center justify-around rounded-[24px] border border-white/[0.04] border-b-0 px-1.5 py-2"
           style={{
-            background: "rgba(14,14,16,0.72)",
-            backdropFilter: "blur(28px) saturate(1.6)",
-            WebkitBackdropFilter: "blur(28px) saturate(1.6)",
-            boxShadow: "0 -4px 32px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 0.5px rgba(255,255,255,0.03)",
+            background: "rgba(13,13,15,0.78)",
+            backdropFilter: "blur(32px) saturate(1.7)",
+            WebkitBackdropFilter: "blur(32px) saturate(1.7)",
+            boxShadow: "0 -8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 60px -20px rgba(0,255,133,0.06)",
           }}
         >
           {ITEMS.map(({ href, label, icon: Icon }) => {
@@ -36,12 +37,11 @@ export function BottomNav() {
               <Link
                 key={href}
                 href={href}
-                className="group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 rounded-[16px] transition-all duration-200"
-                style={active ? { background: "rgba(0,255,133,0.06)" } : undefined}
+                className="group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3.5 rounded-[16px] transition-all duration-300"
               >
                 <span
                   className={
-                    "h-[18px] w-[18px] grid place-items-center transition-colors duration-200 " +
+                    "h-[18px] w-[18px] grid place-items-center transition-all duration-300 " +
                     (active ? "text-accent" : "text-muted-soft group-hover:text-ink-soft")
                   }
                 >
@@ -49,17 +49,19 @@ export function BottomNav() {
                 </span>
                 <span
                   className={
-                    "text-[9px] font-semibold uppercase tracking-wider transition-all duration-200 " +
+                    "text-[9px] font-semibold uppercase tracking-wider transition-all duration-300 " +
                     (active ? "text-accent" : "text-muted-soft group-hover:text-ink-soft")
                   }
                 >
                   {label}
                 </span>
                 {active && (
-                  <span
+                  <motion.span
+                    layoutId="nav-indicator"
                     aria-hidden
-                    className="absolute -top-1 left-1/2 -translate-x-1/2 h-[2px] w-5 rounded-full bg-accent"
-                    style={{ boxShadow: "0 0 10px rgba(0,255,133,0.50)" }}
+                    className="absolute -top-0.5 left-1/2 -translate-x-1/2 h-[2px] w-6 rounded-full bg-accent"
+                    style={{ boxShadow: "0 0 14px rgba(0,255,133,0.60)" }}
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
                   />
                 )}
               </Link>
@@ -68,12 +70,11 @@ export function BottomNav() {
           {loggedIn ? (
             <Link
               href="/dashboard"
-              className="group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 rounded-[16px] transition-all duration-200"
-              style={(pathname.startsWith("/dashboard") || pathname === "/profile") ? { background: "rgba(0,255,133,0.06)" } : undefined}
+              className="group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3.5 rounded-[16px] transition-all duration-300"
             >
               <span
                 className={
-                  "h-[18px] w-[18px] grid place-items-center transition-colors duration-200 " +
+                  "h-[18px] w-[18px] grid place-items-center transition-all duration-300 " +
                   (pathname.startsWith("/dashboard") || pathname === "/profile"
                     ? "text-accent"
                     : "text-muted-soft group-hover:text-ink-soft")
@@ -83,7 +84,7 @@ export function BottomNav() {
               </span>
               <span
                 className={
-                  "text-[9px] font-semibold uppercase tracking-wider transition-all duration-200 " +
+                  "text-[9px] font-semibold uppercase tracking-wider transition-all duration-300 " +
                   (pathname.startsWith("/dashboard") || pathname === "/profile"
                     ? "text-accent"
                     : "text-muted-soft group-hover:text-ink-soft")
@@ -92,22 +93,24 @@ export function BottomNav() {
                 Me
               </span>
               {(pathname.startsWith("/dashboard") || pathname === "/profile") && (
-                <span
+                <motion.span
+                  layoutId="nav-indicator"
                   aria-hidden
-                  className="absolute -top-1 left-1/2 -translate-x-1/2 h-[2px] w-5 rounded-full bg-accent"
-                  style={{ boxShadow: "0 0 10px rgba(0,255,133,0.50)" }}
+                  className="absolute -top-0.5 left-1/2 -translate-x-1/2 h-[2px] w-6 rounded-full bg-accent"
+                  style={{ boxShadow: "0 0 14px rgba(0,255,133,0.60)" }}
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
                 />
               )}
             </Link>
           ) : (
             <button
               onClick={() => openAuth("signin")}
-              className="group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 rounded-[16px] transition-all duration-200"
+              className="group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3.5 rounded-[16px] transition-all duration-300"
             >
-              <span className="h-[18px] w-[18px] grid place-items-center text-muted-soft group-hover:text-ink-soft transition-colors duration-200">
+              <span className="h-[18px] w-[18px] grid place-items-center text-muted-soft group-hover:text-ink-soft transition-all duration-300">
                 <UserIcon />
               </span>
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-soft group-hover:text-ink-soft transition-colors duration-200">Me</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-soft group-hover:text-ink-soft transition-all duration-300">Me</span>
             </button>
           )}
         </div>

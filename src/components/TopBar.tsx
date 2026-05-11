@@ -7,10 +7,23 @@ export async function TopBar() {
   const isAdmin = session && (session.role === "MANAGER" || session.role === "ADMIN");
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border-faint" style={{ background: "rgba(14,14,16,0.75)", backdropFilter: "blur(24px) saturate(1.4)", WebkitBackdropFilter: "blur(24px) saturate(1.4)" }}>
-      <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between gap-4">
+    <header
+      className="sticky top-0 z-40 border-b border-b-white/[0.03]"
+      style={{
+        background: "rgba(13,13,15,0.72)",
+        backdropFilter: "blur(28px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(28px) saturate(1.5)",
+      }}
+    >
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <span className="inline-grid place-items-center h-8 w-8 rounded-[10px] border border-accent/20 text-accent font-display text-lg leading-none group-hover:border-accent/35 group-hover:shadow-[0_0_16px_rgba(0,255,133,0.10)] transition-all duration-300" style={{ background: "linear-gradient(135deg, rgba(0,255,133,0.10) 0%, rgba(0,255,133,0.02) 100%)" }}>
+          <span
+            className="inline-grid place-items-center h-9 w-9 rounded-[11px] text-accent font-display text-lg leading-none group-hover:shadow-[0_0_20px_rgba(0,255,133,0.15)] transition-all duration-300"
+            style={{
+              background: "linear-gradient(135deg, rgba(0,255,133,0.12) 0%, rgba(0,255,133,0.03) 100%)",
+              border: "1px solid rgba(0,255,133,0.20)",
+            }}
+          >
             S
           </span>
           <div className="leading-tight">
@@ -26,8 +39,8 @@ export async function TopBar() {
           {isAdmin && (
             <Link
               href="/admin"
-              className="hidden sm:inline-flex rounded-[10px] border border-accent/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-accent hover:bg-accent/8 hover:border-accent/25 transition-all duration-200"
-              style={{ background: "rgba(0,255,133,0.04)" }}
+              className="hidden sm:inline-flex rounded-[12px] border border-accent/18 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-accent hover:bg-accent/8 hover:border-accent/30 hover:shadow-[0_0_20px_rgba(0,255,133,0.06)] transition-all duration-300"
+              style={{ background: "rgba(0,255,133,0.05)" }}
             >
               Control Panel
             </Link>
@@ -35,14 +48,14 @@ export async function TopBar() {
           {session && (
             <Link
               href="/dashboard"
-              className="hidden sm:inline-flex rounded-[10px] border border-border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:bg-bg-highlight hover:text-ink hover:border-border-strong transition-all duration-200"
+              className="hidden sm:inline-flex rounded-[12px] border border-border px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-ink-soft hover:bg-bg-highlight hover:text-ink hover:border-border-strong transition-all duration-300"
             >
               Dashboard
             </Link>
           )}
           {!session && <SignInButton />}
           <span className="hidden md:inline-flex items-center gap-2 font-mono text-[11px] text-muted-soft">
-            Season 1 · Week 12
+            Season 1 · <span className="text-shimmer">Live</span>
           </span>
         </div>
       </div>

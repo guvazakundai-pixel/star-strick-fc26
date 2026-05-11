@@ -41,14 +41,14 @@ export async function Top5Hero() {
 
   return (
     <section aria-labelledby="top5-heading" className="relative">
-      <div className="mb-4 flex items-end justify-between gap-3">
+      <div className="mb-5 sm:mb-6 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-black tracking-[0.28em] text-accent uppercase">
             Live · Season 1
           </p>
           <h2
             id="top5-heading"
-            className="cinematic-heading mt-1 text-4xl sm:text-6xl text-ink leading-[0.88]"
+            className="cinematic-heading mt-1.5 text-4xl sm:text-6xl md:text-7xl text-ink leading-[0.88]"
           >
             Top 5
             <span className="text-gradient-accent">.</span>
@@ -56,14 +56,14 @@ export async function Top5Hero() {
         </div>
         <Link
           href="/rankings"
-          className="shrink-0 inline-flex items-center gap-1 h-9 px-4 rounded-[14px] text-[10px] font-bold tracking-[0.2em] uppercase text-ink-soft cta-outline"
+          className="shrink-0 inline-flex items-center gap-1.5 h-9 px-4 rounded-[14px] text-[10px] font-bold tracking-[0.2em] uppercase text-ink-soft cta-outline"
         >
           Full Rankings
-          <span aria-hidden>→</span>
+          <span aria-hidden className="text-muted-faint">→</span>
         </Link>
       </div>
 
-      <ol className="space-y-2 sm:space-y-2.5">
+      <ol className="space-y-2.5 sm:space-y-3">
         {top5.map((player, i) => {
           const tone = TONES[player.rank_position] ?? "base";
           const t = toneTokens(tone);
@@ -72,27 +72,36 @@ export async function Top5Hero() {
           return (
             <li
               key={player.pr_id}
-              className="bc-slide-in-left bc-row-glow group relative isolate overflow-hidden rounded-[20px] transition-all duration-300"
+              className="bc-slide-in-left bc-row-glow group relative isolate overflow-hidden rounded-[24px] sm:rounded-[28px] transition-all duration-400"
               style={{
-                animationDelay: `${i * 80}ms`,
+                animationDelay: `${i * 90}ms`,
                 background: t.bg,
-                backdropFilter: "blur(24px)",
-                WebkitBackdropFilter: "blur(24px)",
+                backdropFilter: "blur(28px)",
+                WebkitBackdropFilter: "blur(28px)",
                 border: `1px solid ${t.border}`,
                 boxShadow: t.shadow,
                 ["--row-glow" as string]: t.glow,
               }}
             >
+              {tone === "champion" && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 rounded-[inherit]"
+                  style={{
+                    background: "radial-gradient(400px 150px at 10% 50%, rgba(255,184,0,0.06) 0%, transparent 70%)",
+                  }}
+                />
+              )}
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-y-0 left-0 w-1 sm:w-1.5 rounded-l-[20px] transition-all duration-300 group-hover:w-1.5 sm:group-hover:w-2"
+                className="pointer-events-none absolute inset-y-0 left-0 w-1.5 sm:w-2 rounded-l-[inherit] transition-all duration-300 group-hover:w-2 sm:group-hover:w-2.5"
                 style={{ background: t.edge }}
               />
 
-              <div className="relative z-10 flex items-stretch gap-3 sm:gap-5 pl-5 sm:pl-7 pr-4 sm:pr-6 py-5 sm:py-6">
-                <div className="shrink-0 flex items-center min-w-[64px] sm:min-w-[96px]">
+              <div className="relative z-10 flex items-stretch gap-3 sm:gap-5 pl-6 sm:pl-8 pr-5 sm:pr-6 py-5 sm:py-6">
+                <div className="shrink-0 flex items-center min-w-[60px] sm:min-w-[90px]">
                   <span
-                    className="cinematic-heading leading-none tabular-nums text-[72px] sm:text-[110px]"
+                    className="cinematic-heading leading-none tabular-nums text-[64px] sm:text-[100px]"
                     style={{
                       color: t.rankColor,
                       textShadow: t.rankShadow,
@@ -124,11 +133,11 @@ export async function Top5Hero() {
                       </span>
                     )}
                   </div>
-                  <p className="truncate text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-muted-soft">
+                  <p className="truncate text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-muted-soft">
                     @{player.username}
                     {player.club_name && (
                       <>
-                        <span className="mx-2 text-border-strong">•</span>
+                        <span className="mx-2 text-border-strong">·</span>
                         {player.club_name}
                       </>
                     )}
@@ -151,9 +160,9 @@ export async function Top5Hero() {
               {tone === "champion" && (
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute -top-3 right-4 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[9px] font-black tracking-[0.25em] uppercase pill-gold"
+                  className="pointer-events-none absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[9px] font-black tracking-[0.25em] uppercase pill-gold"
                   style={{
-                    boxShadow: "0 4px 14px -4px rgba(255,184,0,0.30)",
+                    boxShadow: "0 4px 18px -4px rgba(255,184,0,0.35)",
                   }}
                 >
                   ★ Champion
@@ -175,44 +184,44 @@ function toneTokens(tone: Tone) {
         border: "rgba(255,184,0,0.18)",
         edge: "linear-gradient(180deg, #ffd75e 0%, #ffb800 100%)",
         rankColor: "#ffb800",
-        rankShadow: "0 0 32px rgba(255,184,0,0.25)",
+        rankShadow: "0 0 40px rgba(255,184,0,0.30), 0 0 8px rgba(255,184,0,0.12)",
         pointsColor: "#F0F0F2",
-        glow: "rgba(255,184,0,0.22)",
-        shadow: "0 8px 32px rgba(255,184,0,0.08), inset 0 1px 0 0 rgba(255,255,255,0.03)",
+        glow: "rgba(255,184,0,0.24)",
+        shadow: "0 8px 36px rgba(255,184,0,0.10), 0 20px 52px rgba(255,184,0,0.04), inset 0 1px 0 0 rgba(255,255,255,0.05)",
       };
     case "runner":
       return {
-        bg: "rgba(22, 24, 29, 0.50)",
-        border: "rgba(0,255,133,0.15)",
+        bg: "rgba(22, 24, 29, 0.48)",
+        border: "rgba(0,255,133,0.16)",
         edge: "linear-gradient(180deg, #5cffb0 0%, #00ff85 100%)",
         rankColor: "#00ff85",
-        rankShadow: "0 0 28px rgba(0,255,133,0.22)",
+        rankShadow: "0 0 36px rgba(0,255,133,0.26), 0 0 6px rgba(0,255,133,0.10)",
         pointsColor: "#F0F0F2",
-        glow: "rgba(0,255,133,0.22)",
-        shadow: "0 8px 32px rgba(0,255,133,0.06), inset 0 1px 0 0 rgba(255,255,255,0.03)",
+        glow: "rgba(0,255,133,0.24)",
+        shadow: "0 8px 36px rgba(0,255,133,0.08), inset 0 1px 0 0 rgba(255,255,255,0.05)",
       };
     case "challenger":
       return {
-        bg: "rgba(22, 24, 29, 0.50)",
-        border: "rgba(239,68,68,0.15)",
+        bg: "rgba(22, 24, 29, 0.48)",
+        border: "rgba(239,68,68,0.16)",
         edge: "linear-gradient(180deg, #ff8a8a 0%, #ff4d4d 100%)",
         rankColor: "#ff4d4d",
-        rankShadow: "0 0 24px rgba(239,68,68,0.22)",
+        rankShadow: "0 0 30px rgba(239,68,68,0.26), 0 0 6px rgba(239,68,68,0.10)",
         pointsColor: "#F0F0F2",
-        glow: "rgba(239,68,68,0.18)",
-        shadow: "0 8px 32px rgba(239,68,68,0.05), inset 0 1px 0 0 rgba(255,255,255,0.03)",
+        glow: "rgba(239,68,68,0.20)",
+        shadow: "0 8px 36px rgba(239,68,68,0.06), inset 0 1px 0 0 rgba(255,255,255,0.04)",
       };
     case "base":
     default:
       return {
-        bg: "rgba(22, 24, 29, 0.35)",
+        bg: "rgba(18, 20, 24, 0.32)",
         border: "rgba(255,255,255,0.04)",
         edge: "rgba(255,255,255,0.08)",
         rankColor: "rgba(255,255,255,0.12)",
         rankShadow: "none",
         pointsColor: "#F0F0F2",
         glow: "rgba(0,255,133,0.10)",
-        shadow: "0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 0 rgba(255,255,255,0.02)",
+        shadow: "0 4px 18px rgba(0,0,0,0.16), inset 0 1px 0 0 rgba(255,255,255,0.03)",
       };
   }
 }

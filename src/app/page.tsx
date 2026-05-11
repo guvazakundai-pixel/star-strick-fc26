@@ -21,7 +21,7 @@ export default async function HomePage() {
 
   return (
     <div className="broadcast-theme min-h-screen bc-noise">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10 space-y-10">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 space-y-10 sm:space-y-14">
         <Hero />
         <KpiGrid
           totalMatches={totalMatches}
@@ -38,52 +38,71 @@ export default async function HomePage() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden rounded-[28px] glass inner-glow light-streak">
+    <section className="relative overflow-hidden rounded-[32px] sm:rounded-[40px] inner-glow light-streak" style={{ background: "rgba(18,20,24,0.45)" }}>
       <div
         aria-hidden
         className="absolute inset-0 pointer-events-none hero-gradient-spin"
         style={{
           background:
-            "conic-gradient(from 0deg at 50% 50%, rgba(0,255,133,0.07) 0deg, rgba(34,211,238,0.05) 120deg, rgba(168,85,247,0.05) 240deg, rgba(0,255,133,0.07) 360deg)",
-          filter: "blur(80px)",
+            "conic-gradient(from 0deg at 50% 50%, rgba(0,255,133,0.08) 0deg, rgba(34,211,238,0.06) 100deg, rgba(168,85,247,0.05) 200deg, rgba(236,72,153,0.04) 280deg, rgba(0,255,133,0.08) 360deg)",
+          filter: "blur(100px)",
         }}
       />
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none opacity-60"
+        className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(700px 280px at 80% -10%, rgba(0,255,133,0.12), transparent 60%), radial-gradient(500px 250px at 0% 110%, rgba(255,184,0,0.06), transparent 60%), radial-gradient(400px 200px at 50% 50%, rgba(168,85,247,0.04), transparent 70%)",
+            "radial-gradient(800px 300px at 80% -5%, rgba(0,255,133,0.16), transparent 55%), radial-gradient(600px 280px at 5% 110%, rgba(168,85,247,0.08), transparent 55%), radial-gradient(500px 250px at 50% 50%, rgba(34,211,238,0.05), transparent 65%)",
         }}
       />
-      <div className="relative z-10 px-6 pt-8 pb-8 sm:px-10 sm:pt-12 sm:pb-10">
+      <div className="relative z-10 px-6 sm:px-10 pt-10 sm:pt-16 pb-10 sm:pb-14">
         <motion.span
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 px-3.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-accent float-glow"
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="inline-flex items-center gap-2 rounded-full border border-accent/25 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.24em] text-accent float-glow"
           style={{ background: "rgba(0,255,133,0.06)" }}
         >
           <span className="bc-pulse-cta h-1.5 w-1.5 rounded-full bg-accent" />
           Season 1 · Live
         </motion.span>
         <motion.h1
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-          className="bc-headline mt-6 text-[2.8rem] sm:text-7xl leading-[0.88] text-ink"
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+          className="bc-headline mt-6 sm:mt-8 text-[3.2rem] sm:text-7xl md:text-8xl leading-[0.86] text-ink"
         >
           Zimbabwe&apos;s<br />
           <span className="text-shimmer">Pro EA FC</span> League
         </motion.h1>
         <motion.p
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-          className="mt-5 max-w-xl text-sm sm:text-[15px] text-ink-soft leading-relaxed"
+          transition={{ duration: 0.6, delay: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+          className="mt-5 sm:mt-6 max-w-xl text-sm sm:text-[15px] text-ink-soft leading-relaxed"
         >
           Track every win, every goal, every challenger from Harare to Vic Falls. Star Strick FC26 is the home of Zim&apos;s competitive scene.
         </motion.p>
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="mt-6 sm:mt-8 flex flex-wrap gap-3"
+        >
+          <Link
+            href="/rankings"
+            className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-primary px-7 bc-headline text-base tracking-[0.14em] text-[#0D0D0F]"
+          >
+            View Rankings
+          </Link>
+          <AuthModalCTA
+            tab="join"
+            className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-outline px-7 bc-headline text-base tracking-[0.14em] text-ink"
+          >
+            Enter Rankings
+          </AuthModalCTA>
+        </motion.div>
       </div>
     </section>
   );
@@ -108,15 +127,15 @@ function KpiGrid({
   ];
 
   return (
-    <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
       {cards.map((card, i) => (
         <motion.div
           key={card.label}
-          initial={{ opacity: 0, y: 20, scale: 0.96 }}
+          initial={{ opacity: 0, y: 24, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{
-            duration: 0.5,
-            delay: 0.5 + i * 0.1,
+            duration: 0.6,
+            delay: 0.55 + i * 0.1,
             ease: [0.2, 0.8, 0.2, 1],
           }}
         >
@@ -140,8 +159,8 @@ function KpiCard({
     cyan: {
       glass: "glass-cyan",
       text: "text-cyan",
-      glow: "shadow-[0_0_40px_-10px_rgba(34,211,238,0.16)]",
       gradient: "text-gradient-cyan-blue",
+      glow: "shadow-[0_0_60px_-12px_rgba(34,211,238,0.20)]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
           <path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-8" /><path d="M22 20H2" />
@@ -151,8 +170,8 @@ function KpiCard({
     orange: {
       glass: "glass-orange",
       text: "text-orange",
-      glow: "shadow-[0_0_40px_-10px_rgba(249,115,22,0.16)]",
       gradient: "text-gradient-orange-gold",
+      glow: "shadow-[0_0_60px_-12px_rgba(249,115,22,0.20)]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
           <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
@@ -162,8 +181,8 @@ function KpiCard({
     emerald: {
       glass: "glass-emerald",
       text: "text-emerald",
-      glow: "shadow-[0_0_40px_-10px_rgba(52,211,153,0.16)]",
       gradient: "text-gradient-lime-emerald",
+      glow: "shadow-[0_0_60px_-12px_rgba(52,211,153,0.20)]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
@@ -173,8 +192,8 @@ function KpiCard({
     purple: {
       glass: "glass-purple",
       text: "text-purple",
-      glow: "shadow-[0_0_40px_-10px_rgba(168,85,247,0.16)]",
       gradient: "text-gradient-pink",
+      glow: "shadow-[0_0_60px_-12px_rgba(168,85,247,0.20)]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
           <path d="M12 3l8 3v6c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V6l8-3z" />
@@ -187,13 +206,18 @@ function KpiCard({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-[20px] ${s.glass} ${s.glow} p-4 sm:p-5 group transition-all duration-300 hover:scale-[1.02]`}
+      className={`relative overflow-hidden rounded-[24px] ${s.glass} ${s.glow} p-5 sm:p-6 group transition-all duration-400 hover:scale-[1.03] hover:shadow-[0_0_80px_-16px_var(--glow-color,rgba(0,255,133,0.15))]`}
     >
-      <div className="flex items-start justify-between mb-2">
-        <span className={`${s.text} opacity-60`}>{s.icon}</span>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full opacity-[0.06] group-hover:opacity-[0.10] transition-opacity duration-500"
+        style={{ background: `radial-gradient(circle, currentColor, transparent 70%)` }}
+      />
+      <div className="flex items-start justify-between mb-3">
+        <span className={`${s.text} opacity-50`}>{s.icon}</span>
       </div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">{label}</p>
-      <p className={`bc-headline mt-1 text-3xl sm:text-4xl tabular-nums leading-none ${s.text}`}>
+      <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-soft">{label}</p>
+      <p className={`bc-headline mt-1.5 text-3xl sm:text-4xl tabular-nums leading-none ${s.gradient}`}>
         {value}
       </p>
     </div>
@@ -204,25 +228,25 @@ function CtaRow() {
   return (
     <div className="flex flex-wrap gap-3">
       <motion.div
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 400, damping: 22 }}
       >
         <Link
           href="/rankings"
-          className="inline-flex items-center justify-center h-12 rounded-[16px] cta-primary px-6 bc-headline text-base tracking-[0.12em] text-[#0A0A0C]"
+          className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-primary px-7 bc-headline text-base tracking-[0.14em] text-[#0D0D0F]"
         >
           View Rankings
         </Link>
       </motion.div>
       <motion.div
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 400, damping: 22 }}
       >
         <AuthModalCTA
           tab="join"
-          className="inline-flex items-center justify-center h-12 rounded-[16px] cta-outline px-6 bc-headline text-base tracking-[0.12em] text-ink"
+          className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-outline px-7 bc-headline text-base tracking-[0.14em] text-ink"
         >
           Enter Rankings
         </AuthModalCTA>

@@ -82,7 +82,7 @@ export default function RootLayout({
       lang="en"
       className={`${bebas.variable} ${jbMono.variable} ${inter.variable} ${barlow.variable} h-full`}
     >
-      <body className="min-h-full bg-bg text-ink antialiased">
+      <body className="min-h-full bg-bg text-ink antialiased overflow-x-hidden">
         <AuthProvider>
           <Suspense fallback={null}>
             <AuthUrlHandler />
