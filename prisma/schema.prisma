@@ -36,6 +36,7 @@ model User {
 
   clubId           String?   @unique @map("club_id")
   club              Club?     @relation("UserClubMembership", fields: [clubId], references: [id], onDelete: SetNull)
+  joinedClubAt     DateTime? @map("joined_club_at")
 
   managedClubId     String?   @unique @map("managed_club_id")
   managedClub       Club?     @relation("ClubManager")
@@ -57,6 +58,7 @@ model User {
   disputes          Dispute[]       @relation("DisputeReporter")
   reports           Report[]        @relation("ReportReporter")
   auditLogs         AuditLog[]
+  loginAttempts     LoginAttempt[]
   pointsLogs        PointsLog[]     @relation("PointsLogUser")
   givenPointsLogs   PointsLog[]     @relation("PointsLogAdmin")
 
@@ -476,6 +478,19 @@ model SystemHealth {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("system_health")
+}
+
+model LoginAttempt {
+  id        String   @id @default(uuid())
+  ip        String   @default("unknown")
+  userId    String?  @map("user_id")
+  success   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([ip, success, createdAt])
+  @@map("login_attempts")
 }
 
 model Tournament {

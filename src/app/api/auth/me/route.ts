@@ -19,7 +19,7 @@ export async function GET() {
       country: true,
       clubId: true,
       isBanned: true,
-      emailVerified: true,
+      isVerified: true,
       bio: true,
       createdAt: true,
     },

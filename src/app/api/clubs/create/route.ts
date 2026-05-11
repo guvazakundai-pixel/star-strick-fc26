@@ -7,7 +7,7 @@ const CreateClubSchema = z.object({
   name: z.string().min(3).max(40),
   tag: z.string().min(2).max(5).regex(/^[A-Z0-9]+$/, "Uppercase letters and numbers only"),
   description: z.string().max(500).optional(),
-  isInviteOnly: z.boolean().default(false),
+  membersInviteOnly: z.boolean().default(false),
 });
 
 export async function POST(req: Request) {
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
-  const { name, tag, description, isInviteOnly } = parsed.data;
+  const { name, tag, description, membersInviteOnly } = parsed.data;
 
   const existingClub = await prisma.club.findFirst({
     where: { OR: [{ name }, { tag }] },
@@ -40,8 +40,11 @@ export async function POST(req: Request) {
       name,
       tag,
       description,
-      isInviteOnly,
+      membersInviteOnly,
       createdByUserId: auth.session.userId,
+      managerId: auth.session.userId,
+      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+      city: "Harare",
     },
   });
 

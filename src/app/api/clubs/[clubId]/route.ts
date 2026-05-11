@@ -10,7 +10,7 @@ const PatchSchema = z.object({
   logoUrl: z.string().url().optional(),
   bannerUrl: z.string().url().optional(),
   city: z.string().min(2).max(80).optional(),
-  isInviteOnly: z.boolean().optional(),
+  membersInviteOnly: z.boolean().optional(),
 });
 
 export async function GET(
@@ -21,7 +21,7 @@ export async function GET(
   const club = await prisma.club.findUnique({
     where: { id: clubId },
     include: {
-      globalRanking: true,
+      globalRank: true,
       createdBy: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
     },
   });

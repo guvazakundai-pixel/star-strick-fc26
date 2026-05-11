@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     },
   });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    await prisma.loginAttempt.create({ data: { ip, userId: user?.id, success: false } });
+    await prisma.loginAttempt.create({ data: { ip, success: false } });
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Account suspended. Contact an admin." }, { status: 403 });
   }
 
-  await prisma.loginAttempt.create({ data: { ip, userId: user.id, success: true } });
+  await prisma.loginAttempt.create({ data: { ip, success: true } });
 
   await setSessionCookie({
     userId: user.id,

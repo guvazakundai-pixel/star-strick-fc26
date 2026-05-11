@@ -8,26 +8,36 @@ export async function GET(req: Request) {
   const search = searchParams.get("q") ?? "";
   const offset = (page - 1) * limit;
 
-  const searchClause = search
-    ? `WHERE (c.name LIKE '%${search.replace(/'/g, "''")}%' OR c.tag LIKE '%${search.replace(/'/g, "''")}%')`
-    : "";
+  let searchClause = "";
+  const args: any[] = [];
+  if (search) {
+    const like = `%${search}%`;
+    args.push(like, like);
+    searchClause = `WHERE (c.name LIKE ? OR c.tag LIKE ?)`;
+  }
 
-  const clubsRes = await db.execute(`
-    SELECT
-      c.id, c.name, c.slug, c.tag, c.logo_url, c.city, c.country,
-      c.is_verified, c.members_invite_only,
-      g.rank_position, g.total_points,
-      m.username as manager_username, m.display_name as manager_display_name,
-      (SELECT count(*) FROM club_members cm WHERE cm.club_id = c.id AND cm.status = 'APPROVED') as member_count
-    FROM clubs c
-    LEFT JOIN global_club_rankings g ON g.club_id = c.id
-    LEFT JOIN users m ON m.id = c.manager_id
-    ${searchClause}
-    ORDER BY c.name ASC
-    LIMIT ${limit} OFFSET ${offset}
-  `);
+  const clubsRes = await db.execute({
+    sql: `
+      SELECT
+        c.id, c.name, c.slug, c.tag, c.logo_url, c.city, c.country,
+        c.is_verified, c.members_invite_only,
+        g.rank_position, g.total_points,
+        m.username as manager_username, m.display_name as manager_display_name,
+        (SELECT count(*) FROM club_members cm WHERE cm.club_id = c.id AND cm.status = 'APPROVED') as member_count
+      FROM clubs c
+      LEFT JOIN global_club_rankings g ON g.club_id = c.id
+      LEFT JOIN users m ON m.id = c.manager_id
+      ${searchClause}
+      ORDER BY c.name ASC
+      LIMIT ? OFFSET ?
+    `,
+    args: [...args, limit, offset],
+  });
 
-  const totalRes = await db.execute(`SELECT count(*) as cnt FROM clubs c ${searchClause}`);
+  const totalRes = await db.execute({
+    sql: `SELECT count(*) as cnt FROM clubs c ${searchClause}`,
+    args,
+  });
 
   const clubs = clubsRes.rows.map((r: any) => ({
     id: r.id,

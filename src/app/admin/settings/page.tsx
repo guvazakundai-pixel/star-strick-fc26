@@ -30,7 +30,7 @@ export default async function AdminSettingsPage() {
           tag: club.tag,
           city: club.city,
           description: club.description ?? "",
-          isInviteOnly: club.isInviteOnly,
+           membersInviteOnly: club.membersInviteOnly,
           logoUrl: club.logoUrl ?? "",
           bannerUrl: club.bannerUrl ?? "",
         }}

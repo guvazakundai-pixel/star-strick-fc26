@@ -8,7 +8,7 @@ type Form = {
   tag: string;
   city: string;
   description: string;
-  isInviteOnly: boolean;
+  membersInviteOnly: boolean;
   logoUrl: string;
   bannerUrl: string;
 };
@@ -40,7 +40,7 @@ export function SettingsClient({
       tag: form.tag || undefined,
       city: form.city,
       description: form.description || undefined,
-      isInviteOnly: form.isInviteOnly,
+      membersInviteOnly: form.membersInviteOnly,
       logoUrl: form.logoUrl || undefined,
       bannerUrl: form.bannerUrl || undefined,
     };
@@ -102,8 +102,8 @@ export function SettingsClient({
       <label className="flex items-center gap-2.5 cursor-pointer">
         <input
           type="checkbox"
-          checked={form.isInviteOnly}
-          onChange={(e) => update("isInviteOnly", e.target.checked)}
+          checked={form.membersInviteOnly}
+          onChange={(e) => update("membersInviteOnly", e.target.checked)}
           className="h-4 w-4 rounded accent-[var(--bc-accent)]"
         />
         <span className="text-sm text-white">Invite-only club</span>

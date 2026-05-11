@@ -43,11 +43,11 @@ export async function POST(req: Request) {
       userId: auth.session.userId,
       clubId,
       role: "PLAYER",
-      status: club.isInviteOnly ? "PENDING" : "APPROVED",
+      status: club.membersInviteOnly ? "PENDING" : "APPROVED",
     },
   });
 
-  if (!club.isInviteOnly) {
+  if (!club.membersInviteOnly) {
     await prisma.user.update({
       where: { id: auth.session.userId },
       data: { clubId, joinedClubAt: new Date() },
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   await prisma.auditLog.create({
     data: {
       adminId: auth.session.userId,
-      action: club.isInviteOnly ? "CLUB_APPLY" : "CLUB_JOIN",
+      action: club.membersInviteOnly ? "CLUB_APPLY" : "CLUB_JOIN",
       target: `CLUB:${clubId}`,
       details: { clubName: club.name },
     },
@@ -65,6 +65,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     member,
-    status: club.isInviteOnly ? "PENDING" : "APPROVED",
+    status: club.membersInviteOnly ? "PENDING" : "APPROVED",
   });
 }

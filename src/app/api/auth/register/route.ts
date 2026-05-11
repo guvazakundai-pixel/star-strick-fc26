@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { setSessionCookie } from "@/lib/session";
+import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
 const PLATFORMS = ["CROSSPLAY", "PS5", "XBOX", "PC"] as const;
 
@@ -19,6 +20,15 @@ const RegisterSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const rlKey = rateLimitKey(req, "register");
+  const rl = rateLimit(rlKey, { windowMs: 60 * 60 * 1000, max: 5 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many registration attempts. Try again later." },
+      { status: 429 },
+    );
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = RegisterSchema.safeParse(body);
   if (!parsed.success) {
@@ -37,19 +47,6 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "Username or email already taken" },
       { status: 409 }
-    );
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const loginsToday = await prisma.loginAttempt.count({
-    where: { ip: req.headers.get("x-forwarded-for") ?? "unknown", success: true, createdAt: { gte: today } },
-  });
-  if (loginsToday >= 3) {
-    return NextResponse.json(
-      { error: "Account limit reached for this device. Contact an admin." },
-      { status: 429 }
     );
   }
 
