@@ -6,6 +6,7 @@ import { TopBar } from "@/components/TopBar";
 import { AuthProvider, AuthUrlHandler } from "@/lib/auth-context";
 import { AuthModal } from "@/components/AuthModal";
 import { AmbientBackground } from "@/components/AmbientBackground";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -89,9 +90,17 @@ export default function RootLayout({
           </Suspense>
           <AmbientBackground />
           <div className="relative z-10 min-h-screen flex flex-col">
-            <TopBar />
-            <main className="flex-1 pb-28">{children}</main>
-            <BottomNav />
+            <ErrorBoundary>
+              <TopBar />
+            </ErrorBoundary>
+            <main className="flex-1 pb-28">
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+            </main>
+            <ErrorBoundary>
+              <BottomNav />
+            </ErrorBoundary>
           </div>
           <AuthModal />
         </AuthProvider>
