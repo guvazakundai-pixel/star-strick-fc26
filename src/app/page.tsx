@@ -20,7 +20,7 @@ export default async function HomePage() {
   const clubCount = Number(clubsRes.rows[0].v);
 
   return (
-    <div className="broadcast-theme min-h-screen bc-noise">
+    <div className="broadcast-theme min-h-screen bc-grain">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 space-y-10 sm:space-y-14">
         <Hero />
         <KpiGrid
@@ -74,7 +74,7 @@ function Hero() {
           className="bc-headline mt-6 sm:mt-8 text-[3.2rem] sm:text-7xl md:text-8xl leading-[0.86] text-ink"
         >
           Zimbabwe&apos;s<br />
-          <span className="text-shimmer">Pro EA FC</span> League
+          <span className="text-gradient-championship">Pro EA FC</span> League
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 18 }}

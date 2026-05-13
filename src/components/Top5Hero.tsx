@@ -43,12 +43,13 @@ export async function Top5Hero() {
     <section aria-labelledby="top5-heading" className="relative">
       <div className="mb-5 sm:mb-6 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-black tracking-[0.28em] text-accent uppercase">
-            Live · Season 1
-          </p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 px-3 px-4 py-1.5 mb-3" style={{ background: "rgba(0,255,133,0.05)" }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" style={{ boxShadow: "0 0 8px rgba(0,255,133,0.50)" }} />
+            <span className="text-[10px] font-black tracking-[0.28em] uppercase text-accent">Live · Season 1</span>
+          </div>
           <h2
             id="top5-heading"
-            className="cinematic-heading mt-1.5 text-4xl sm:text-6xl md:text-7xl text-ink leading-[0.88]"
+            className="cinematic-heading mt-1 text-4xl sm:text-6xl md:text-7xl text-ink leading-[0.88]"
           >
             Top 5
             <span className="text-gradient-accent">.</span>
@@ -68,6 +69,7 @@ export async function Top5Hero() {
           const tone = TONES[player.rank_position] ?? "base";
           const t = toneTokens(tone);
           const delta = (player.prev_position ?? player.rank_position) - player.rank_position;
+          const displayName = player.display_name || player.username;
 
           return (
             <li
@@ -86,10 +88,11 @@ export async function Top5Hero() {
               {tone === "champion" && (
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 rounded-[inherit]"
+                  className="pointer-events-none absolute inset-0 bc-spotlight"
                   style={{
-                    background: "radial-gradient(400px 150px at 10% 50%, rgba(255,184,0,0.06) 0%, transparent 70%)",
-                  }}
+                    background: "radial-gradient(500px 180px at 15% 50%, rgba(255,184,0,0.08), transparent 65%)",
+                    "--spotlight-max": "0.14",
+                  } as React.CSSProperties}
                 />
               )}
               <span
@@ -98,10 +101,29 @@ export async function Top5Hero() {
                 style={{ background: t.edge }}
               />
 
+              <span
+                aria-hidden
+                className="pointer-events-none absolute bottom-0 right-4 bc-bg-name select-none"
+                style={{
+                  fontFamily: "var(--font-barlow), system-ui, sans-serif",
+                  fontSize: tone === "champion" ? "6rem" : "4rem",
+                  fontWeight: 900,
+                  fontStyle: "italic",
+                  lineHeight: 1,
+                  letterSpacing: "-0.06em",
+                  color: tone === "champion" ? "rgba(255,184,0,0.06)" : "rgba(255,255,255,0.03)",
+                  "--name-opacity": tone === "champion" ? "0.08" : "0.04",
+                } as React.CSSProperties}
+              >
+                {displayName.slice(0, 8).toUpperCase()}
+              </span>
+
               <div className="relative z-10 flex items-stretch gap-3 sm:gap-5 pl-6 sm:pl-8 pr-5 sm:pr-6 py-5 sm:py-6">
                 <div className="shrink-0 flex items-center min-w-[60px] sm:min-w-[90px]">
                   <span
-                    className="cinematic-heading leading-none tabular-nums text-[64px] sm:text-[100px]"
+                    className={`cinematic-heading leading-none tabular-nums ${
+                      tone === "champion" ? "text-[72px] sm:text-[110px] bc-rank-pulse" : "text-[56px] sm:text-[90px]"
+                    }`}
                     style={{
                       color: t.rankColor,
                       textShadow: t.rankShadow,
@@ -115,10 +137,10 @@ export async function Top5Hero() {
                 <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
                   <div className="flex items-center gap-2 min-w-0">
                     <h3
-                      className="cinematic-heading truncate text-3xl sm:text-4xl leading-none text-ink"
+                      className="cinematic-heading truncate text-2xl sm:text-4xl leading-none text-ink group-hover:text-accent transition-colors duration-300"
                       title={player.username}
                     >
-                      {player.display_name || player.username}
+                      {displayName}
                     </h3>
                     {delta !== 0 && (
                       <span
@@ -146,12 +168,12 @@ export async function Top5Hero() {
 
                 <div className="shrink-0 flex flex-col items-end justify-center text-right">
                   <span
-                    className="cinematic-heading tabular-nums leading-none text-3xl sm:text-4xl"
+                    className="cinematic-heading tabular-nums leading-none text-3xl sm:text-4xl bc-mono-score"
                     style={{ color: t.pointsColor }}
                   >
                     {player.points.toLocaleString()}
                   </span>
-                  <span className="mt-1 text-[9px] sm:text-[10px] font-black tracking-[0.28em] uppercase text-muted-faint">
+                  <span className="mt-1.5 text-[9px] sm:text-[10px] font-black tracking-[0.28em] uppercase text-muted-faint">
                     Pts
                   </span>
                 </div>
@@ -160,7 +182,7 @@ export async function Top5Hero() {
               {tone === "champion" && (
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[9px] font-black tracking-[0.25em] uppercase pill-gold"
+                  className="pointer-events-none absolute -top-2 right-5 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[9px] font-black tracking-[0.25em] uppercase pill-gold"
                   style={{
                     boxShadow: "0 4px 18px -4px rgba(255,184,0,0.35)",
                   }}
@@ -180,48 +202,48 @@ function toneTokens(tone: Tone) {
   switch (tone) {
     case "champion":
       return {
-        bg: "rgba(22, 24, 29, 0.50)",
+        bg: "rgba(22, 24, 29, 0.60)",
         border: "rgba(255,184,0,0.18)",
         edge: "linear-gradient(180deg, #ffd75e 0%, #ffb800 100%)",
         rankColor: "#ffb800",
-        rankShadow: "0 0 40px rgba(255,184,0,0.30), 0 0 8px rgba(255,184,0,0.12)",
+        rankShadow: "0 0 44px rgba(255,184,0,0.32), 0 0 10px rgba(255,184,0,0.14)",
         pointsColor: "#F0F0F2",
         glow: "rgba(255,184,0,0.24)",
-        shadow: "0 8px 36px rgba(255,184,0,0.10), 0 20px 52px rgba(255,184,0,0.04), inset 0 1px 0 0 rgba(255,255,255,0.05)",
+        shadow: "0 12px 48px rgba(255,184,0,0.14), 0 0 80px -20px rgba(255,184,0,0.12), inset 0 1px 0 0 rgba(255,255,255,0.06)",
       };
     case "runner":
       return {
-        bg: "rgba(22, 24, 29, 0.48)",
+        bg: "rgba(22, 24, 29, 0.52)",
         border: "rgba(0,255,133,0.16)",
         edge: "linear-gradient(180deg, #5cffb0 0%, #00ff85 100%)",
         rankColor: "#00ff85",
-        rankShadow: "0 0 36px rgba(0,255,133,0.26), 0 0 6px rgba(0,255,133,0.10)",
+        rankShadow: "0 0 36px rgba(0,255,133,0.28), 0 0 8px rgba(0,255,133,0.12)",
         pointsColor: "#F0F0F2",
         glow: "rgba(0,255,133,0.24)",
-        shadow: "0 8px 36px rgba(0,255,133,0.08), inset 0 1px 0 0 rgba(255,255,255,0.05)",
+        shadow: "0 8px 40px rgba(0,255,133,0.10), inset 0 1px 0 0 rgba(255,255,255,0.05)",
       };
     case "challenger":
       return {
-        bg: "rgba(22, 24, 29, 0.48)",
+        bg: "rgba(22, 24, 29, 0.52)",
         border: "rgba(239,68,68,0.16)",
         edge: "linear-gradient(180deg, #ff8a8a 0%, #ff4d4d 100%)",
         rankColor: "#ff4d4d",
-        rankShadow: "0 0 30px rgba(239,68,68,0.26), 0 0 6px rgba(239,68,68,0.10)",
+        rankShadow: "0 0 30px rgba(239,68,68,0.28), 0 0 6px rgba(239,68,68,0.12)",
         pointsColor: "#F0F0F2",
         glow: "rgba(239,68,68,0.20)",
-        shadow: "0 8px 36px rgba(239,68,68,0.06), inset 0 1px 0 0 rgba(255,255,255,0.04)",
+        shadow: "0 8px 36px rgba(239,68,68,0.08), inset 0 1px 0 0 rgba(255,255,255,0.04)",
       };
     case "base":
     default:
       return {
-        bg: "rgba(18, 20, 24, 0.32)",
-        border: "rgba(255,255,255,0.04)",
+        bg: "rgba(18, 20, 24, 0.38)",
+        border: "rgba(255,255,255,0.05)",
         edge: "rgba(255,255,255,0.08)",
-        rankColor: "rgba(255,255,255,0.12)",
+        rankColor: "rgba(255,255,255,0.14)",
         rankShadow: "none",
-        pointsColor: "#F0F0F2",
-        glow: "rgba(0,255,133,0.10)",
-        shadow: "0 4px 18px rgba(0,0,0,0.16), inset 0 1px 0 0 rgba(255,255,255,0.03)",
+        pointsColor: "#00ff85",
+        glow: "rgba(34,211,238,0.12)",
+        shadow: "0 4px 20px rgba(0,0,0,0.18), inset 0 1px 0 0 rgba(255,255,255,0.03)",
       };
   }
 }
