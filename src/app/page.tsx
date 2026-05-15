@@ -1,12 +1,57 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { Suspense } from "react";
-import { Top5Hero } from "@/components/Top5Hero";
 import { AuthModalCTA } from "@/components/AuthModalCTA";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { motion } from "framer-motion";
 
 export const dynamic = "force-dynamic";
+
+const PLAYER_QUOTES: Record<string, string> = {
+  "1": "The reigning king of Harare. Undefeated and untouchable. The mountain belongs to him.",
+  "2": "One step from the throne. Ruthless precision. The challenger who will not bow.",
+  "3": "Built different. The storm that rattles every bracket. Fear nothing.",
+  "4": "Silent assassin. Wins without noise, climbs without mercy.",
+  "5": "Hungry. Determined. Every match is a step toward immortality.",
+  "6": "The wall no one can break. Defense is an art form.",
+  "7": "Speed kills. The fastest hands in Zimbabwe.",
+  "8": "Calculating. Cold. Every move has a purpose.",
+  "9": "Born to compete. The grind never stops.",
+  "10": "From the shadows to the spotlight. Watch this space.",
+};
+
+function getQuote(rank: number, username: string): string {
+  return PLAYER_QUOTES[String(rank)] ?? `${username} is here to prove something. Every match writes a new chapter.`;
+}
+
+function formFromHistory(formHistory: string | null): string[] {
+  if (!formHistory) return [];
+  const chars = formHistory.split("").filter((c) => c === "W" || c === "L" || c === "D");
+  return chars.slice(-5);
+}
+
+function getFormDisplay(form: string[]): string {
+  if (form.length === 0) return "—";
+  return form.join("-");
+}
+
+type FeaturedPlayer = {
+  id: string;
+  username: string;
+  displayName: string | null;
+  rankPosition: number;
+  points: number;
+  skillRating: number;
+  winStreak: number;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  goalsScored: number;
+  goalsConceded: number;
+  formHistory: string | null;
+  clubName: string | null;
+  clubTag: string | null;
+};
 
 export default async function HomePage() {
   let totalMatches = 0;
@@ -27,152 +72,43 @@ export default async function HomePage() {
     clubCount = Number(clubsRes.rows[0].v);
   } catch {}
 
-  let topPlayers: Array<{ username: string; displayName: string | null; points: number; rank: number; club_tag: string | null }> = [];
-  let liveClubs: Array<{ name: string; tag: string | null; memberCount: number }> = [];
-  let upcomingTournaments: Array<{ name: string; slug: string; type: string; status: string }> = [];
+  let featuredPlayers: FeaturedPlayer[] = [];
 
   try {
-    const topRes = await db.execute(`
-      SELECT u.username, u.display_name, pr.points, pr.rank_position, c.tag as club_tag
+    const res = await db.execute(`
+      SELECT
+        u.id, u.username, u.display_name,
+        pr.rank_position, pr.points,
+        ps.skill_rating, ps.win_streak,
+        ps.matches_played, ps.wins, ps.losses,
+        ps.goals_scored, ps.goals_conceded,
+        ps.form_history,
+        c.name as club_name, c.tag as club_tag
       FROM player_rankings pr
       JOIN users u ON u.id = pr.user_id
+      LEFT JOIN player_stats ps ON ps.user_id = u.id
       LEFT JOIN clubs c ON c.id = u.club_id
       ORDER BY pr.rank_position ASC
-      LIMIT 5
+      LIMIT 9
     `);
-    topPlayers = topRes.rows as any;
-  } catch {}
-
-  try {
-    const clubsRes = await db.execute(`
-      SELECT c.name, c.tag, COUNT(cm.id) as memberCount
-      FROM clubs c
-      LEFT JOIN club_members cm ON cm.club_id = c.id AND cm.status = 'APPROVED'
-      GROUP BY c.id
-      ORDER BY memberCount DESC
-      LIMIT 4
-    `);
-    liveClubs = clubsRes.rows as any;
-  } catch {}
-
-  try {
-    const tRes = await db.execute(`
-      SELECT name, slug, type, status FROM tournaments
-      WHERE status IN ('REGISTRATION', 'DRAFT')
-      ORDER BY start_at ASC
-      LIMIT 3
-    `);
-    upcomingTournaments = tRes.rows as any;
+    featuredPlayers = res.rows as unknown as FeaturedPlayer[];
   } catch {}
 
   return (
     <div className="broadcast-theme min-h-screen bc-grain">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 space-y-10 sm:space-y-14">
-        <Hero />
-        <KpiGrid
-          totalMatches={totalMatches}
-          totalGoals={totalGoals}
-          playerCount={playerCount}
-          clubCount={clubCount}
-        />
-
-        <ErrorBoundary>
-          <Suspense fallback={<div className="bc-skeleton-card rounded-[28px] h-64" />}>
-            <Top5Hero />
-          </Suspense>
-        </ErrorBoundary>
-
-        {topPlayers.length > 0 && (
-          <LiveRankingTicker players={topPlayers} />
-        )}
-
-        {liveClubs.length > 0 && (
-          <TrendingClubs clubs={liveClubs} />
-        )}
-
-        {upcomingTournaments.length > 0 && (
-          <UpcomingTournaments tournaments={upcomingTournaments} />
-        )}
-
-        <CtaRow />
-      </div>
+      <HeroSection
+        totalMatches={totalMatches}
+        totalGoals={totalGoals}
+        playerCount={playerCount}
+        clubCount={clubCount}
+      />
+      <FeaturedPlayersSection players={featuredPlayers} />
+      <BottomCTA />
     </div>
   );
 }
 
-function Hero() {
-  return (
-    <section className="relative overflow-hidden rounded-[32px] sm:rounded-[40px] inner-glow light-streak" style={{ background: "rgba(18,20,24,0.45)" }}>
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none hero-gradient-spin"
-        style={{
-          background:
-            "conic-gradient(from 0deg at 50% 50%, rgba(0,255,133,0.08) 0deg, rgba(34,211,238,0.06) 100deg, rgba(168,85,247,0.05) 200deg, rgba(236,72,153,0.04) 280deg, rgba(0,255,133,0.08) 360deg)",
-          filter: "blur(100px)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(800px 300px at 80% -5%, rgba(0,255,133,0.16), transparent 55%), radial-gradient(600px 280px at 5% 110%, rgba(168,85,247,0.08), transparent 55%), radial-gradient(500px 250px at 50% 50%, rgba(34,211,238,0.05), transparent 65%)",
-        }}
-      />
-      <div className="relative z-10 px-6 sm:px-10 pt-10 sm:pt-16 pb-10 sm:pb-14">
-        <motion.span
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="inline-flex items-center gap-2 rounded-full border border-accent/25 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.24em] text-accent float-glow"
-          style={{ background: "rgba(0,255,133,0.06)" }}
-        >
-          <span className="bc-pulse-cta h-1.5 w-1.5 rounded-full bg-accent" />
-          Season 1 · Live
-        </motion.span>
-        <motion.h1
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-          className="bc-headline mt-6 sm:mt-8 text-[3.2rem] sm:text-7xl md:text-8xl leading-[0.86] text-ink"
-        >
-          Zimbabwe&apos;s<br />
-          <span className="text-gradient-championship">Pro EA FC</span> League
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
-          className="mt-5 sm:mt-6 max-w-xl text-sm sm:text-[15px] text-ink-soft leading-relaxed"
-        >
-          Track every win, every goal, every challenger from Harare to Vic Falls. Star Strick FC26 is the home of Zim&apos;s competitive scene.
-        </motion.p>
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="mt-6 sm:mt-8 flex flex-wrap gap-3"
-        >
-          <Link
-            href="/rankings"
-            className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-primary px-7 bc-headline text-base tracking-[0.14em] text-[#0D0D0F]"
-          >
-            View Rankings
-          </Link>
-          <AuthModalCTA
-            tab="join"
-            className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-outline px-7 bc-headline text-base tracking-[0.14em] text-ink"
-          >
-            Enter Rankings
-          </AuthModalCTA>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-function KpiGrid({
+function HeroSection({
   totalMatches,
   totalGoals,
   playerCount,
@@ -183,239 +119,527 @@ function KpiGrid({
   playerCount: number;
   clubCount: number;
 }) {
-  const cards = [
-    { label: "Matches", value: totalMatches.toLocaleString(), variant: "cyan" as const },
-    { label: "Goals", value: totalGoals.toLocaleString(), variant: "orange" as const },
-    { label: "Players", value: `${playerCount}`, variant: "emerald" as const },
-    { label: "Clubs", value: `${clubCount}`, variant: "purple" as const },
-  ];
-
   return (
-    <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-      {cards.map((card, i) => (
-        <motion.div
-          key={card.label}
-          initial={{ opacity: 0, y: 24, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{
-            duration: 0.6,
-            delay: 0.55 + i * 0.1,
-            ease: [0.2, 0.8, 0.2, 1],
-          }}
-        >
-          <KpiCard label={card.label} value={card.value} variant={card.variant} />
-        </motion.div>
-      ))}
-    </section>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  variant,
-}: {
-  label: string;
-  value: string;
-  variant: "cyan" | "orange" | "emerald" | "purple";
-}) {
-  const variantStyles: Record<string, { glass: string; gradient: string; glow: string; icon: React.ReactNode }> = {
-    cyan: {
-      glass: "glass-cyan",
-      gradient: "text-gradient-cyan-blue",
-      glow: "shadow-[0_0_60px_-12px_rgba(34,211,238,0.20)]",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-          <path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-8" /><path d="M22 20H2" />
-        </svg>
-      ),
-    },
-    orange: {
-      glass: "glass-orange",
-      gradient: "text-gradient-orange-gold",
-      glow: "shadow-[0_0_60px_-12px_rgba(249,115,22,0.20)]",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-          <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-        </svg>
-      ),
-    },
-    emerald: {
-      glass: "glass-emerald",
-      gradient: "text-gradient-lime-emerald",
-      glow: "shadow-[0_0_60px_-12px_rgba(52,211,153,0.20)]",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      ),
-    },
-    purple: {
-      glass: "glass-purple",
-      gradient: "text-gradient-pink",
-      glow: "shadow-[0_0_60px_-12px_rgba(168,85,247,0.20)]",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-          <path d="M12 3l8 3v6c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V6l8-3z" />
-        </svg>
-      ),
-    },
-  };
-
-  const s = variantStyles[variant];
-
-  return (
-    <div
-      className={`relative overflow-hidden rounded-[24px] ${s.glass} ${s.glow} p-5 sm:p-6 group transition-all duration-400 hover:scale-[1.03] hover:shadow-[0_0_80px_-16px_var(--glow-color,rgba(0,255,133,0.15))]`}
-    >
+    <section className="relative overflow-hidden">
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full opacity-[0.06] group-hover:opacity-[0.10] transition-opacity duration-500"
-        style={{ background: `radial-gradient(circle, currentColor, transparent 70%)` }}
+        className="pointer-events-none absolute inset-0 hero-gradient-spin"
+        style={{
+          background:
+            "conic-gradient(from 180deg at 50% 50%, rgba(0,230,118,0.08) 0deg, rgba(34,211,238,0.05) 90deg, rgba(0,255,133,0.10) 180deg, rgba(168,85,247,0.04) 270deg, rgba(0,230,118,0.08) 360deg)",
+          filter: "blur(120px)",
+        }}
       />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(900px 400px at 80% -10%, rgba(0,230,118,0.18), transparent 55%), radial-gradient(700px 350px at 10% 110%, rgba(168,85,247,0.06), transparent 55%), radial-gradient(500px 300px at 50% 50%, rgba(34,211,238,0.04), transparent 60%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-[0.04]"
+        style={{
+          background: "radial-gradient(circle, rgba(0,230,118,0.6), transparent 70%)",
+        }}
+      />
+
+      <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
+          className="flex items-center gap-2 mb-8 sm:mb-10"
+        >
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="bc-pulse-cta absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent" />
+          </span>
+          <span className="text-[11px] font-black tracking-[0.28em] uppercase text-accent">
+            Season 1 · Live Now
+          </span>
+        </motion.div>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, delay: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
+          className="break-words"
+          style={{ lineHeight: 0.88 }}
+        >
+          <span className="cinematic-heading block text-[3rem] sm:text-7xl md:text-8xl lg:text-9xl text-ink">
+            A Place For
+          </span>
+          <span className="cinematic-heading block text-[3rem] sm:text-7xl md:text-8xl lg:text-9xl">
+            <span className="text-gradient-accent">The Elite.</span>
+          </span>
+          <span className="cinematic-heading block text-[2.5rem] sm:text-6xl md:text-7xl lg:text-8xl text-ink-soft mt-1 sm:mt-2">
+            The Peak Of The
+          </span>
+          <span className="cinematic-heading block text-[2.5rem] sm:text-6xl md:text-7xl lg:text-8xl">
+            <span className="text-gradient-hero">Pro Mountain.</span>
+          </span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.55, ease: [0.2, 0.8, 0.2, 1] }}
+          className="mt-8 sm:mt-10 max-w-2xl text-[15px] sm:text-base text-ink-soft leading-relaxed"
+        >
+          Many play, but only a handful are chosen to rule. This isn&apos;t just a leaderboard;
+          it is the definitive proving ground for the absolute greatest in Zimbabwe. Every match
+          is a battle for legacy. Every win is a step closer to immortality. The ladder is steep,
+          the competition is ruthless, and the throne only holds one GOAT.
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.75, ease: [0.2, 0.8, 0.2, 1] }}
+          className="mt-4 text-[13px] sm:text-sm text-muted-soft italic"
+        >
+          Will you watch from the shadows, or will you force them to remember your name?
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.95 }}
+          className="mt-10 sm:mt-12"
+        >
+          <div className="frosted-card p-6 sm:p-8 rounded-[28px] relative overflow-hidden">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-30"
+              style={{
+                background: "radial-gradient(400px 200px at 30% 50%, rgba(0,230,118,0.12), transparent 70%)",
+              }}
+            />
+            <div className="relative z-10">
+              <p className="cinematic-heading text-lg sm:text-xl text-ink tracking-tight">
+                Join the ranks and start creating your legacy.
+              </p>
+              <p className="mt-2 text-[13px] text-muted-soft">
+                Enter the rankings. Prove yourself. Climb the mountain.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <AuthModalCTA
+                  tab="join"
+                  className="inline-flex items-center justify-center h-12 sm:h-14 rounded-[18px] px-8 sm:px-10 font-bold text-base sm:text-lg tracking-wide transition-all duration-300"
+                  style={{
+                    background: "linear-gradient(135deg, #00E676 0%, #00ff85 50%, #00cc6a 100%)",
+                    color: "#0D0D0F",
+                    boxShadow: "0 0 40px rgba(0,230,118,0.30), 0 0 80px rgba(0,230,118,0.15), 0 6px 28px rgba(0,0,0,0.25)",
+                  }}
+                >
+                  JOIN THE RANKS
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-5 w-5">
+                    <path d="M5 12h14" /><path d="M13 5l7 7-7 7" />
+                  </svg>
+                </AuthModalCTA>
+                <Link
+                  href="/rankings"
+                  className="inline-flex items-center justify-center h-12 sm:h-14 rounded-[18px] cta-outline px-8 sm:px-10 font-bold text-base sm:text-lg tracking-wide text-ink"
+                >
+                  View Rankings
+                </Link>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1.15 }}
+          className="mt-10 sm:mt-14 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
+        >
+          <StatCard label="Matches" value={totalMatches.toLocaleString()} icon="match" />
+          <StatCard label="Goals" value={totalGoals.toLocaleString()} icon="goal" />
+          <StatCard label="Players" value={`${playerCount}`} icon="player" />
+          <StatCard label="Clubs" value={`${clubCount}`} icon="club" />
+        </motion.div>
+      </div>
+
+      <div className="relative z-10 h-px mx-auto max-w-6xl" style={{ background: "linear-gradient(90deg, transparent, rgba(0,230,118,0.20), rgba(34,211,238,0.12), rgba(168,85,247,0.08), transparent)" }} />
+    </section>
+  );
+}
+
+function StatCard({ label, value, icon }: { label: string; value: string; icon: string }) {
+  const iconEl = (() => {
+    switch (icon) {
+      case "match":
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M9 21V9" />
+          </svg>
+        );
+      case "goal":
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+          </svg>
+        );
+      case "player":
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        );
+      case "club":
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M12 3l8 3v6c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V6l8-3z" />
+          </svg>
+        );
+      default:
+        return null;
+    }
+  })();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 22, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+      className="frosted-card-sm p-5 rounded-[22px] group transition-all duration-400 hover:scale-[1.03] hover:border-accent/16"
+      style={{ boxShadow: "0 0 48px -12px rgba(0,230,118,0.08)" }}
+    >
       <div className="flex items-start justify-between mb-3">
-        <span className={`${variant === "cyan" ? "text-cyan" : variant === "orange" ? "text-orange" : variant === "emerald" ? "text-emerald" : "text-purple"} opacity-50`}>{s.icon}</span>
+        <span className="text-accent/50">{iconEl}</span>
       </div>
       <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-soft">{label}</p>
-      <p className={`bc-headline mt-1.5 text-3xl sm:text-4xl tabular-nums leading-none ${s.gradient}`}>
+      <p className="bc-headline mt-1.5 text-3xl sm:text-4xl tabular-nums leading-none text-gradient-accent">
         {value}
       </p>
-    </div>
+    </motion.div>
   );
 }
 
-function LiveRankingTicker({ players }: { players: Array<{ username: string; displayName: string | null; points: number; rank: number; club_tag: string | null }> }) {
+function FeaturedPlayersSection({ players }: { players: FeaturedPlayer[] }) {
+  if (players.length === 0) return null;
+
   return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-3">
-        <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" style={{ boxShadow: "0 0 8px rgba(0,255,133,0.60)" }} />
-        <h2 className="bc-headline text-xl text-ink">Live Rankings</h2>
-      </div>
-      <div className="flex gap-3 overflow-x-auto bc-no-scrollbar pb-2">
-        {players.map((p, i) => (
-          <motion.div
-            key={p.username}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.4 }}
+    <section className="relative py-16 sm:py-24">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: "radial-gradient(800px 400px at 50% 20%, rgba(0,230,118,0.06), transparent 60%)",
+        }}
+      />
+
+      <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6 }}
+          className="mb-8 sm:mb-12"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" style={{ boxShadow: "0 0 8px rgba(0,255,133,0.60)" }} />
+            <span className="text-[10px] font-black tracking-[0.28em] uppercase text-accent">
+              Featured
+            </span>
+          </div>
+          <h2 className="cinematic-heading text-4xl sm:text-6xl md:text-7xl text-ink leading-[0.88]">
+            The <span className="text-gradient-accent">Elite.</span>
+          </h2>
+          <p className="mt-4 max-w-lg text-[14px] sm:text-[15px] text-muted-soft leading-relaxed">
+            These are the names etched into the mountain. Every position earned. Every point fought for.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          {players.map((player, i) => (
+            <FeaturedPlayerCard key={player.id} player={player} index={i} />
+          ))}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3 }}
+          className="mt-10 sm:mt-14 text-center"
+        >
+          <Link
+            href="/rankings"
+            className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-outline px-8 bc-headline text-base tracking-[0.14em] text-ink group"
           >
-            <Link
-              href={`/player/${p.username}`}
-              className="block frosted-card-sm p-4 rounded-[20px] min-w-[180px] hover:border-accent/16 transition-all duration-300 group"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="bc-headline text-2xl text-accent tabular-nums">{p.rank}</span>
-                {p.club_tag && (
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent/50">[{p.club_tag}]</span>
-                )}
-              </div>
-              <p className="text-sm font-semibold text-ink group-hover:text-accent transition-colors duration-300 truncate">
-                {p.displayName || p.username}
-              </p>
-              <p className="bc-mono-score text-xs text-muted-soft mt-0.5">{p.points.toLocaleString()} pts</p>
-            </Link>
-          </motion.div>
-        ))}
+            View Full Rankings
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1">
+              <path d="M5 12h14" /><path d="M13 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </motion.div>
       </div>
     </section>
   );
 }
 
-function TrendingClubs({ clubs }: { clubs: Array<{ name: string; tag: string | null; memberCount: number }> }) {
+function FeaturedPlayerCard({ player, index }: { player: FeaturedPlayer; index: number }) {
+  const displayName = player.displayName || player.username;
+  const form = formFromHistory(player.formHistory);
+  const formDisplay = getFormDisplay(form);
+  const quote = getQuote(player.rankPosition, player.username);
+  const goalDiff = player.goalsScored - player.goalsConceded;
+  const isTop3 = player.rankPosition <= 3;
+  const rankBadge = getRankBadge(player.rankPosition);
+
+  const cardTone = isTop3
+    ? {
+        border: player.rankPosition === 1 ? "rgba(255,184,0,0.22)" : player.rankPosition === 2 ? "rgba(200,200,210,0.18)" : "rgba(205,127,50,0.18)",
+        glow: player.rankPosition === 1 ? "0 0 60px -12px rgba(255,184,0,0.22), 0 12px 40px rgba(0,0,0,0.25)" : player.rankPosition === 2 ? "0 0 60px -12px rgba(200,200,210,0.14), 0 12px 40px rgba(0,0,0,0.25)" : "0 0 60px -12px rgba(205,127,50,0.14), 0 12px 40px rgba(0,0,0,0.25)",
+      }
+    : {
+        border: "rgba(255,255,255,0.05)",
+        glow: "0 4px 24px rgba(0,0,0,0.18)",
+      };
+
   return (
-    <section className="space-y-3">
-      <h2 className="bc-headline text-xl text-ink">Trending Clubs</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {clubs.map((c, i) => (
-          <motion.div
-            key={c.name}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.4 }}
-          >
-            <Link
-              href={`/club/${c.tag ?? c.name.toLowerCase().replace(/\s+/g, "-")}`}
-              className="block frosted-card-sm p-4 rounded-[20px] hover:border-accent/16 transition-all duration-300 group"
-            >
-              <div className="h-10 w-10 rounded-[12px] border border-white/[0.06] flex items-center justify-center mb-3" style={{ background: "linear-gradient(135deg, rgba(22,24,28,0.90), rgba(18,20,24,0.80))" }}>
-                <span className="bc-headline text-lg text-accent">{c.tag?.[0] ?? c.name[0]}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 28, scale: 0.97 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.35), ease: [0.2, 0.8, 0.2, 1] }}
+    >
+      <Link
+        href={`/player/${player.username}`}
+        className="block group relative overflow-hidden rounded-[24px] transition-all duration-400 hover:scale-[1.02] hover:border-accent/20"
+        style={{
+          background: "rgba(18, 20, 24, 0.55)",
+          backdropFilter: "blur(28px)",
+          WebkitBackdropFilter: "blur(28px)",
+          border: `1px solid ${cardTone.border}`,
+          boxShadow: cardTone.glow,
+        }}
+      >
+        {isTop3 && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bc-spotlight"
+            style={{
+              background: player.rankPosition === 1
+                ? "radial-gradient(400px 200px at 15% 30%, rgba(255,184,0,0.08), transparent 65%)"
+                : player.rankPosition === 2
+                  ? "radial-gradient(400px 200px at 15% 30%, rgba(200,200,210,0.06), transparent 65%)"
+                  : "radial-gradient(400px 200px at 15% 30%, rgba(205,127,50,0.06), transparent 65%)",
+              "--spotlight-max": "0.12",
+            } as React.CSSProperties}
+          />
+        )}
+
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-4 right-2 select-none leading-none"
+          style={{
+            fontFamily: "var(--font-barlow), system-ui, sans-serif",
+            fontSize: "8rem",
+            fontWeight: 900,
+            fontStyle: "italic",
+            letterSpacing: "-0.06em",
+            color: isTop3
+              ? player.rankPosition === 1 ? "rgba(255,184,0,0.05)" : "rgba(255,255,255,0.03)"
+              : "rgba(255,255,255,0.02)",
+          }}
+        >
+          {displayName.slice(0, 6).toUpperCase()}
+        </div>
+
+        <div className="relative z-10 p-5 sm:p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className="flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-[14px] shrink-0"
+                style={{
+                  background: isTop3
+                    ? player.rankPosition === 1
+                      ? "linear-gradient(135deg, rgba(255,184,0,0.15), rgba(255,215,94,0.08))"
+                      : player.rankPosition === 2
+                        ? "linear-gradient(135deg, rgba(200,200,210,0.12), rgba(255,255,255,0.05))"
+                        : "linear-gradient(135deg, rgba(205,127,50,0.12), rgba(255,255,255,0.05))"
+                    : "linear-gradient(135deg, rgba(0,230,118,0.08), rgba(34,211,238,0.04))",
+                  border: isTop3
+                    ? player.rankPosition === 1
+                      ? "1px solid rgba(255,184,0,0.25)"
+                      : player.rankPosition === 2
+                        ? "1px solid rgba(200,200,210,0.20)"
+                        : "1px solid rgba(205,127,50,0.20)"
+                    : "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <span
+                  className={`cinematic-heading text-2xl sm:text-3xl leading-none ${
+                    player.rankPosition === 1 ? "text-gold" : player.rankPosition === 2 ? "text-silver" : player.rankPosition === 3 ? "text-bronze" : "text-accent"
+                  }`}
+                >
+                  {player.rankPosition}
+                </span>
               </div>
-              <p className="text-sm font-semibold text-ink group-hover:text-accent transition-colors duration-300 truncate">{c.name}</p>
-              <p className="text-[11px] text-muted-soft mt-0.5">{c.memberCount} member{c.memberCount !== 1 ? "s" : ""}</p>
-            </Link>
-          </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function UpcomingTournaments({ tournaments }: { tournaments: Array<{ name: string; slug: string; type: string; status: string }> }) {
-  const typeColors: Record<string, { bg: string; text: string }> = {
-    KNOCKOUT: { bg: "rgba(168,85,247,0.08)", text: "text-purple" },
-    ROUND_ROBIN: { bg: "rgba(34,211,238,0.08)", text: "text-cyan" },
-    GROUPS: { bg: "rgba(249,115,22,0.08)", text: "text-orange" },
-  };
-
-  return (
-    <section className="space-y-3">
-      <h2 className="bc-headline text-xl text-ink">Upcoming Tournaments</h2>
-      <div className="space-y-2">
-        {tournaments.map((t) => {
-          const tc = typeColors[t.type] || typeColors.KNOCKOUT;
-          return (
-            <Link
-              key={t.slug}
-              href={`/tournaments/${t.slug}`}
-              className="block frosted-card-sm p-4 rounded-[20px] hover:border-accent/16 transition-all duration-300 group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-ink group-hover:text-accent transition-colors duration-300">{t.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[9px] font-bold uppercase tracking-wider rounded-[4px] px-1.5 py-0.5" style={{ background: tc.bg }}>{t.type}</span>
-                    <span className="text-[10px] text-muted-soft font-mono">{t.status}</span>
-                  </div>
+              <div className="min-w-0">
+                <h3 className="cinematic-heading text-xl sm:text-2xl text-ink leading-none truncate group-hover:text-accent transition-colors duration-300">
+                  {displayName}
+                </h3>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-soft">
+                    @{player.username}
+                  </span>
+                  <span className="text-border-strong">·</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black tracking-[0.16em] uppercase px-1.5 py-0.5 rounded-[4px]" style={{ background: "rgba(0,230,118,0.08)", color: "var(--accent)" }}>
+                    ZW
+                  </span>
+                  {player.clubTag && (
+                    <>
+                      <span className="text-border-strong">·</span>
+                      <span className="text-[10px] font-bold tracking-[0.16em] uppercase text-accent/60">
+                        [{player.clubTag}]
+                      </span>
+                    </>
+                  )}
                 </div>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-5 w-5 text-muted-soft group-hover:text-accent transition-colors shrink-0">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
               </div>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+            </div>
+            {isTop3 && (
+              <span
+                className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-black tracking-[0.2em] uppercase"
+                style={{
+                  background: player.rankPosition === 1 ? "rgba(255,184,0,0.10)" : player.rankPosition === 2 ? "rgba(200,200,210,0.08)" : "rgba(205,127,50,0.08)",
+                  color: player.rankPosition === 1 ? "#ffb800" : player.rankPosition === 2 ? "#C8C8D2" : "#CD7F32",
+                  border: player.rankPosition === 1 ? "1px solid rgba(255,184,0,0.20)" : player.rankPosition === 2 ? "1px solid rgba(200,200,210,0.16)" : "1px solid rgba(205,127,50,0.16)",
+                }}
+              >
+                {rankBadge}
+              </span>
+            )}
+          </div>
+
+          <p className="mt-3 text-[12px] sm:text-[13px] text-muted leading-relaxed line-clamp-2 italic" style={{ lineHeight: 1.5 }}>
+            &ldquo;{quote}&rdquo;
+          </p>
+
+          <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">Form</p>
+                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums">
+                  {form.length > 0 ? (
+                    <span className="flex items-center gap-0.5">
+                      {form.map((r, fi) => (
+                        <span
+                          key={fi}
+                          className={
+                            r === "W"
+                              ? "text-accent"
+                              : r === "L"
+                                ? "text-negative"
+                                : "text-muted-soft"
+                          }
+                        >
+                          {r}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="text-muted-faint">—</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">Points</p>
+                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums text-ink">
+                  {player.points.toLocaleString()}
+                </p>
+                <p className="text-[9px] text-muted-faint">
+                  SR {Math.round(player.skillRating).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">Win Rate</p>
+                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums text-ink">
+                  {player.matchesPlayed > 0
+                    ? `${Math.round((player.wins / player.matchesPlayed) * 100)}%`
+                    : "—"}
+                </p>
+                <p className="text-[9px] text-muted-faint">
+                  {player.wins}W {player.losses}L
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(0,230,118,0.30), transparent)" }}
+          />
+        </div>
+      </Link>
+    </motion.div>
   );
 }
 
-function CtaRow() {
+function getRankBadge(rank: number): string {
+  if (rank === 1) return "★ GOAT";
+  if (rank === 2) return "★ Elite";
+  if (rank === 3) return "★ Top 3";
+  return `#${rank}`;
+}
+
+function BottomCTA() {
   return (
-    <div className="flex flex-wrap gap-3">
-      <motion.div
-        whileHover={{ scale: 1.04 }}
-        whileTap={{ scale: 0.96 }}
-        transition={{ type: "spring", stiffness: 400, damping: 22 }}
-      >
-        <Link
-          href="/rankings"
-          className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-primary px-7 bc-headline text-base tracking-[0.14em] text-[#0D0D0F]"
+    <section className="relative py-16 sm:py-24">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: "radial-gradient(800px 400px at 50% 50%, rgba(0,230,118,0.06), transparent 60%)",
+        }}
+      />
+      <div className="relative z-10 mx-auto max-w-3xl px-4 sm:px-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
         >
-          View Rankings
-        </Link>
-      </motion.div>
-      <motion.div
-        whileHover={{ scale: 1.04 }}
-        whileTap={{ scale: 0.96 }}
-        transition={{ type: "spring", stiffness: 400, damping: 22 }}
-      >
-        <AuthModalCTA
-          tab="join"
-          className="inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] cta-outline px-7 bc-headline text-base tracking-[0.14em] text-ink"
-        >
-          Enter Rankings
-        </AuthModalCTA>
-      </motion.div>
-    </div>
+          <h2 className="cinematic-heading text-3xl sm:text-5xl md:text-6xl text-ink leading-[0.88]">
+            The Mountain
+            <br />
+            <span className="text-gradient-accent">Awaits.</span>
+          </h2>
+          <p className="mt-5 text-[14px] sm:text-[15px] text-muted-soft leading-relaxed max-w-md mx-auto">
+            Every legend was once a challenger who refused to quit. Your story starts with one match.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <AuthModalCTA
+              tab="join"
+              className="inline-flex items-center justify-center h-12 sm:h-14 rounded-[18px] px-8 sm:px-10 font-bold text-base sm:text-lg tracking-wide transition-all duration-300"
+              style={{
+                background: "linear-gradient(135deg, #00E676 0%, #00ff85 50%, #00cc6a 100%)",
+                color: "#0D0D0F",
+                boxShadow: "0 0 40px rgba(0,230,118,0.30), 0 0 80px rgba(0,230,118,0.15), 0 6px 28px rgba(0,0,0,0.25)",
+              }}
+            >
+              JOIN THE RANKS / CREATE ACCOUNT
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-5 w-5">
+                <path d="M5 12h14" /><path d="M13 5l7 7-7 7" />
+              </svg>
+            </AuthModalCTA>
+            <Link
+              href="/rankings"
+              className="inline-flex items-center justify-center h-12 sm:h-14 rounded-[18px] cta-outline px-8 sm:px-10 font-bold text-base sm:text-lg tracking-wide text-ink"
+            >
+              View Rankings
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    </section>
   );
 }
