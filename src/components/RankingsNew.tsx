@@ -1197,42 +1197,37 @@ function TacticalBar({ label, value, gradient, icon }: { label: string; value: n
 }
 
 function ChallengeButton({ playerId, loggedIn, onChallenge, state, compact }: { playerId: string; loggedIn: boolean; onChallenge: (id: string) => void; state: "idle" | "sending" | "sent" | "error"; compact?: boolean }) {
+  const sizeClass = compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]";
+  const iconSize = compact ? "h-2.5 w-2.5" : "h-3 w-3";
+
   if (state === "sent") {
     return (
-      <span className={
-        "inline-flex items-center justify-center gap-1.5 rounded-[8px] font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 " +
-        (compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]")
-      }>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={compact ? "h-2.5 w-2.5" : "h-3 w-3"}><path d="M20 6L9 17l-5-5" /></svg>
+      <span className={`inline-flex items-center justify-center gap-1.5 rounded-[8px] font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 ${sizeClass}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={iconSize}><path d="M20 6L9 17l-5-5" /></svg>
         Sent
       </span>
     );
   }
   if (state === "error") {
     return (
-      <span className={
-        "inline-flex items-center justify-center rounded-[8px] font-bold uppercase tracking-wider text-negative/80 " +
-        (compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]")
-      }>
+      <span className={`inline-flex items-center justify-center rounded-[8px] font-bold uppercase tracking-wider text-negative/80 ${sizeClass}`}>
         Failed
       </span>
     );
   }
+
+  const btnClass = loggedIn
+    ? `inline-flex items-center justify-center gap-1.5 rounded-[8px] font-bold uppercase tracking-wider transition-all duration-150 bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 hover:border-accent/30 active:scale-95 ${sizeClass}`
+    : `inline-flex items-center justify-center gap-1.5 rounded-[8px] font-bold uppercase tracking-wider transition-all duration-150 bg-bg-elevated/60 text-muted-soft border border-border-faint hover:text-ink hover:border-border-strong ${sizeClass}`;
+
   return (
     <button
       type="button"
       onClick={(e) => onChallenge(playerId, e)}
       disabled={state === "sending"}
-      className={
-        "inline-flex items-center justify-center gap-1.5 rounded-[8px] font-bold uppercase tracking-wider transition-all duration-150 " +
-        (loggedIn
-          ? "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 hover:border-accent/30 active:scale-95 " +
-            (compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]")
-          : "bg-bg-elevated/60 text-muted-soft border border-border-faint hover:text-ink hover:border-border-strong " +
-            (compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]")
-      )
+      className={btnClass}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={compact ? "h-2.5 w-2.5" : "h-3 w-3"}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={iconSize}>
         <path d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
       {state === "sending" ? "..." : loggedIn ? "Challenge" : "Sign in to Challenge"}
