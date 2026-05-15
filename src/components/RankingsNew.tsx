@@ -16,6 +16,7 @@ import {
   type City,
 } from "@/lib/players";
 import { CLUBS, clubByPlayerId, type Club } from "@/lib/clubs";
+import { useAuthModal } from "@/lib/auth-context";
 
 type SortKey = "rank" | "points" | "winRate" | "gd" | "streak";
 type SortDir = "asc" | "desc";
@@ -208,6 +209,12 @@ export function RankingsClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [swipedId, setSwipedId] = useState<string | null>(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const { openAuth } = useAuthModal();
+
+  useEffect(() => {
+    fetch("/api/auth/me").then(r => r.ok ? r.json() : null).then(d => setLoggedIn(!!d?.user)).catch(() => {});
+  }, []);
 
   const sortedPlayers = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -248,6 +255,25 @@ export function RankingsClient() {
     setSheetOpen(true);
   }, []);
 
+  const [challengeState, setChallengeState] = useState<Record<string, "idle" | "sending" | "sent" | "error">>({});
+
+  const handleChallenge = useCallback(async (playerId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!loggedIn) { openAuth("signin"); return; }
+    setChallengeState(prev => ({ ...prev, [playerId]: "sending" }));
+    try {
+      const res = await fetch("/api/match-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiverId: playerId, expiresInHours: 24 }),
+      });
+      if (!res.ok) throw new Error();
+      setChallengeState(prev => ({ ...prev, [playerId]: "sent" }));
+    } catch {
+      setChallengeState(prev => ({ ...prev, [playerId]: "error" }));
+    }
+  }, [loggedIn, openAuth]););
+
   const handleSort = useCallback((k: SortKey) => {
     setSortKey((prev) => {
       if (prev === k) {
@@ -286,6 +312,9 @@ export function RankingsClient() {
             onSelect={handleSelect}
             swipedId={swipedId}
             onSwipe={setSwipedId}
+            loggedIn={loggedIn}
+            onChallenge={handleChallenge}
+            challengeState={challengeState}
           />
         )}
       </div>
@@ -436,7 +465,7 @@ function FilterChip({ label, value, onChange, options }: { label: string; value:
   );
 }
 
-function RankingsList({ players, selectedId, onSelect, swipedId, onSwipe }: { players: Player[]; selectedId: string | null; onSelect: (id: string) => void; swipedId: string | null; onSwipe: (id: string | null) => void; }) {
+function RankingsList({ players, selectedId, onSelect, swipedId, onSwipe, loggedIn, onChallenge, challengeState }: { players: Player[]; selectedId: string | null; onSelect: (id: string) => void; swipedId: string | null; onSwipe: (id: string | null) => void; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error">; }) {
   const top3 = players.slice(0, 3);
   const rest = players.slice(3);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -474,7 +503,7 @@ function RankingsList({ players, selectedId, onSelect, swipedId, onSwipe }: { pl
       {top3.length > 0 && (
         <section className="space-y-3 sm:space-y-4">
           {top3.map((player, idx) => (
-            <Top3Card key={player.id} player={player} index={idx} isSelected={player.id === selectedId} onSelect={() => onSelect(player.id)} club={clubByPlayerId(player.id) ?? null} />
+            <Top3Card key={player.id} player={player} index={idx} isSelected={player.id === selectedId} onSelect={() => onSelect(player.id)} club={clubByPlayerId(player.id) ?? null} loggedIn={loggedIn} onChallenge={onChallenge} challengeState={challengeState} />
           ))}
         </section>
       )}
@@ -499,6 +528,9 @@ function RankingsList({ players, selectedId, onSelect, swipedId, onSwipe }: { pl
                       onSelect={() => onSelect(player.id)}
                       isSwiped={swipedId === player.id}
                       onSwipe={() => onSwipe(swipedId === player.id ? null : player.id)}
+                      loggedIn={loggedIn}
+                      onChallenge={onChallenge}
+                      challengeState={challengeState}
                     />
                   ) : (
                     <div className="h-[76px] sm:h-[88px] rounded-[20px] sm:rounded-[22px]" style={{ background: "rgba(18,20,24,0.32)", border: "1px solid rgba(255,255,255,0.035)" }} />
@@ -520,7 +552,7 @@ function sortVal(p: Player): number {
   }
 }
 
-function Top3Card({ player, index, isSelected, onSelect, club }: { player: Player; index: number; isSelected: boolean; onSelect: () => void; club: Club | null }) {
+function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChallenge, challengeState }: { player: Player; index: number; isSelected: boolean; onSelect: () => void; club: Club | null; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error"> }) {
   const t = getTierTheme(player.rank);
   const stats = computeDerived(player);
   const delta = player.prev - player.rank;
@@ -535,7 +567,7 @@ function Top3Card({ player, index, isSelected, onSelect, club }: { player: Playe
       className="block w-full text-left group"
     >
       <div
-        className={`relative overflow-hidden rounded-[24px] sm:rounded-[28px] transition-all duration-500 group-hover:scale-[1.008] ${isSelected ? "ring-1 ring-accent/30" : ""}`}
+        className={`relative overflow-hidden rounded-[24px] sm:rounded-[28px] transition-all duration-200 group-hover:scale-[1.005] ${isSelected ? "ring-1 ring-accent/30" : ""}`}
         style={{
           background: "linear-gradient(135deg, rgba(18,20,24,0.60) 0%, rgba(14,16,20,0.70) 100%)",
           backdropFilter: "blur(28px) saturate(1.4)",
@@ -591,7 +623,7 @@ function Top3Card({ player, index, isSelected, onSelect, club }: { player: Playe
           <div className="min-w-0 flex-1 flex flex-col justify-center gap-1 sm:gap-1.5 py-5 sm:py-6">
             {/* Row 1: GAMERTAG — always full width, never truncated */}
             <div className="flex items-center gap-2 min-w-0">
-              <h3 className="cinematic-heading text-xl sm:text-2xl md:text-3xl leading-none text-ink group-hover:text-accent transition-colors duration-300 truncate">
+              <h3 className="cinematic-heading text-xl sm:text-2xl md:text-3xl leading-none text-ink group-hover:text-accent transition-colors duration-150 truncate">
                 {gamertag}
               </h3>
               {isChampion && (
@@ -665,6 +697,11 @@ function Top3Card({ player, index, isSelected, onSelect, club }: { player: Playe
               {player.winStreak >= 3 && <span className="bc-mono-score text-[11px] text-accent">🔥{player.winStreak}</span>}
               <span className="bc-mono-score text-[11px] text-muted-faint">{Math.round(stats.winRate)}%</span>
             </div>
+
+            {/* Row 5: Challenge button */}
+            <div className="mt-2">
+              <ChallengeButton playerId={player.id} loggedIn={loggedIn} onChallenge={onChallenge} state={challengeState[player.id] ?? "idle"} />
+            </div>
           </div>
 
           {/* RIGHT: Points — dedicated container, fully separated */}
@@ -688,7 +725,7 @@ function Top3Card({ player, index, isSelected, onSelect, club }: { player: Playe
   );
 }
 
-function SwipeableRankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe }: { player: Player; index: number; club: Club | null; isSelected: boolean; onSelect: () => void; isSwiped: boolean; onSwipe: () => void; }) {
+function SwipeableRankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe, loggedIn, onChallenge, challengeState }: { player: Player; index: number; club: Club | null; isSelected: boolean; onSelect: () => void; isSwiped: boolean; onSwipe: () => void; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error">; }) {
   const t = getTierTheme(player.rank);
   const stats = computeDerived(player);
   const delta = player.prev - player.rank;
@@ -739,7 +776,7 @@ function SwipeableRankRow({ player, index, club, isSelected, onSelect, isSwiped,
     const dx = e.changedTouches[0].clientX - touchStartX.current;
 
     if (trackRef.current) {
-      trackRef.current.style.transition = "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)";
+      trackRef.current.style.transition = "transform 180ms cubic-bezier(0.25, 1, 0.5, 1)";
     }
 
     if (!isSwiped && dx < -50) {
@@ -846,6 +883,9 @@ function SwipeableRankRow({ player, index, club, isSelected, onSelect, isSwiped,
             </div>
             <div className="text-[9px] text-muted-faint">
               {player.city}
+            </div>
+            <div className="mt-1">
+              <ChallengeButton playerId={player.id} loggedIn={loggedIn} onChallenge={onChallenge} state={challengeState[player.id] ?? "idle"} compact />
             </div>
           </div>
         </div>
@@ -1153,6 +1193,50 @@ function TacticalBar({ label, value, gradient, icon }: { label: string; value: n
         />
       </div>
     </div>
+  );
+}
+
+function ChallengeButton({ playerId, loggedIn, onChallenge, state, compact }: { playerId: string; loggedIn: boolean; onChallenge: (id: string) => void; state: "idle" | "sending" | "sent" | "error"; compact?: boolean }) {
+  if (state === "sent") {
+    return (
+      <span className={
+        "inline-flex items-center justify-center gap-1.5 rounded-[8px] font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 " +
+        (compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]")
+      }>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={compact ? "h-2.5 w-2.5" : "h-3 w-3"}><path d="M20 6L9 17l-5-5" /></svg>
+        Sent
+      </span>
+    );
+  }
+  if (state === "error") {
+    return (
+      <span className={
+        "inline-flex items-center justify-center rounded-[8px] font-bold uppercase tracking-wider text-negative/80 " +
+        (compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]")
+      }>
+        Failed
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => onChallenge(playerId, e)}
+      disabled={state === "sending"}
+      className={
+        "inline-flex items-center justify-center gap-1.5 rounded-[8px] font-bold uppercase tracking-wider transition-all duration-150 " +
+        (loggedIn
+          ? "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 hover:border-accent/30 active:scale-95 " +
+            (compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]")
+          : "bg-bg-elevated/60 text-muted-soft border border-border-faint hover:text-ink hover:border-border-strong " +
+            (compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]")
+      )
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={compact ? "h-2.5 w-2.5" : "h-3 w-3"}>
+        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      {state === "sending" ? "..." : loggedIn ? "Challenge" : "Sign in to Challenge"}
+    </button>
   );
 }
 
