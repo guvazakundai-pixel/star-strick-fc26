@@ -1,5 +1,5 @@
-import { PageSkeleton } from "@/components/Skeleton";
+import { RankingsSkeleton } from "@/components/ui/Skeleton";
 
 export default function RankingsLoading() {
-  return <PageSkeleton />;
+  return <RankingsSkeleton />;
 }

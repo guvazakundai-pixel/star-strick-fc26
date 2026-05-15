@@ -10,11 +10,11 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Application error:", error);
+    console.error("[GlobalErrorBoundary]", error);
   }, [error]);
 
   return (
-    <div className="broadcast-theme min-h-screen bc-grain flex items-center justify-center px-4">
+    <div className="broadcast-theme min-h-screen bc-grain flex items-center justify-center px-4" suppressHydrationWarning>
       <div className="text-center space-y-6 max-w-md">
         <div
           className="mx-auto h-24 w-24 rounded-full flex items-center justify-center"
@@ -33,13 +33,26 @@ export default function Error({
           <p className="text-muted leading-relaxed">
             An unexpected error occurred. Please try again.
           </p>
+          {error?.message && process.env.NODE_ENV === "development" && (
+            <p className="text-xs text-negative/60 font-mono mt-2 break-all">
+              {error.message}
+            </p>
+          )}
         </div>
-        <button
-          onClick={reset}
-          className="inline-flex items-center justify-center h-12 rounded-[18px] cta-primary px-7 text-sm font-bold text-[#0D0D0F]"
-        >
-          Try Again
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            onClick={reset}
+            className="btn-primary rounded-[14px] px-7 h-12 text-sm"
+          >
+            Try Again
+          </button>
+          <a
+            href="/"
+            className="btn-ghost rounded-[14px] px-7 h-12 text-sm inline-flex items-center justify-center"
+          >
+            Go Home
+          </a>
+        </div>
       </div>
     </div>
   );

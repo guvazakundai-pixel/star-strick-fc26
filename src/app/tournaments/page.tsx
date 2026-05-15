@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Tabs } from "@/components/Tabs";
+import { AnimatedTabs } from "@/components/ui/AnimatedTabs";
 
 const TABS = ["Live", "Upcoming", "Past"] as const;
 type Tab = (typeof TABS)[number];
@@ -167,7 +167,7 @@ export default async function TournamentsPage() {
             CUPS &amp; EVENTS
           </h1>
         </header>
-        <Tabs
+        <AnimatedTabs
           tabs={TABS}
           panels={{
             Live: renderList(liveData),

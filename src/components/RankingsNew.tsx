@@ -439,6 +439,35 @@ function FilterChip({ label, value, onChange, options }: { label: string; value:
 function RankingsList({ players, selectedId, onSelect, swipedId, onSwipe }: { players: Player[]; selectedId: string | null; onSelect: (id: string) => void; swipedId: string | null; onSwipe: (id: string | null) => void; }) {
   const top3 = players.slice(0, 3);
   const rest = players.slice(3);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [visibleRange, setVisibleRange] = useState<[number, number]>([0, 20]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let minIdx = rest.length;
+        let maxIdx = 0;
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const idx = Number(entry.target.getAttribute("data-idx"));
+            if (idx < minIdx) minIdx = idx;
+            if (idx > maxIdx) maxIdx = idx;
+          }
+        });
+        if (minIdx <= maxIdx) {
+          setVisibleRange([Math.max(0, minIdx - 4), Math.min(rest.length, maxIdx + 4)]);
+        }
+      },
+      { root: null, rootMargin: "400px 0px", threshold: 0 }
+    );
+
+    const items = el.querySelectorAll("[data-idx]");
+    items.forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, [rest.length]);
 
   return (
     <>
@@ -456,10 +485,27 @@ function RankingsList({ players, selectedId, onSelect, swipedId, onSwipe }: { pl
             <span className="text-[10px] font-black tracking-[0.3em] uppercase text-muted-faint">Rank 4+</span>
             <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
           </div>
-          <div className="space-y-1.5 sm:space-y-2">
-            {rest.map((player, idx) => (
-              <RankRow key={player.id} player={player} index={idx} club={clubByPlayerId(player.id) ?? null} isSelected={player.id === selectedId} onSelect={() => onSelect(player.id)} isSwiped={swipedId === player.id} onSwipe={() => onSwipe(player.id === swipedId ? null : player.id)} />
-            ))}
+          <div ref={scrollRef} className="space-y-1.5 sm:space-y-2 rankings-scroll">
+            {rest.map((player, idx) => {
+              const isVisible = idx >= visibleRange[0] && idx <= visibleRange[1];
+              return (
+                <div key={player.id} data-idx={idx} className="rank-row-item">
+                  {isVisible ? (
+                    <SwipeableRankRow
+                      player={player}
+                      index={idx}
+                      club={clubByPlayerId(player.id) ?? null}
+                      isSelected={player.id === selectedId}
+                      onSelect={() => onSelect(player.id)}
+                      isSwiped={swipedId === player.id}
+                      onSwipe={() => onSwipe(swipedId === player.id ? null : player.id)}
+                    />
+                  ) : (
+                    <div className="h-[76px] sm:h-[88px] rounded-[20px] sm:rounded-[22px]" style={{ background: "rgba(18,20,24,0.32)", border: "1px solid rgba(255,255,255,0.035)" }} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -478,7 +524,7 @@ function Top3Card({ player, index, isSelected, onSelect, club }: { player: Playe
   const t = getTierTheme(player.rank);
   const stats = computeDerived(player);
   const delta = player.prev - player.rank;
-  const displayName = player.gamertag;
+  const gamertag = player.gamertag;
   const realName = player.name;
   const isChampion = player.rank === 1;
 
@@ -505,67 +551,113 @@ function Top3Card({ player, index, isSelected, onSelect, club }: { player: Playe
           className="pointer-events-none absolute inset-y-0 left-0 w-[3px] sm:w-[4px] rounded-l-[inherit]"
           style={{ background: t.gradientLine }}
         />
+
+        {/* Watermark — contained so it never pushes foreground content */}
         <span
           aria-hidden
-          className="pointer-events-none absolute -bottom-2 right-4 select-none"
+          className="pointer-events-none absolute bottom-0 right-4 select-none overflow-hidden"
           style={{
             fontFamily: "var(--font-barlow), system-ui, sans-serif",
-            fontSize: isChampion ? "8rem" : "6rem",
+            fontSize: isChampion ? "7rem" : "5.5rem",
             fontWeight: 900,
             fontStyle: "italic",
-            lineHeight: 1,
+            lineHeight: 0.85,
             letterSpacing: "-0.06em",
             color: isChampion ? "rgba(255,184,0,0.06)" : "rgba(255,255,255,0.04)",
+            maxWidth: "60%",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          {displayName.slice(0, 8).toUpperCase()}
+          {gamertag.toUpperCase()}
         </span>
 
-        <div className="relative z-10 flex items-stretch gap-4 sm:gap-6 pl-6 sm:pl-8 pr-5 sm:pr-7 py-5 sm:py-7">
-          <div className="shrink-0 flex items-center min-w-[56px] sm:min-w-[90px]">
+        <div className="relative z-10 flex items-stretch min-h-[120px] sm:min-h-[140px]">
+
+          {/* LEFT: Rank number — fixed width, vertically centered */}
+          <div className="shrink-0 flex items-center justify-center w-[56px] sm:w-[80px] md:w-[96px]"
+            style={{ background: isChampion ? "linear-gradient(90deg, rgba(255,184,0,0.04), transparent 70%)" : undefined }}
+          >
             <span
-              className={`cinematic-heading leading-none tabular-nums ${isChampion ? "text-[72px] sm:text-[110px] bc-rank-pulse" : "text-[56px] sm:text-[90px]"} ${t.rankGlow || ""}`}
+              className={`cinematic-heading leading-none tabular-nums ${isChampion ? "text-[64px] sm:text-[96px] bc-rank-pulse" : "text-[52px] sm:text-[80px]"} ${t.rankGlow || ""}`}
               style={{ color: t.rankColor, letterSpacing: "-0.06em" }}
             >
               {player.rank}
             </span>
           </div>
 
-          <div className="min-w-0 flex-1 flex flex-col justify-center gap-1.5">
+          {/* CENTER: Player identity — flex-1 min-w-0 for proper truncation */}
+          <div className="min-w-0 flex-1 flex flex-col justify-center gap-1 sm:gap-1.5 py-5 sm:py-6">
+            {/* Row 1: GAMERTAG — always full width, never truncated */}
             <div className="flex items-center gap-2 min-w-0">
-              <h3 className="cinematic-heading truncate text-2xl sm:text-4xl leading-none text-ink group-hover:text-accent transition-colors duration-300">
-                {displayName}
+              <h3 className="cinematic-heading text-xl sm:text-2xl md:text-3xl leading-none text-ink group-hover:text-accent transition-colors duration-300 truncate">
+                {gamertag}
               </h3>
               {isChampion && (
-                <span className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[9px] font-black tracking-[0.2em] uppercase pill-gold" style={{ boxShadow: "0 4px 18px -4px rgba(255,184,0,0.35)" }}>
+                <span
+                  className="shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-px text-[9px] font-black tracking-[0.2em] uppercase"
+                  style={{
+                    background: "rgba(255,184,0,0.10)",
+                    border: "1px solid rgba(255,184,0,0.25)",
+                    color: "#ffb800",
+                    boxShadow: "0 4px 18px -4px rgba(255,184,0,0.35)",
+                  }}
+                >
                   ★ GOAT
                 </span>
               )}
+            </div>
+
+            {/* Row 2: Real name — below gamertag, muted */}
+            <p className="truncate text-[11px] sm:text-xs text-muted-soft leading-snug">
+              {realName}
+            </p>
+
+            {/* Row 3: Badges row — grouped with gap-2, wraps cleanly */}
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               {delta !== 0 && (
-                <span className={`shrink-0 inline-flex items-center gap-0.5 text-[10px] font-black tabular-nums ${delta > 0 ? "text-accent" : "text-negative"}`}>
+                <span
+                  className={`shrink-0 inline-flex items-center gap-0.5 rounded-[4px] px-1.5 py-0.5 text-[10px] font-black tabular-nums ${delta > 0 ? "text-accent" : "text-negative"}`}
+                  style={{ background: delta > 0 ? "rgba(0,255,133,0.08)" : "rgba(255,77,77,0.08)" }}
+                >
                   {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}
                 </span>
               )}
-            </div>
-            <p className="truncate text-[11px] sm:text-xs text-muted-soft">
-              {realName}
-            </p>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="font-mono text-[10px] sm:text-[11px] tracking-wider text-muted-soft">
-                @{player.gamertag}
+              {player.rank <= 3 && !isChampion && (
+                <span
+                  className="shrink-0 inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-black tracking-[0.15em] uppercase"
+                  style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}`, color: t.accent }}
+                >
+                  {t.badgeText}
+                </span>
+              )}
+              <span
+                className="shrink-0 inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}
+              >
+                {player.city}
               </span>
-              <span className="inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}>
+              <span
+                className="shrink-0 inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--muted-soft)" }}
+              >
                 ZW
               </span>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-faint">
+              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-muted-faint">
                 CROSSPLAY
               </span>
               {club && (
-                <span className="inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}` }}>
+                <span
+                  className="shrink-0 inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                  style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}` }}
+                >
                   <span className="text-accent/70 mr-1">⚑</span>{club.shortName}
                 </span>
               )}
             </div>
+
+            {/* Row 4: Win/Loss/Streak stats */}
             <div className="flex items-center gap-3 mt-0.5">
               <span className="bc-mono-score text-[11px] text-emerald">{player.wins}<span className="text-muted-faint">W</span></span>
               <span className="bc-mono-score text-[11px] text-muted-soft">{player.draws}<span className="text-muted-faint">D</span></span>
@@ -575,14 +667,20 @@ function Top3Card({ player, index, isSelected, onSelect, club }: { player: Playe
             </div>
           </div>
 
-          <div className="shrink-0 flex flex-col items-end justify-center text-right">
+          {/* RIGHT: Points — dedicated container, fully separated */}
+          <div className="shrink-0 flex flex-col items-end justify-center pl-2 pr-5 sm:pr-7">
             <span
-              className="cinematic-heading tabular-nums leading-none text-3xl sm:text-5xl"
+              className="cinematic-heading tabular-nums leading-none text-3xl sm:text-5xl text-right"
               style={{ color: t.pointsColor }}
             >
               {player.points.toLocaleString()}
             </span>
-            <span className="mt-1.5 text-[9px] font-black tracking-[0.28em] uppercase text-muted-faint">PTS</span>
+            <span className="mt-1.5 text-[9px] font-black tracking-[0.28em] uppercase text-muted-faint text-right">
+              PTS
+            </span>
+            <span className="mt-1 bc-mono-score text-[10px] tabular-nums text-muted-soft text-right">
+              SR {Math.round(player.points / 3.12).toLocaleString()}
+            </span>
           </div>
         </div>
       </div>
@@ -590,7 +688,7 @@ function Top3Card({ player, index, isSelected, onSelect, club }: { player: Playe
   );
 }
 
-function RankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe }: { player: Player; index: number; club: Club | null; isSelected: boolean; onSelect: () => void; isSwiped: boolean; onSwipe: () => void; }) {
+function SwipeableRankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe }: { player: Player; index: number; club: Club | null; isSelected: boolean; onSelect: () => void; isSwiped: boolean; onSwipe: () => void; }) {
   const t = getTierTheme(player.rank);
   const stats = computeDerived(player);
   const delta = player.prev - player.rank;
@@ -598,27 +696,74 @@ function RankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe 
   const realName = player.name;
   const isElite = player.rank <= 10;
 
-  const swipeRef = useRef<HTMLDivElement>(null);
-  const startXRef = useRef<number>(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const isSwiping = useRef(false);
+  const isScrolling = useRef(false);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    startXRef.current = e.touches[0].clientX;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - startXRef.current;
-    if (dx < -40) onSwipe();
-    else if (dx > 40 && isSwiped) onSwipe();
-  };
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isSwiping.current = false;
+    isScrolling.current = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
+
+    if (!isSwiping.current && !isScrolling.current) {
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+        isScrolling.current = true;
+        return;
+      }
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        isSwiping.current = true;
+      }
+    }
+
+    if (isSwiping.current && trackRef.current) {
+      e.preventDefault();
+      const clampedDx = Math.max(-140, Math.min(0, dx));
+      if (!isSwiped) {
+        trackRef.current.style.transform = `translateX(${clampedDx}px)`;
+        trackRef.current.style.transition = "none";
+      }
+    }
+  }, [isSwiped]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isSwiping.current) return;
+
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+
+    if (trackRef.current) {
+      trackRef.current.style.transition = "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)";
+    }
+
+    if (!isSwiped && dx < -50) {
+      onSwipe();
+    } else if (isSwiped && dx > 50) {
+      onSwipe();
+    } else {
+      if (trackRef.current) {
+        trackRef.current.style.transform = isSwiped ? "translateX(-140px)" : "translateX(0)";
+      }
+    }
+
+    isSwiping.current = false;
+    isScrolling.current = false;
+  }, [isSwiped, onSwipe]);
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="block w-full text-left group bc-scoreboard-enter"
-      style={{ animationDelay: `${(index + 3) * 40}ms` }}
+      className="block w-full text-left group rank-row-gpu touch-snap-subtle"
     >
       <div
-        className={`relative overflow-hidden rounded-[20px] sm:rounded-[22px] transition-all duration-400 bc-row-glow group-hover:scale-[1.006] ${isSelected ? "ring-1 ring-accent/30" : ""}`}
+        className={`relative overflow-hidden rounded-[20px] sm:rounded-[22px] swipe-reveal-outer rank-card-gpu ${isSelected ? "ring-1 ring-accent/30" : ""}`}
         style={{
           background: isElite
             ? "linear-gradient(135deg, rgba(0,255,133,0.03) 0%, rgba(16,18,22,0.55) 40%, rgba(10,12,14,0.65) 100%)"
@@ -634,65 +779,92 @@ function RankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe 
         {isElite && <span aria-hidden className="pointer-events-none absolute inset-0 bc-spotlight" style={{ background: t.spotlight, "--spotlight-max": "0.06" } as React.CSSProperties} />}
 
         <div
-          ref={swipeRef}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-          className="relative z-10 flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4"
+          ref={trackRef}
+          className="swipe-reveal-track"
+          data-swiped={isSwiped ? "true" : "false"}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ transform: isSwiped ? "translateX(-140px)" : "translateX(0)" }}
         >
-          <div className="w-8 sm:w-10 text-center shrink-0">
-            <span className="bc-headline tabular-nums text-lg sm:text-2xl leading-none" style={{ color: t.rankColor }}>
-              {player.rank}
-            </span>
-            {delta !== 0 && (
-              <p className={`font-mono text-[9px] tabular-nums mt-0.5 ${delta > 0 ? "text-accent" : "text-negative/80"}`}>
-                {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}
-              </p>
-            )}
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm sm:text-[15px] font-bold text-ink group-hover:text-accent transition-colors duration-300 truncate">
-                {displayName}
-              </p>
-              {player.winStreak >= 3 && <span className="shrink-0 text-[9px]">🔥</span>}
-            </div>
-            <p className="text-[10px] text-muted-soft truncate mt-0.5">{realName}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-mono text-[10px] tracking-wider text-muted-soft">@{player.gamertag}</span>
-              {club && (
-                <span className="inline-flex items-center rounded-[4px] px-1 py-px text-[9px] font-bold uppercase tracking-wider" style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}` }}>
-                  {club.shortName}
+          <div className="swipe-reveal-main">
+            <div className="relative z-10 flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4">
+              <div className="w-8 sm:w-10 text-center shrink-0">
+                <span className="bc-headline tabular-nums text-lg sm:text-2xl leading-none" style={{ color: t.rankColor }}>
+                  {player.rank}
                 </span>
-              )}
-              <span className="inline-flex items-center rounded-[4px] px-1 py-px text-[9px] font-bold uppercase tracking-wider" style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}>
-                ZW
-              </span>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-faint hidden sm:inline">CROSSPLAY</span>
+                {delta !== 0 && (
+                  <p className={`font-mono text-[9px] tabular-nums mt-0.5 ${delta > 0 ? "text-accent" : "text-negative/80"}`}>
+                    {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}
+                  </p>
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm sm:text-[15px] font-bold text-ink group-hover:text-accent transition-colors duration-200 truncate">
+                    {displayName}
+                  </p>
+                  {player.winStreak >= 3 && <span className="shrink-0 text-[9px]">🔥</span>}
+                </div>
+                <p className="text-[10px] text-muted-soft truncate mt-0.5">{realName}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="font-mono text-[10px] tracking-wider text-muted-soft">@{player.gamertag}</span>
+                  {club && (
+                    <span className="inline-flex items-center rounded-[4px] px-1 py-px text-[9px] font-bold uppercase tracking-wider" style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}` }}>
+                      {club.shortName}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center rounded-[4px] px-1 py-px text-[9px] font-bold uppercase tracking-wider" style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}>
+                    ZW
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-faint hidden sm:inline">CROSSPLAY</span>
+                </div>
+              </div>
+
+              <div className="shrink-0 flex items-center gap-2.5 sm:gap-3">
+                <span className="bc-mono-score text-base sm:text-lg tabular-nums font-bold" style={{ color: t.pointsColor }}>
+                  {player.points.toLocaleString()}
+                </span>
+                <span className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">PTS</span>
+              </div>
             </div>
           </div>
 
-          <div className={`shrink-0 flex items-center gap-2.5 transition-all duration-300 ${isSwiped ? "hidden sm:flex" : "flex"}`}>
-            <span className="bc-mono-score text-base sm:text-lg tabular-nums font-bold" style={{ color: t.pointsColor }}>
-              {player.points.toLocaleString()}
+          <div className="swipe-reveal-stats">
+            <span className="inline-flex items-center rounded-[4px] px-2 py-0.5 text-[8px] font-black tracking-[0.18em] uppercase" style={{ background: "rgba(0,255,133,0.06)", border: "1px solid rgba(0,255,133,0.14)", color: "var(--accent)" }}>
+              ← Swipe for stats
             </span>
-            <span className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">PTS</span>
-          </div>
-
-          <div className={`shrink-0 flex-col items-end gap-1 transition-all duration-300 ${isSwiped ? "flex" : "hidden sm:flex"}`}>
-            <div className="flex items-center gap-2 bc-mono-score text-[10px] text-muted-soft">
+            <div className="flex items-center gap-2 bc-mono-score text-[11px]">
               <span className="text-emerald">{player.wins}<span className="text-muted-faint">W</span></span>
-              <span>{player.draws}<span className="text-muted-faint">D</span></span>
+              <span className="text-muted-soft">{player.draws}<span className="text-muted-faint">D</span></span>
               <span className="text-negative/80">{player.losses}<span className="text-muted-faint">L</span></span>
             </div>
-            <div className="flex items-center gap-2 bc-mono-score text-[10px]">
+            <div className="bc-mono-score text-[11px]">
               <span className="text-muted-soft">{Math.round(stats.winRate)}%</span>
-              {player.winStreak >= 3 && <span className="text-accent">🔥{player.winStreak}</span>}
+              {player.winStreak >= 3 && <span className="ml-1 text-accent">🔥{player.winStreak}</span>}
+            </div>
+            <div className="text-[9px] text-muted-faint">
+              {player.city}
             </div>
           </div>
         </div>
       </div>
     </button>
+  );
+}
+
+function RankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe }: { player: Player; index: number; club: Club | null; isSelected: boolean; onSelect: () => void; isSwiped: boolean; onSwipe: () => void; }) {
+  return (
+    <SwipeableRankRow
+      player={player}
+      index={index}
+      club={club}
+      isSelected={isSelected}
+      onSelect={onSelect}
+      isSwiped={isSwiped}
+      onSwipe={onSwipe}
+    />
   );
 }
 

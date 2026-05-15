@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
 const BLOBS = [
   {
@@ -56,23 +56,60 @@ const BLOBS = [
 ];
 
 export function AmbientBackground() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="ambient-gradients" suppressHydrationWarning>
+        {BLOBS.map((blob, i) => (
+          <div
+            key={i}
+            className={`absolute ${blob.pos} ${blob.size} rounded-full ${blob.className}`}
+            style={{
+              ...blob.style,
+              opacity: blob.opacity,
+              filter: "blur(90px)",
+            }}
+            suppressHydrationWarning
+          />
+        ))}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(0,255,133,0.025) 0%, transparent 100%)",
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 40% at 80% 100%, rgba(168,85,247,0.015) 0%, transparent 100%)",
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="ambient-gradients">
       {BLOBS.map((blob, i) => (
-        <motion.div
+        <div
           key={i}
           className={`absolute ${blob.pos} ${blob.size} rounded-full ${blob.className}`}
           style={{
             ...blob.style,
             opacity: blob.opacity,
             filter: "blur(90px)",
+            animation: `ambient-drift-${i < 4 ? i + 1 : 2} ${35 + i * 5}s ease-in-out infinite`,
           }}
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: blob.opacity }}
-          transition={{
-            duration: 3 + i * 0.5,
-            ease: [0.2, 0.8, 0.2, 1],
-          }}
+          suppressHydrationWarning
         />
       ))}
       <div

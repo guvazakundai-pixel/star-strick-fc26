@@ -3,9 +3,10 @@ import { createClient, type Client } from "@libsql/client";
 const globalForLibsql = globalThis as unknown as { libsql?: Client };
 
 function createLibsqlClient() {
-  if (process.env.TURSO_DATABASE_URL) {
+  const useTurso = process.env.TURSO_DATABASE_URL && process.env.USE_TURSO === "true";
+  if (useTurso) {
     return createClient({
-      url: process.env.TURSO_DATABASE_URL,
+      url: process.env.TURSO_DATABASE_URL!,
       authToken: process.env.TURSO_AUTH_TOKEN,
     });
   }

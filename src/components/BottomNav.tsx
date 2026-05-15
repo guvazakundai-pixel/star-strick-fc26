@@ -13,6 +13,8 @@ const ITEMS = [
   { href: "/clubs", label: "Clubs", icon: ShieldIcon },
 ] as const;
 
+const SPRING_CONFIG = { type: "spring" as const, stiffness: 380, damping: 28 };
+
 export function BottomNav() {
   const pathname = usePathname();
   const { openAuth } = useAuthModal();
@@ -20,7 +22,10 @@ export function BottomNav() {
   const loggedIn = !!session;
 
   return (
-    <nav aria-label="Primary" className="fixed bottom-0 inset-x-0 z-50 pb-[env(safe-area-inset-bottom)]">
+    <nav
+      aria-label="Primary"
+      className="fixed bottom-0 inset-x-0 z-50 pb-[env(safe-area-inset-bottom)]"
+    >
       <div className="mx-auto max-w-lg px-3 pb-2 pt-1">
         <div
           className="flex items-center justify-around rounded-[24px] px-1.5 py-1.5 dock-glow"
@@ -37,34 +42,37 @@ export function BottomNav() {
               <Link
                 key={href}
                 href={href}
-                className="relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-[14px] transition-all duration-300 group"
+                className={
+                  "touch-snap-subtle relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-[14px] transition-colors duration-150 group " +
+                  (active ? "" : "")
+                }
               >
                 <span
                   className={
-                    "h-[18px] w-[18px] grid place-items-center transition-all duration-300 " +
-                    (active ? "text-accent" : "text-muted-soft group-hover:text-ink-soft")
+                    "h-[18px] w-[18px] grid place-items-center transition-colors duration-150 " +
+                    (active ? "text-accent" : "text-muted-soft group-hover:text-ink-soft group-active:text-accent")
                   }
                 >
                   <Icon />
                 </span>
                 <span
                   className={
-                    "text-[9px] font-bold uppercase tracking-[0.18em] transition-all duration-300 " +
-                    (active ? "text-accent" : "text-muted-faint group-hover:text-muted-soft")
+                    "text-[9px] font-bold uppercase tracking-[0.18em] transition-colors duration-150 " +
+                    (active ? "text-accent" : "text-muted-faint group-hover:text-muted-soft group-active:text-accent")
                   }
                 >
                   {label}
                 </span>
                 {active && (
                   <motion.span
-                    layoutId="nav-glow"
+                    layoutId="nav-indicator"
                     aria-hidden
                     className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-[3px] min-w-[22px] rounded-full"
                     style={{
                       background: "var(--accent)",
                       boxShadow: "0 0 16px rgba(0,255,133,0.60), 0 0 4px rgba(0,255,133,0.30)",
                     }}
-                    transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                    transition={SPRING_CONFIG}
                   />
                 )}
               </Link>
@@ -73,46 +81,46 @@ export function BottomNav() {
           {loggedIn ? (
             <Link
               href="/dashboard"
-              className="relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-[14px] transition-all duration-300 group"
+              className="touch-snap-subtle relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-[14px] transition-colors duration-150 group"
             >
               <span
                 className={
-                  "h-[18px] w-[18px] grid place-items-center transition-all duration-300 " +
-                  (pathname.startsWith("/dashboard") ? "text-accent" : "text-muted-soft group-hover:text-ink-soft")
+                  "h-[18px] w-[18px] grid place-items-center transition-colors duration-150 " +
+                  (pathname.startsWith("/dashboard") ? "text-accent" : "text-muted-soft group-hover:text-ink-soft group-active:text-accent")
                 }
               >
                 <UserIcon />
               </span>
               <span
                 className={
-                  "text-[9px] font-bold uppercase tracking-[0.18em] transition-all duration-300 " +
-                  (pathname.startsWith("/dashboard") ? "text-accent" : "text-muted-faint group-hover:text-muted-soft")
+                  "text-[9px] font-bold uppercase tracking-[0.18em] transition-colors duration-150 " +
+                  (pathname.startsWith("/dashboard") ? "text-accent" : "text-muted-faint group-hover:text-muted-soft group-active:text-accent")
                 }
               >
                 Me
               </span>
               {pathname.startsWith("/dashboard") && (
                 <motion.span
-                  layoutId="nav-glow"
+                  layoutId="nav-indicator"
                   aria-hidden
                   className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-[3px] min-w-[22px] rounded-full"
                   style={{
                     background: "var(--accent)",
                     boxShadow: "0 0 16px rgba(0,255,133,0.60), 0 0 4px rgba(0,255,133,0.30)",
                   }}
-                  transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                  transition={SPRING_CONFIG}
                 />
               )}
             </Link>
           ) : (
             <button
               onClick={() => openAuth("signin")}
-              className="relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-[14px] transition-all duration-300 group"
+              className="touch-snap-subtle relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-[14px] transition-colors duration-150 group"
             >
-              <span className="h-[18px] w-[18px] grid place-items-center text-muted-soft group-hover:text-ink-soft transition-all duration-300">
+              <span className="h-[18px] w-[18px] grid place-items-center text-muted-soft group-hover:text-ink-soft group-active:text-accent transition-colors duration-150">
                 <UserIcon />
               </span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-faint group-hover:text-muted-soft transition-all duration-300">
+              <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-faint group-hover:text-muted-soft group-active:text-accent transition-colors duration-150">
                 Me
               </span>
             </button>

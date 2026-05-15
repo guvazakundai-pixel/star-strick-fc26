@@ -7,6 +7,8 @@ import { AuthProvider, AuthUrlHandler } from "@/lib/auth-context";
 import { AuthModal } from "@/components/AuthModal";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageTransition } from "@/components/ui/PageTransition";
+import { HeroSkeleton } from "@/components/ui/Skeleton";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -72,7 +74,9 @@ export const viewport: Viewport = {
   themeColor: "#0c0c10",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -81,28 +85,40 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${bebas.variable} ${jbMono.variable} ${inter.variable} ${barlow.variable} h-full`}
     >
-      <body className="min-h-full bg-bg text-ink antialiased overflow-x-hidden">
+      <head>
+        <meta name="format-detection" content="telephone=no" />
+      </head>
+      <body className="min-h-full bg-bg text-ink antialiased overflow-x-hidden" suppressHydrationWarning>
         <AuthProvider>
-          <Suspense fallback={null}>
-            <AuthUrlHandler />
-          </Suspense>
-          <AmbientBackground />
-          <div className="relative z-10 min-h-screen flex flex-col">
-            <ErrorBoundary>
-              <TopBar />
-            </ErrorBoundary>
-            <main className="flex-1 pb-28">
-              <ErrorBoundary>
-                {children}
+          <ErrorBoundary scope="app-shell">
+            <Suspense fallback={null}>
+              <AuthUrlHandler />
+            </Suspense>
+            <AmbientBackground />
+            <div className="relative z-10 min-h-screen flex flex-col">
+              <ErrorBoundary scope="topbar">
+                <TopBar />
               </ErrorBoundary>
-            </main>
-            <ErrorBoundary>
-              <BottomNav />
+              <main className="flex-1 pb-28">
+                <ErrorBoundary scope="page-content">
+                  <Suspense fallback={<HeroSkeleton />}>
+                    <PageTransition>
+                      {children}
+                    </PageTransition>
+                  </Suspense>
+                </ErrorBoundary>
+              </main>
+              <ErrorBoundary scope="bottom-nav">
+                <BottomNav />
+              </ErrorBoundary>
+            </div>
+            <ErrorBoundary scope="auth-modal">
+              <AuthModal />
             </ErrorBoundary>
-          </div>
-          <AuthModal />
+          </ErrorBoundary>
         </AuthProvider>
       </body>
     </html>
