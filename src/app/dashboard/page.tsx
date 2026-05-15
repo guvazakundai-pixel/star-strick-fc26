@@ -1,32 +1,57 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+function safeStr(val: unknown, fallback = ""): string {
+  if (val === null || val === undefined) return fallback;
+  return String(val || fallback);
+}
+
+function safeNum(val: unknown, fallback = 0): number {
+  if (val === null || val === undefined) return fallback;
+  const n = Number(val);
+  return Number.isFinite(n) ? n : fallback;
+}
 
 export default async function PlayerDashboard() {
   const session = await getSession();
   if (!session) redirect("/login?next=/dashboard");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: {
-      id: true, username: true, displayName: true, email: true, role: true,
-      platform: true, country: true, bio: true, avatarUrl: true, clubId: true,
-      isBanned: true, createdAt: true,
-    },
+  const userRes = await db.execute({
+    sql: `SELECT id, username, display_name, email, role, platform, country, bio, avatar_url, club_id, is_banned, created_at FROM users WHERE id = ?`,
+    args: [session.userId],
   });
-  if (!user) redirect("/login");
+  const userRow = userRes.rows[0] as Record<string, unknown> | undefined;
+  if (!userRow) redirect("/login");
 
-  const [playerRanking, playerStats, club, pointsLogs] = await Promise.all([
-    prisma.playerRanking.findUnique({ where: { userId: user.id } }),
-    prisma.playerStats.findUnique({ where: { userId: user.id } }),
-    user.clubId ? prisma.club.findUnique({ where: { id: user.clubId }, select: { id: true, name: true, slug: true, tag: true, logoUrl: true } }) : Promise.resolve(null),
-    prisma.pointsLog.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, pointsChange: true, reason: true, createdAt: true } }),
+  const userId = String(userRow.id);
+  const displayName = safeStr(userRow.display_name) || safeStr(userRow.username);
+  const username = safeStr(userRow.username);
+  const platform = safeStr(userRow.platform);
+  const country = safeStr(userRow.country);
+  const clubId = safeStr(userRow.club_id);
+  const isBanned = userRow.is_banned === 1 || userRow.is_banned === true;
+  const isAdmin = session.role === "ADMIN" || session.role === "MANAGER";
+
+  const [rankingRes, statsRes, clubRes, pointsRes] = await Promise.all([
+    db.execute({ sql: "SELECT rank_position, points FROM player_rankings WHERE user_id = ?", args: [userId] }),
+    db.execute({ sql: "SELECT points, matches_played, wins, losses, win_streak FROM player_stats WHERE user_id = ?", args: [userId] }),
+    clubId ? db.execute({ sql: "SELECT id, name, slug, tag, logo_url FROM clubs WHERE id = ?", args: [clubId] }) : Promise.resolve({ rows: [] }),
+    db.execute({ sql: "SELECT id, points_change, reason, created_at FROM points_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 10", args: [userId] }),
   ]);
 
-  const isAdmin = session.role === "ADMIN" || session.role === "MANAGER";
+  const ranking = rankingRes.rows[0] as Record<string, unknown> | undefined;
+  const stats = statsRes.rows[0] as Record<string, unknown> | undefined;
+  const club = clubRes.rows?.[0] as Record<string, unknown> | undefined;
+  const pointsLogs = pointsRes.rows as Record<string, unknown>[];
+
+  const rankPos = ranking ? safeNum(ranking.rank_position) : null;
+  const rankPoints = ranking ? safeNum(ranking.points) : safeNum(stats?.points, 0);
+  const winRate = stats && safeNum(stats.matches_played) > 0 ? Math.round((safeNum(stats.wins) / safeNum(stats.matches_played)) * 100) : null;
+  const winStreak = stats ? safeNum(stats.win_streak) : 0;
 
   return (
     <div className="broadcast-theme min-h-screen bc-noise">
@@ -34,25 +59,25 @@ export default async function PlayerDashboard() {
         <header className="flex items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-soft">Player Dashboard</p>
-            <h1 className="bc-headline text-3xl text-ink mt-0.5">{user.displayName || user.username}</h1>
-            <p className="font-mono text-[11px] text-muted-soft mt-0.5">@{user.username} · {user.platform} · {user.country}</p>
+            <h1 className="bc-headline text-3xl text-ink mt-0.5">{displayName}</h1>
+            <p className="font-mono text-[11px] text-muted-soft mt-0.5">@{username} · {platform} · {country}</p>
           </div>
           {isAdmin && (
             <Link href="/admin" className="rounded-[12px] pill-accent px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider hover:bg-accent/12 transition-all duration-200">Admin Panel</Link>
           )}
         </header>
 
-        {user.isBanned && (
-          <div className="rounded-[16px] border border-negative/25 bg-negative/6 px-4 py-3 text-sm text-negative/90" style={{ background: "rgba(255,51,51,0.06)" }}>
+        {isBanned && (
+          <div className="rounded-[16px] border border-negative/25 px-4 py-3 text-sm text-negative/90" style={{ background: "rgba(255,51,51,0.06)" }}>
             Your account has been suspended.
           </div>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Rank" value={playerRanking ? `#${playerRanking.rankPosition}` : "—"} variant="cyan" />
-          <StatCard label="Points" value={playerRanking?.points ?? playerStats?.points ?? 0} accent variant="emerald" />
-          <StatCard label="Win Rate" value={playerStats && playerStats.matchesPlayed > 0 ? `${Math.round((playerStats.wins / playerStats.matchesPlayed) * 100)}%` : "—"} variant="orange" />
-          <StatCard label="Streak" value={playerStats?.winStreak ?? 0} />
+          <StatCard label="Rank" value={rankPos ? `#${rankPos}` : "—"} variant="cyan" />
+          <StatCard label="Points" value={rankPoints} accent variant="emerald" />
+          <StatCard label="Win Rate" value={winRate !== null ? `${winRate}%` : "—"} variant="orange" />
+          <StatCard label="Streak" value={winStreak} />
         </div>
 
         <section className="frosted-card overflow-hidden rounded-[24px]">
@@ -61,17 +86,17 @@ export default async function PlayerDashboard() {
           </div>
           <div className="p-5">
             {club ? (
-              <Link href={`/club/${club.slug}`} className="flex items-center gap-3.5 group">
+              <Link href={`/club/${safeStr(club.slug)}`} className="flex items-center gap-3.5 group">
                 <div
                   className="h-12 w-12 rounded-[14px] border border-white/[0.06] bg-cover bg-center shrink-0"
                   style={{
-                    backgroundImage: club.logoUrl ? `url(${club.logoUrl})` : undefined,
-                    background: club.logoUrl ? undefined : "linear-gradient(135deg, rgba(22,24,28,0.90), rgba(18,20,24,0.80))",
+                    backgroundImage: safeStr(club.logo_url) ? `url(${safeStr(club.logo_url)})` : undefined,
+                    background: safeStr(club.logo_url) ? undefined : "linear-gradient(135deg, rgba(22,24,28,0.90), rgba(18,20,24,0.80))",
                   }}
                 />
                 <div>
-                  <p className="bc-headline text-lg text-ink group-hover:text-accent transition-colors duration-300">{club.name}</p>
-                  <p className="font-mono text-[11px] text-muted-soft">[{club.tag}]</p>
+                  <p className="bc-headline text-lg text-ink group-hover:text-accent transition-colors duration-300">{safeStr(club.name)}</p>
+                  <p className="font-mono text-[11px] text-muted-soft">[{safeStr(club.tag)}]</p>
                 </div>
               </Link>
             ) : (
@@ -90,12 +115,15 @@ export default async function PlayerDashboard() {
             <div className="p-5 text-center text-sm text-muted">No points yet.</div>
           ) : (
             <ul className="divide-y divide-white/[0.03]">
-              {pointsLogs.map((pe) => (
-                <li key={pe.id} className="px-5 py-3.5 flex items-center justify-between transition-colors duration-200 hover:bg-white/[0.02]">
-                  <span className="text-sm text-ink">{pe.reason}</span>
-                  <span className={"font-mono text-sm font-bold " + (pe.pointsChange >= 0 ? "text-accent" : "text-negative/90")}>{pe.pointsChange >= 0 ? "+" : ""}{pe.pointsChange}</span>
-                </li>
-              ))}
+              {pointsLogs.map((pe) => {
+                const change = safeNum(pe.points_change);
+                return (
+                  <li key={safeStr(pe.id)} className="px-5 py-3.5 flex items-center justify-between transition-colors duration-200 hover:bg-white/[0.02]">
+                    <span className="text-sm text-ink">{safeStr(pe.reason)}</span>
+                    <span className={"font-mono text-sm font-bold " + (change >= 0 ? "text-accent" : "text-negative/90")}>{change >= 0 ? "+" : ""}{change}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
