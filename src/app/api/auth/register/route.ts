@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { setSessionCookie } from "@/lib/session";
 import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
@@ -39,11 +39,11 @@ export async function POST(req: Request) {
   }
   const { username, email, password, displayName, platform } = parsed.data;
 
-  const existing = await prisma.user.findFirst({
-    where: { OR: [{ username }, { email }] },
-    select: { id: true },
+  const existing = await db.execute({
+    sql: "SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1",
+    args: [username, email],
   });
-  if (existing) {
+  if (existing.rows.length > 0) {
     return NextResponse.json(
       { error: "Username or email already taken" },
       { status: 409 }
@@ -51,12 +51,17 @@ export async function POST(req: Request) {
   }
 
   const passwordHash = await hashPassword(password);
-  const user = await prisma.user.create({
-    data: { username, email, passwordHash, displayName, platform, role: "PLAYER" },
-    select: { id: true, username: true, email: true, role: true, displayName: true, platform: true },
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  await db.execute({
+    sql: "INSERT INTO users (id, username, email, password_hash, display_name, platform, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'PLAYER', ?, ?)",
+    args: [id, username, email, passwordHash, displayName, platform, now, now],
   });
 
-  await setSessionCookie({ userId: user.id, username: user.username, role: "PLAYER" });
+  await setSessionCookie({ userId: id, username, role: "PLAYER" });
 
-  return NextResponse.json({ user });
+  return NextResponse.json({
+    user: { id, username, email, role: "PLAYER", displayName, platform },
+  });
 }

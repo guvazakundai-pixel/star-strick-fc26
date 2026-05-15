@@ -10,9 +10,9 @@ function createLibsqlClient() {
       authToken: process.env.TURSO_AUTH_TOKEN,
     });
   }
-  return createClient({
-    url: `file:${process.env.DATABASE_URL?.replace("file:", "") || "./dev.db"}`,
-  });
+  const dbPath = process.env.DATABASE_URL || "file:./prisma/dev.db";
+  const url = dbPath.startsWith("file:") ? dbPath : `file:${dbPath}`;
+  return createClient({ url });
 }
 
 export const db = globalForLibsql.libsql ?? createLibsqlClient();

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/route-auth";
 
 const UpdateSchema = z.object({
@@ -20,18 +20,51 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const user = await prisma.user.update({
-    where: { id: auth.session.userId },
-    data: parsed.data,
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-      bio: true,
-      country: true,
-      platform: true,
-    },
+  const sets: string[] = [];
+  const args: unknown[] = [];
+
+  if (parsed.data.displayName !== undefined) {
+    sets.push("display_name = ?");
+    args.push(parsed.data.displayName);
+  }
+  if (parsed.data.bio !== undefined) {
+    sets.push("bio = ?");
+    args.push(parsed.data.bio);
+  }
+  if (parsed.data.country !== undefined) {
+    sets.push("country = ?");
+    args.push(parsed.data.country);
+  }
+  if (parsed.data.platform !== undefined) {
+    sets.push("platform = ?");
+    args.push(parsed.data.platform);
+  }
+
+  if (sets.length === 0) {
+    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+  }
+
+  args.push(auth.session.userId);
+
+  await db.execute({
+    sql: `UPDATE users SET ${sets.join(", ")} WHERE id = ?`,
+    args,
   });
 
-  return NextResponse.json({ user });
+  const result = await db.execute({
+    sql: "SELECT id, username, display_name, bio, country, platform FROM users WHERE id = ?",
+    args: [auth.session.userId],
+  });
+
+  const row = result.rows[0] as Record<string, unknown> | undefined;
+  return NextResponse.json({
+    user: {
+      id: row?.id,
+      username: row?.username,
+      displayName: row?.display_name,
+      bio: row?.bio,
+      country: row?.country,
+      platform: row?.platform,
+    },
+  });
 }

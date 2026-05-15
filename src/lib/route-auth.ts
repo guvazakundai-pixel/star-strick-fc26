@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "./session";
-import { prisma } from "./prisma";
+import { db } from "./db";
 import type { Role, SessionPayload } from "./auth";
 
 export type AuthOk = { ok: true; session: SessionPayload };
@@ -35,33 +35,32 @@ export async function requireClubManager(
 ): Promise<AuthResult & { club?: { id: string; createdByUserId: string } }> {
   const result = await requireAuth();
   if (!result.ok) return result;
+
+  const clubResult = await db.execute({
+    sql: "SELECT id, created_by_user_id FROM clubs WHERE id = ?",
+    args: [clubId],
+  });
+  const row = clubResult.rows[0] as Record<string, unknown> | undefined;
+
+  if (!row) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Club not found" }, { status: 404 }),
+    };
+  }
+
+  const club = {
+    id: String(row.id),
+    createdByUserId: String(row.created_by_user_id),
+  };
+
   if (result.session.role === "ADMIN") {
-    const club = await prisma.club.findUnique({
-      where: { id: clubId },
-      select: { id: true, createdByUserId: true },
-    });
-    if (!club) {
-      return {
-        ok: false,
-        response: NextResponse.json({ error: "Club not found" }, { status: 404 }),
-      };
-    }
     return { ok: true, session: result.session, club };
   }
   if (result.session.role !== "MANAGER") {
     return {
       ok: false,
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    };
-  }
-  const club = await prisma.club.findUnique({
-    where: { id: clubId },
-    select: { id: true, createdByUserId: true },
-  });
-  if (!club) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "Club not found" }, { status: 404 }),
     };
   }
   if (club.createdByUserId !== result.session.userId) {
@@ -77,8 +76,16 @@ export async function requireClubManager(
 }
 
 export async function getMyClub(session: SessionPayload) {
-  return prisma.club.findFirst({
-    where: { createdByUserId: session.userId },
-    select: { id: true, name: true, tag: true, createdByUserId: true },
+  const result = await db.execute({
+    sql: "SELECT id, name, tag, created_by_user_id FROM clubs WHERE created_by_user_id = ? LIMIT 1",
+    args: [session.userId],
   });
+  const row = result.rows[0] as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    tag: String(row.tag),
+    createdByUserId: String(row.created_by_user_id),
+  };
 }
