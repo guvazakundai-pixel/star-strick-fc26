@@ -8,8 +8,6 @@ function createPrismaClient() {
   const useTurso = process.env.TURSO_DATABASE_URL && process.env.USE_TURSO === "true";
 
   if (useTurso) {
-    process.env.DATABASE_URL = process.env.TURSO_DATABASE_URL!;
-
     const libsql = createClient({
       url: process.env.TURSO_DATABASE_URL!,
       authToken: process.env.TURSO_AUTH_TOKEN,
