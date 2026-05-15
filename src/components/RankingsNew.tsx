@@ -272,7 +272,7 @@ export function RankingsClient() {
     } catch {
       setChallengeState(prev => ({ ...prev, [playerId]: "error" }));
     }
-  }, [loggedIn, openAuth]););
+  }, [loggedIn, openAuth]);
 
   const handleSort = useCallback((k: SortKey) => {
     setSortKey((prev) => {
