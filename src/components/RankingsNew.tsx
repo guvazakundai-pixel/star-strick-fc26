@@ -465,48 +465,48 @@ function FilterChip({ label, value, onChange, options }: { label: string; value:
   );
 }
 
-function RankingsList({ players, selectedId, onSelect, swipedId, onSwipe, loggedIn, onChallenge, challengeState }: { players: Player[]; selectedId: string | null; onSelect: (id: string) => void; swipedId: string | null; onSwipe: (id: string | null) => void; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error">; }) {
+function RankingsList({
+  players,
+  selectedId,
+  onSelect,
+  swipedId,
+  onSwipe,
+  loggedIn,
+  onChallenge,
+  challengeState,
+}: {
+  players: Player[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  swipedId: string | null;
+  onSwipe: (id: string | null) => void;
+  loggedIn: boolean;
+  onChallenge: (id: string, e?: React.MouseEvent) => void;
+  challengeState: Record<string, "idle" | "sending" | "sent" | "error">;
+}) {
   const top3 = players.slice(0, 3);
   const rest = players.slice(3);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [visibleRange, setVisibleRange] = useState<[number, number]>([0, 20]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let minIdx = rest.length;
-        let maxIdx = 0;
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const idx = Number(entry.target.getAttribute("data-idx"));
-            if (idx < minIdx) minIdx = idx;
-            if (idx > maxIdx) maxIdx = idx;
-          }
-        });
-        if (minIdx <= maxIdx) {
-          setVisibleRange([Math.max(0, minIdx - 4), Math.min(rest.length, maxIdx + 4)]);
-        }
-      },
-      { root: null, rootMargin: "400px 0px", threshold: 0 }
-    );
-
-    const items = el.querySelectorAll("[data-idx]");
-    items.forEach((item) => observer.observe(item));
-    return () => observer.disconnect();
-  }, [rest.length]);
 
   return (
     <>
       {top3.length > 0 && (
         <section className="space-y-3 sm:space-y-4">
-          {top3.map((player, idx) => (
-            <Top3Card key={player.id} player={player} index={idx} isSelected={player.id === selectedId} onSelect={() => onSelect(player.id)} club={clubByPlayerId(player.id) ?? null} loggedIn={loggedIn} onChallenge={onChallenge} challengeState={challengeState} />
+          {top3.map((p, idx) => (
+            <Top3Card
+              key={p.id}
+              player={p}
+              index={idx}
+              isSelected={p.id === selectedId}
+              onSelect={() => onSelect(p.id)}
+              club={clubByPlayerId(p.id) ?? null}
+              loggedIn={loggedIn}
+              onChallenge={onChallenge}
+              challengeState={challengeState}
+            />
           ))}
         </section>
       )}
+
       {rest.length > 0 && (
         <section className="mt-4 sm:mt-6">
           <div className="mb-3 sm:mb-4 flex items-center gap-3">
@@ -514,30 +514,23 @@ function RankingsList({ players, selectedId, onSelect, swipedId, onSwipe, logged
             <span className="text-[10px] font-black tracking-[0.3em] uppercase text-muted-faint">Rank 4+</span>
             <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
           </div>
-          <div ref={scrollRef} className="space-y-1.5 sm:space-y-2 rankings-scroll">
-            {rest.map((player, idx) => {
-              const isVisible = idx >= visibleRange[0] && idx <= visibleRange[1];
-              return (
-                <div key={player.id} data-idx={idx} className="rank-row-item">
-                  {isVisible ? (
-                    <SwipeableRankRow
-                      player={player}
-                      index={idx}
-                      club={clubByPlayerId(player.id) ?? null}
-                      isSelected={player.id === selectedId}
-                      onSelect={() => onSelect(player.id)}
-                      isSwiped={swipedId === player.id}
-                      onSwipe={() => onSwipe(swipedId === player.id ? null : player.id)}
-                      loggedIn={loggedIn}
-                      onChallenge={onChallenge}
-                      challengeState={challengeState}
-                    />
-                  ) : (
-                    <div className="h-[76px] sm:h-[88px] rounded-[20px] sm:rounded-[22px]" style={{ background: "rgba(18,20,24,0.32)", border: "1px solid rgba(255,255,255,0.035)" }} />
-                  )}
-                </div>
-              );
-            })}
+          <div className="space-y-1.5 sm:space-y-2">
+            {rest.map((p) => (
+              <div key={p.id} className="rank-row-item">
+                <SwipeableRankRow
+                  player={p}
+                  index={0}
+                  club={clubByPlayerId(p.id) ?? null}
+                  isSelected={p.id === selectedId}
+                  onSelect={() => onSelect(p.id)}
+                  isSwiped={swipedId === p.id}
+                  onSwipe={onSwipe}
+                  loggedIn={loggedIn}
+                  onChallenge={onChallenge}
+                  challengeState={challengeState}
+                />
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -725,83 +718,106 @@ function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChall
   );
 }
 
-function SwipeableRankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe, loggedIn, onChallenge, challengeState }: { player: Player; index: number; club: Club | null; isSelected: boolean; onSelect: () => void; isSwiped: boolean; onSwipe: () => void; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error">; }) {
+function SwipeableRankRow({
+  player,
+  index,
+  club,
+  isSelected,
+  onSelect,
+  isSwiped,
+  onSwipe,
+  loggedIn,
+  onChallenge,
+  challengeState,
+}: {
+  player: Player;
+  index: number;
+  club: Club | null;
+  isSelected: boolean;
+  onSelect: () => void;
+  isSwiped: boolean;
+  onSwipe: (id: string | null) => void;
+  loggedIn: boolean;
+  onChallenge: (id: string, e?: React.MouseEvent) => void;
+  challengeState: Record<string, "idle" | "sending" | "sent" | "error">;
+}) {
   const t = getTierTheme(player.rank);
   const stats = computeDerived(player);
   const delta = player.prev - player.rank;
-  const displayName = player.gamertag;
-  const realName = player.name;
   const isElite = player.rank <= 10;
 
   const trackRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const isSwiping = useRef(false);
-  const isScrolling = useRef(false);
+  const state = useRef({ startX: 0, startY: 0, swiping: false, scrolling: false });
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    isSwiping.current = false;
-    isScrolling.current = false;
+    const s = state.current;
+    s.startX = e.touches[0].clientX;
+    s.startY = e.touches[0].clientY;
+    s.swiping = false;
+    s.scrolling = false;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const dx = e.touches[0].clientX - touchStartX.current;
-    const dy = e.touches[0].clientY - touchStartY.current;
+    const s = state.current;
+    const dx = e.touches[0].clientX - s.startX;
+    const dy = e.touches[0].clientY - s.startY;
 
-    if (!isSwiping.current && !isScrolling.current) {
+    if (!s.swiping && !s.scrolling) {
       if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
-        isScrolling.current = true;
+        s.scrolling = true;
         return;
       }
       if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
-        isSwiping.current = true;
+        s.swiping = true;
       }
     }
 
-    if (isSwiping.current && trackRef.current) {
+    if (s.swiping && trackRef.current) {
       e.preventDefault();
-      const clampedDx = Math.max(-140, Math.min(0, dx));
+      const clamped = Math.max(-140, Math.min(0, dx));
       if (!isSwiped) {
-        trackRef.current.style.transform = `translateX(${clampedDx}px)`;
+        trackRef.current.style.transform = `translateX(${clamped}px)`;
         trackRef.current.style.transition = "none";
       }
     }
   }, [isSwiped]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!isSwiping.current) return;
-
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const s = state.current;
+    if (!s.swiping) return;
+    const dx = e.changedTouches[0].clientX - s.startX;
 
     if (trackRef.current) {
       trackRef.current.style.transition = "transform 180ms cubic-bezier(0.25, 1, 0.5, 1)";
     }
 
     if (!isSwiped && dx < -50) {
-      onSwipe();
+      onSwipe(player.id);
     } else if (isSwiped && dx > 50) {
-      onSwipe();
-    } else {
-      if (trackRef.current) {
-        trackRef.current.style.transform = isSwiped ? "translateX(-140px)" : "translateX(0)";
-      }
+      onSwipe(null);
+    } else if (trackRef.current) {
+      trackRef.current.style.transform = isSwiped ? "translateX(-140px)" : "translateX(0)";
     }
 
-    isSwiping.current = false;
-    isScrolling.current = false;
-  }, [isSwiped, onSwipe]);
+    requestAnimationFrame(() => {
+      s.swiping = false;
+      s.scrolling = false;
+    });
+  }, [isSwiped, onSwipe, player.id]);
+
+  useEffect(() => {
+    if (trackRef.current) {
+      trackRef.current.style.transition = "transform 180ms cubic-bezier(0.25, 1, 0.5, 1)";
+      trackRef.current.style.transform = isSwiped ? "translateX(-140px)" : "translateX(0)";
+    }
+  }, [isSwiped]);
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className="block w-full text-left group rank-row-gpu touch-snap-subtle"
-    >
+    <button type="button" onClick={onSelect} className="block w-full text-left">
       <div
-        className={`relative overflow-hidden rounded-[20px] sm:rounded-[22px] swipe-reveal-outer rank-card-gpu ${isSelected ? "ring-1 ring-accent/30" : ""}`}
+        className={`relative overflow-hidden h-[76px] sm:h-[88px] rounded-[20px] sm:rounded-[22px] ${isSelected ? "ring-1 ring-accent/30" : ""}`}
         style={{
+          contain: "layout style paint",
           background: isElite
             ? "linear-gradient(135deg, rgba(0,255,133,0.03) 0%, rgba(16,18,22,0.55) 40%, rgba(10,12,14,0.65) 100%)"
             : "linear-gradient(135deg, rgba(18,20,24,0.45) 0%, rgba(16,18,22,0.50) 40%, rgba(10,12,14,0.60) 100%)",
@@ -813,78 +829,91 @@ function SwipeableRankRow({ player, index, club, isSelected, onSelect, isSwiped,
         }}
       >
         <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-[3px] rounded-l-[inherit]" style={{ background: t.gradientLine }} />
-        {isElite && <span aria-hidden className="pointer-events-none absolute inset-0 bc-spotlight" style={{ background: t.spotlight, "--spotlight-max": "0.06" } as React.CSSProperties} />}
+        {isElite && (
+          <span aria-hidden className="pointer-events-none absolute inset-0 bc-spotlight" style={{ background: t.spotlight, "--spotlight-max": "0.06" } as React.CSSProperties} />
+        )}
 
         <div
           ref={trackRef}
-          className="swipe-reveal-track"
-          data-swiped={isSwiped ? "true" : "false"}
+          className="flex h-full"
+          style={{
+            width: "calc(100% + 140px)",
+            transform: isSwiped ? "translateX(-140px)" : "translateX(0)",
+            transition: "transform 180ms cubic-bezier(0.25, 1, 0.5, 1)",
+            willChange: "transform",
+            touchAction: "pan-y",
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+          }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          style={{ transform: isSwiped ? "translateX(-140px)" : "translateX(0)" }}
         >
-          <div className="swipe-reveal-main">
-            <div className="relative z-10 flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4">
-              <div className="w-8 sm:w-10 text-center shrink-0">
-                <span className="bc-headline tabular-nums text-lg sm:text-2xl leading-none" style={{ color: t.rankColor }}>
+          <div className="flex-1 min-w-0 h-full">
+            <div className="h-full grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-3 px-4 sm:px-5">
+              <div className="flex flex-col items-center justify-center w-9 sm:w-11 shrink-0">
+                <span className="cinematic-heading tabular-nums text-lg sm:text-xl leading-none" style={{ color: t.rankColor }}>
                   {player.rank}
                 </span>
                 {delta !== 0 && (
-                  <p className={`font-mono text-[9px] tabular-nums mt-0.5 ${delta > 0 ? "text-accent" : "text-negative/80"}`}>
+                  <span className={`font-mono text-[9px] tabular-nums leading-tight mt-px ${delta > 0 ? "text-accent" : "text-negative/80"}`}>
                     {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}
-                  </p>
+                  </span>
                 )}
               </div>
 
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm sm:text-[15px] font-bold text-ink group-hover:text-accent transition-colors duration-200 truncate">
-                    {displayName}
+                  <p className="text-sm sm:text-[15px] font-bold text-ink group-hover:text-accent transition-colors duration-200 truncate uppercase max-w-[160px] sm:max-w-[220px]">
+                    {player.gamertag}
                   </p>
-                  {player.winStreak >= 3 && <span className="shrink-0 text-[9px]">🔥</span>}
+                  {player.winStreak >= 3 && <span className="shrink-0 text-[9px] leading-none">🔥</span>}
                 </div>
-                <p className="text-[10px] text-muted-soft truncate mt-0.5">{realName}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="font-mono text-[10px] tracking-wider text-muted-soft">@{player.gamertag}</span>
+                <p className="text-[10px] text-muted-soft truncate leading-snug">
+                  {player.name}
+                </p>
+                <div className="flex items-center gap-1.5 mt-0.5 h-[18px] overflow-hidden">
+                  <span className="font-mono text-[9px] tracking-wider text-muted-soft shrink-0">
+                    @{player.gamertag}
+                  </span>
+                  <span className="shrink-0 w-px h-3 bg-border-faint" />
                   {club && (
-                    <span className="inline-flex items-center rounded-[4px] px-1 py-px text-[9px] font-bold uppercase tracking-wider" style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}` }}>
+                    <span className="shrink-0 inline-flex items-center rounded-[3px] px-1 text-[8px] font-bold uppercase tracking-wider h-[16px]" style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}` }}>
                       {club.shortName}
                     </span>
                   )}
-                  <span className="inline-flex items-center rounded-[4px] px-1 py-px text-[9px] font-bold uppercase tracking-wider" style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}>
+                  <span className="shrink-0 inline-flex items-center rounded-[3px] px-1 text-[8px] font-bold uppercase tracking-wider h-[16px]" style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}>
                     ZW
                   </span>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-faint hidden sm:inline">CROSSPLAY</span>
                 </div>
               </div>
 
-              <div className="shrink-0 flex items-center gap-2.5 sm:gap-3">
-                <span className="bc-mono-score text-base sm:text-lg tabular-nums font-bold" style={{ color: t.pointsColor }}>
+              <div className="flex flex-col items-end justify-center shrink-0 min-w-[60px]">
+                <span className="bc-mono-score text-base sm:text-lg tabular-nums font-bold leading-none" style={{ color: t.pointsColor }}>
                   {player.points.toLocaleString()}
                 </span>
-                <span className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">PTS</span>
+                <span className="text-[8px] font-black tracking-[0.22em] uppercase text-muted-faint leading-tight mt-0.5">
+                  PTS
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="swipe-reveal-stats">
-            <span className="inline-flex items-center rounded-[4px] px-2 py-0.5 text-[8px] font-black tracking-[0.18em] uppercase" style={{ background: "rgba(0,255,133,0.06)", border: "1px solid rgba(0,255,133,0.14)", color: "var(--accent)" }}>
-              ← Swipe for stats
+          <div className="flex-none w-[140px] h-full flex flex-col items-end justify-center gap-0.5 pr-4">
+            <span className="inline-flex items-center rounded-[3px] px-1.5 h-[16px] text-[7px] font-black tracking-[0.18em] uppercase" style={{ background: "rgba(0,255,133,0.06)", border: "1px solid rgba(0,255,133,0.14)", color: "var(--accent)" }}>
+              ← Stats
             </span>
-            <div className="flex items-center gap-2 bc-mono-score text-[11px]">
+            <div className="flex items-center gap-1.5 bc-mono-score text-[10px] leading-tight">
               <span className="text-emerald">{player.wins}<span className="text-muted-faint">W</span></span>
               <span className="text-muted-soft">{player.draws}<span className="text-muted-faint">D</span></span>
               <span className="text-negative/80">{player.losses}<span className="text-muted-faint">L</span></span>
             </div>
-            <div className="bc-mono-score text-[11px]">
+            <div className="bc-mono-score text-[10px] leading-tight">
               <span className="text-muted-soft">{Math.round(stats.winRate)}%</span>
               {player.winStreak >= 3 && <span className="ml-1 text-accent">🔥{player.winStreak}</span>}
             </div>
-            <div className="text-[9px] text-muted-faint">
-              {player.city}
-            </div>
-            <div className="mt-1">
+            <div className="text-[8px] text-muted-faint leading-tight">{player.city}</div>
+            <div className="mt-0.5">
               <ChallengeButton playerId={player.id} loggedIn={loggedIn} onChallenge={onChallenge} state={challengeState[player.id] ?? "idle"} compact />
             </div>
           </div>
@@ -894,19 +923,6 @@ function SwipeableRankRow({ player, index, club, isSelected, onSelect, isSwiped,
   );
 }
 
-function RankRow({ player, index, club, isSelected, onSelect, isSwiped, onSwipe }: { player: Player; index: number; club: Club | null; isSelected: boolean; onSelect: () => void; isSwiped: boolean; onSwipe: () => void; }) {
-  return (
-    <SwipeableRankRow
-      player={player}
-      index={index}
-      club={club}
-      isSelected={isSelected}
-      onSelect={onSelect}
-      isSwiped={isSwiped}
-      onSwipe={onSwipe}
-    />
-  );
-}
 
 function EmptyState() {
   return (
