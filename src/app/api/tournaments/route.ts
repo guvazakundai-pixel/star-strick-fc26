@@ -1,104 +1,91 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/route-auth";
+import { db } from "@/lib/db";
+import { requireAuth } from "@/lib/route-auth";
+import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
-const CreateTournamentSchema = z.object({
-  name: z.string().min(3).max(100),
-  slug: z.string().min(3).max(80).regex(/^[a-z0-9-]+$/),
-  description: z.string().max(2000).optional(),
-  type: z.enum(["KNOCKOUT", "ROUND_ROBIN", "GROUPS"]).default("KNOCKOUT"),
-  city: z.string().max(80).optional(),
-  prizePool: z.coerce.number().int().min(0).default(0),
-  maxPlayers: z.coerce.number().int().min(2).max(256).default(32),
-  startAt: z.string().datetime().optional(),
-  endAt: z.string().datetime().optional(),
+const PLATFORMS = ["CROSSPLAY", "PS5", "XBOX", "PC"] as const;
+
+const CreateSchema = z.object({
+  name: z.string().min(3).max(60),
+  type: z.enum(["KNOCKOUT", "ROUND_ROBIN"]).default("KNOCKOUT"),
+  city: z.string().max(30).nullable().optional(),
+  platform: z.enum(PLATFORMS).default("CROSSPLAY"),
+  maxPlayers: z.number().int().min(4).max(64).default(16),
+  entryFee: z.number().int().min(0).max(2000).default(0),
+  description: z.string().max(500).optional(),
+  startAt: z.string().optional(),
 });
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
-  const type = searchParams.get("type");
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 50);
-  const offset = (page - 1) * limit;
+const CREATOR_FEE_USD = 500;
 
-  const where: Record<string, unknown> = {};
-  if (status) where.status = status;
-  if (type) where.type = type;
+export async function GET() {
+  const res = await db.execute({
+    sql: `SELECT t.id, t.name, t.type, t.status, t.city, t.prize_pool, t.entry_fee, t.creator_fee, t.max_players, t.start_at, t.created_at,
+          u.username as organizer_name,
+          (SELECT count(*) FROM tournament_participants tp WHERE tp.tournament_id = t.id) as player_count
+          FROM tournaments t
+          LEFT JOIN users u ON u.id = t.organizer_id
+          ORDER BY t.created_at DESC
+          LIMIT 50`,
+    args: [],
+  });
 
-  const [tournaments, total] = await Promise.all([
-    prisma.tournament.findMany({
-      where,
-      include: {
-        organizer: { select: { id: true, username: true, displayName: true } },
-        _count: { select: { participants: true } },
-      },
-      orderBy: [
-        { status: "asc" },
-        { createdAt: "desc" },
-      ],
-      skip: offset,
-      take: limit,
-    }),
-    prisma.tournament.count({ where }),
-  ]);
-
-  const data = tournaments.map((t) => ({
-    id: t.id,
-    name: t.name,
-    slug: t.slug,
-    description: t.description,
-    type: t.type,
-    status: t.status,
-    city: t.city,
-    prizePool: t.prizePool,
-    maxPlayers: t.maxPlayers,
-    startAt: t.startAt,
-    endAt: t.endAt,
-    createdAt: t.createdAt,
-    playerCount: t._count.participants,
-    organizer: t.organizer,
+  const tournaments = res.rows.map((row: Record<string, unknown>) => ({
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    status: row.status,
+    city: row.city ?? null,
+    prizePool: Number(row.prize_pool ?? 0),
+    entryFee: Number(row.entry_fee ?? 0),
+    creatorFee: Number(row.creator_fee ?? 0),
+    maxPlayers: Number(row.max_players ?? 16),
+    playerCount: Number(row.player_count ?? 0),
+    startAt: row.start_at ?? null,
+    createdAt: row.created_at,
+    organizerName: row.organizer_name ?? "unknown",
   }));
 
-  return NextResponse.json({
-    tournaments: data,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  });
+  return NextResponse.json({ tournaments });
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRole("ADMIN", "MANAGER");
+  const auth = await requireAuth();
   if (!auth.ok) return auth.response;
 
+  const rl = rateLimit(rateLimitKey(req, "create_tournament", auth.session.userId), { windowMs: 60 * 60 * 1000, max: 3 });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many tournaments. Try again later." }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null);
-  const parsed = CreateTournamentSchema.safeParse(body);
+  const parsed = CreateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { startAt, endAt, ...rest } = parsed.data;
+  const { name, type, city, platform, maxPlayers, entryFee, description, startAt } = parsed.data;
 
-  const existing = await prisma.tournament.findUnique({
-    where: { slug: parsed.data.slug },
+  const id = crypto.randomUUID();
+  const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${id.slice(0, 8)}`;
+  const now = new Date().toISOString();
+
+  try {
+    await db.execute({ sql: "ALTER TABLE tournaments ADD COLUMN entry_fee INTEGER DEFAULT 0", args: [] });
+  } catch {}
+  try {
+    await db.execute({ sql: "ALTER TABLE tournaments ADD COLUMN creator_fee INTEGER DEFAULT 0", args: [] });
+  } catch {}
+  try {
+    await db.execute({ sql: "ALTER TABLE tournaments ADD COLUMN platform TEXT", args: [] });
+  } catch {}
+
+  await db.execute({
+    sql: `INSERT INTO tournaments (id, name, slug, type, status, city, platform, prize_pool, entry_fee, creator_fee, max_players, description, start_at, organizer_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'REGISTRATION', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, name, slug, type, city ?? null, platform, entryFee, CREATOR_FEE_USD, maxPlayers, description ?? null, startAt ?? null, auth.session.userId, now, now],
   });
-  if (existing) {
-    return NextResponse.json({ error: "Slug already taken" }, { status: 409 });
-  }
 
-  const tournament = await prisma.tournament.create({
-    data: {
-      ...rest,
-      startAt: startAt ? new Date(startAt) : null,
-      endAt: endAt ? new Date(endAt) : null,
-      organizerId: auth.session.userId,
-    },
-  });
-
-  return NextResponse.json({ tournament }, { status: 201 });
+  return NextResponse.json({ tournament: { id, name, type, status: "REGISTRATION", slug } }, { status: 201 });
 }

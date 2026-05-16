@@ -71,6 +71,9 @@ model User {
   sentMatchRequests  MatchRequest[] @relation("SentMatchRequest")
   receivedMatchRequests MatchRequest[] @relation("ReceivedMatchRequest")
 
+  sentWagers           Wager[]         @relation("SentWagers")
+  receivedWagers       Wager[]         @relation("ReceivedWagers")
+
   organizedTournaments  Tournament[]    @relation("TournamentOrganizer")
   tournamentParticipations TournamentParticipant[] @relation("TournamentParticipantUser")
   tournMatches1  TournamentMatch[] @relation("TournMatchP1")
@@ -470,6 +473,22 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model Wager {
+  id          String    @id @default(uuid())
+  senderId    String    @map("sender_id")
+  receiverId  String    @map("receiver_id")
+  amount      Int
+  status      String    @default("PENDING")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  resolvedAt  DateTime?  @map("resolved_at")
+  winnerId    String?   @map("winner_id")
+
+  sender      User      @relation("SentWagers", fields: [senderId], references: [id])
+  receiver    User      @relation("ReceivedWagers", fields: [receiverId], references: [id])
+
+  @@map("wagers")
+}
+
 model SystemHealth {
   id           String   @id @default(uuid())
   metric       String   @unique
@@ -502,7 +521,13 @@ model Tournament {
   status        String       @default("DRAFT")  // DRAFT, REGISTRATION, LIVE, COMPLETED
   city          String?
   prizePool     Int          @default(0) @map("prize_pool")
+  entryFee      Int          @default(0) @map("entry_fee")       // USD cents per player
+  creatorFee    Int          @default(0) @map("creator_fee")     // USD cents paid by host
+  platform      String?                                           // CROSSPLAY, PS5, XBOX, PC
   maxPlayers    Int          @default(32) @map("max_players")
+  minRank       Int?         @default(1) @map("min_rank")        // minimum ZW rank to enter
+  maxRank       Int?         @map("max_rank")                    // maximum ZW rank (null = no limit)
+  bracket       String?      // JSON string
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
   startAt       DateTime?    @map("start_at")
