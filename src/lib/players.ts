@@ -36,6 +36,8 @@ export type Player = {
   prizeMoney: number;
   winStreak: number;
   hardware: Hardware;
+  whatsapp?: string;
+  phone?: string;
 };
 
 export const PLAYERS: Player[] = [
@@ -62,6 +64,8 @@ export const PLAYERS: Player[] = [
       monitor: 'BenQ Zowie XL2566K 360Hz 25"',
       console: "PS5 Pro",
     },
+    whatsapp: "+263 77 123 4567",
+    phone: "+263 71 123 4567",
   },
   {
     id: "p02",
@@ -86,6 +90,8 @@ export const PLAYERS: Player[] = [
       monitor: 'LG UltraGear 27" 240Hz',
       console: "PS5",
     },
+    whatsapp: "+263 77 234 5678",
+    phone: "+263 71 234 5678",
   },
   {
     id: "p03",
@@ -110,6 +116,8 @@ export const PLAYERS: Player[] = [
       monitor: 'Samsung Odyssey G7 27"',
       console: "PS5",
     },
+    whatsapp: "+263 77 345 6789",
+    phone: "+263 71 345 6789",
   },
   {
     id: "p04",
@@ -134,6 +142,8 @@ export const PLAYERS: Player[] = [
       monitor: 'AOC 24" 165Hz',
       console: "PS5",
     },
+    whatsapp: "+263 77 456 7890",
+    phone: "+263 71 456 7890",
   },
   {
     id: "p05",
@@ -158,6 +168,8 @@ export const PLAYERS: Player[] = [
       monitor: 'BenQ Mobiuz 27"',
       console: "PS5",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p06",
@@ -182,6 +194,8 @@ export const PLAYERS: Player[] = [
       monitor: 'Dell S2522HG 240Hz',
       console: "PS5",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p07",
@@ -206,6 +220,8 @@ export const PLAYERS: Player[] = [
       monitor: 'AOC 27" 144Hz',
       console: "PS5",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p08",
@@ -230,6 +246,8 @@ export const PLAYERS: Player[] = [
       monitor: 'LG 24" 144Hz',
       console: "PS5",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p09",
@@ -254,6 +272,8 @@ export const PLAYERS: Player[] = [
       monitor: 'AOC 24" 144Hz',
       console: "PS5",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p10",
@@ -278,6 +298,8 @@ export const PLAYERS: Player[] = [
       monitor: 'Acer Nitro 24"',
       console: "PS5",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p11",
@@ -302,6 +324,8 @@ export const PLAYERS: Player[] = [
       monitor: 'AOC 24" 75Hz',
       console: "PS4 Pro",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p12",
@@ -326,6 +350,8 @@ export const PLAYERS: Player[] = [
       monitor: 'Generic 24" 60Hz',
       console: "PS4",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p13",
@@ -350,6 +376,8 @@ export const PLAYERS: Player[] = [
       monitor: 'Generic 24" 75Hz',
       console: "PS4 Pro",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p14",
@@ -374,6 +402,8 @@ export const PLAYERS: Player[] = [
       monitor: 'AOC 22"',
       console: "PS4",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p15",
@@ -398,6 +428,8 @@ export const PLAYERS: Player[] = [
       monitor: 'Generic 22"',
       console: "PS4",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p16",
@@ -422,6 +454,8 @@ export const PLAYERS: Player[] = [
       monitor: 'Generic 22"',
       console: "PS4",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p17",
@@ -446,6 +480,8 @@ export const PLAYERS: Player[] = [
       monitor: '1080p TV',
       console: "PS4",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p18",
@@ -470,6 +506,8 @@ export const PLAYERS: Player[] = [
       monitor: '1080p TV',
       console: "PS4",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p19",
@@ -494,6 +532,8 @@ export const PLAYERS: Player[] = [
       monitor: 'Generic 22"',
       console: "PS4",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
   {
     id: "p20",
@@ -518,6 +558,8 @@ export const PLAYERS: Player[] = [
       monitor: '1080p TV',
       console: "PS4",
     },
+    whatsapp: "+263 77 000 0000",
+    phone: "+263 71 000 0000",
   },
 ];
 
