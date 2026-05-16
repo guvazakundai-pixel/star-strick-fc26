@@ -242,6 +242,12 @@ export function RankingsClient() {
     });
   }, [query, city, division, sortKey, sortDir]);
 
+  const cityRankMap = useMemo(() => {
+    const map = new Map<string, number>();
+    sortedPlayers.forEach((p, i) => { map.set(p.id, i + 1); });
+    return map;
+  }, [sortedPlayers]);
+
   const selectedPlayer = useMemo(
     () => PLAYERS.find((p) => p.id === selectedId) ?? null,
     [selectedId]
@@ -316,6 +322,8 @@ export function RankingsClient() {
             loggedIn={loggedIn}
             onChallenge={handleChallenge}
             challengeState={challengeState}
+            cityRankMap={cityRankMap}
+            activeCity={city}
           />
         )}
       </div>
@@ -415,7 +423,23 @@ function FilterBar({
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto bc-no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
-          <FilterChip label="City" value={city} onChange={(v) => onCity(v as City | "All")} options={[{ value: "All", label: "All" }, ...CITIES.map((c) => ({ value: c, label: c }))]} />
+          <div className="flex items-center gap-1 rounded-[12px] bg-bg-elevated/40 border border-border-faint p-0.5">
+            {["All", "Harare"].map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onCity(c as City | "All")}
+                className={
+                  "shrink-0 inline-flex items-center gap-1.5 h-7 px-3 rounded-[9px] text-[10px] font-black tracking-[0.16em] uppercase transition-all duration-200 " +
+                  (city === c
+                    ? "bg-accent/15 text-accent border border-accent/20"
+                    : "text-muted-soft hover:text-ink")
+                }
+              >
+                {c === "All" ? "🇿🇼 All ZW" : "🏛️ Harare"}
+              </button>
+            ))}
+          </div>
           <FilterChip label="Division" value={division} onChange={(v) => onDivision(v as Division | "All")} options={[{ value: "All", label: "All" }, ...DIVISIONS.map((d) => ({ value: d, label: d }))]} />
         </div>
 
@@ -476,6 +500,8 @@ function RankingsList({
   loggedIn,
   onChallenge,
   challengeState,
+  cityRankMap,
+  activeCity,
 }: {
   players: Player[];
   selectedId: string | null;
@@ -485,6 +511,8 @@ function RankingsList({
   loggedIn: boolean;
   onChallenge: (id: string, e?: React.MouseEvent) => void;
   challengeState: Record<string, "idle" | "sending" | "sent" | "error">;
+  cityRankMap: Map<string, number>;
+  activeCity: City | "All";
 }) {
   const top3 = players.slice(0, 3);
   const rest = players.slice(3);
@@ -504,6 +532,8 @@ function RankingsList({
               loggedIn={loggedIn}
               onChallenge={onChallenge}
               challengeState={challengeState}
+              cityRank={cityRankMap.get(p.id) ?? p.rank}
+              cityView={activeCity !== "All"}
             />
           ))}
         </section>
@@ -513,7 +543,7 @@ function RankingsList({
         <section className="mt-4 sm:mt-6">
           <div className="mb-3 sm:mb-4 flex items-center gap-3">
             <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
-            <span className="text-[10px] font-black tracking-[0.3em] uppercase text-muted-faint">Rank 4+</span>
+            <span className="text-[10px] font-black tracking-[0.3em] uppercase text-muted-faint">{activeCity !== "All" ? `${activeCity} Rank 4+` : "Rank 4+"}</span>
             <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
           </div>
           <div className="space-y-1.5 sm:space-y-2">
@@ -530,6 +560,8 @@ function RankingsList({
                   loggedIn={loggedIn}
                   onChallenge={onChallenge}
                   challengeState={challengeState}
+                  cityRank={cityRankMap.get(p.id) ?? p.rank}
+                  cityView={activeCity !== "All"}
                 />
               </div>
             ))}
@@ -547,7 +579,7 @@ function sortVal(p: Player): number {
   }
 }
 
-function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChallenge, challengeState }: { player: Player; index: number; isSelected: boolean; onSelect: () => void; club: Club | null; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error"> }) {
+function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChallenge, challengeState, cityRank, cityView }: { player: Player; index: number; isSelected: boolean; onSelect: () => void; club: Club | null; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error">; cityRank: number; cityView: boolean }) {
   const t = getTierTheme(player.rank);
   const stats = computeDerived(player);
   const delta = player.prev - player.rank;
@@ -606,12 +638,19 @@ function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChall
           <div className="shrink-0 flex items-center justify-center w-[56px] sm:w-[80px] md:w-[96px]"
             style={{ background: isChampion ? "linear-gradient(90deg, rgba(255,184,0,0.04), transparent 70%)" : undefined }}
           >
-            <span
-              className={`cinematic-heading leading-none tabular-nums ${isChampion ? "text-[64px] sm:text-[96px] bc-rank-pulse" : "text-[52px] sm:text-[80px]"} ${t.rankGlow || ""}`}
-              style={{ color: t.rankColor, letterSpacing: "-0.06em" }}
-            >
-              {player.rank}
-            </span>
+            <div className="flex flex-col items-center">
+              <span
+                className={`cinematic-heading leading-none tabular-nums ${isChampion ? "text-[64px] sm:text-[96px] bc-rank-pulse" : "text-[52px] sm:text-[80px]"} ${t.rankGlow || ""}`}
+                style={{ color: t.rankColor, letterSpacing: "-0.06em" }}
+              >
+                {cityView ? cityRank : player.rank}
+              </span>
+              {cityView && (
+                <span className="text-[8px] font-bold tracking-wider text-muted-faint uppercase -mt-1">
+                  ZW #{player.rank}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* CENTER: Player identity — flex-1 min-w-0 for proper truncation */}
@@ -665,6 +704,11 @@ function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChall
               >
                 {player.city}
               </span>
+              {cityView && (
+                <span className="shrink-0 inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-accent/10 border border-accent/25 text-accent">
+                  🏛️ {player.city.toUpperCase()} #{cityRank}
+                </span>
+              )}
               <span
                 className="shrink-0 inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--muted-soft)" }}
@@ -731,6 +775,8 @@ function SwipeableRankRow({
   loggedIn,
   onChallenge,
   challengeState,
+  cityRank,
+  cityView,
 }: {
   player: Player;
   index: number;
@@ -742,6 +788,8 @@ function SwipeableRankRow({
   loggedIn: boolean;
   onChallenge: (id: string, e?: React.MouseEvent) => void;
   challengeState: Record<string, "idle" | "sending" | "sent" | "error">;
+  cityRank: number;
+  cityView: boolean;
 }) {
   const t = getTierTheme(player.rank);
   const stats = computeDerived(player);
@@ -855,13 +903,17 @@ function SwipeableRankRow({
             <div className="h-full grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-3 px-4 sm:px-5">
               <div className="flex flex-col items-center justify-center w-9 sm:w-11 shrink-0">
                 <span className="cinematic-heading tabular-nums text-lg sm:text-xl leading-none" style={{ color: t.rankColor }}>
-                  {player.rank}
+                  {cityView ? cityRank : player.rank}
                 </span>
-                {delta !== 0 && (
+                {cityView ? (
+                  <span className="font-mono text-[7px] tracking-wider text-muted-faint leading-tight mt-px">
+                    ZW #{player.rank}
+                  </span>
+                ) : delta !== 0 ? (
                   <span className={`font-mono text-[9px] tabular-nums leading-tight mt-px ${delta > 0 ? "text-accent" : "text-negative/80"}`}>
                     {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}
                   </span>
-                )}
+                ) : null}
               </div>
 
               <div className="min-w-0">
@@ -887,6 +939,11 @@ function SwipeableRankRow({
                   <span className="shrink-0 inline-flex items-center rounded-[3px] px-1 text-[8px] font-bold uppercase tracking-wider h-[16px]" style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}>
                     ZW
                   </span>
+                  {cityView && (
+                    <span className="shrink-0 inline-flex items-center rounded-[3px] px-1 text-[8px] font-bold uppercase tracking-wider h-[16px] bg-accent/10 border border-accent/25 text-accent">
+                      🏛️ {player.city.toUpperCase()}
+                    </span>
+                  )}
                 </div>
               </div>
 
