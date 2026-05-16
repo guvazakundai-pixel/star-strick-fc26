@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { simulateXPReport, calculateXPAndPoints, calculateElo } from "@/lib/xp-engine";
+import { ChallengeModal } from "@/components/match/ChallengeModal";
 
 type View = "center" | "challenge" | "challenge-lobby" | "score-submit" | "verify" | "verified" | "dispute" | "tournament" | "bracket";
 
@@ -100,6 +101,7 @@ function BrainIcon() {
 
 export function MatchCenter() {
   const [view, setView] = useState<View>("center");
+  const [challengeModalOpen, setChallengeModalOpen] = useState(false);
   const [matchState, setMatchState] = useState<MatchState>("idle");
   const [selectedOpponent, setSelectedOpponent] = useState<MockPlayer | null>(null);
   const [score1, setScore1] = useState(0);
@@ -253,7 +255,7 @@ export function MatchCenter() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 <button
-                  onClick={() => setView("challenge")}
+                  onClick={() => setChallengeModalOpen(true)}
                   className="group relative overflow-hidden rounded-[24px] text-left transition-all duration-400 hover:scale-[1.02]"
                   style={{ background: "rgba(18, 20, 24, 0.55)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", border: "1px solid rgba(0,230,118,0.12)", boxShadow: "0 0 60px -12px rgba(0,230,118,0.14), 0 12px 40px rgba(0,0,0,0.20)" }}
                 >
@@ -654,6 +656,10 @@ function TournamentBracket({
           </div>
         )}
       </div>
+      <ChallengeModal
+        open={challengeModalOpen}
+        onClose={() => setChallengeModalOpen(false)}
+      />
     </div>
   );
 }

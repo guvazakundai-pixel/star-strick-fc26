@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAuthModal } from "@/lib/auth-context";
 import { useSession } from "@/lib/session-client";
+import { ChallengeModal } from "@/components/match/ChallengeModal";
 
 type PlayerItem = {
   id: string;
@@ -43,8 +44,7 @@ export default function FindMatchPage() {
   const [players, setPlayers] = useState<PlayerItem[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [challengeLoading, setChallengeLoading] = useState<string | null>(null);
-  const [challengeSent, setChallengeSent] = useState<string | null>(null);
+  const [challengeTarget, setChallengeTarget] = useState<{ id: string; name: string } | null>(null);
   const [recentMatches, setRecentMatches] = useState<MatchItem[]>([]);
 
   const fetchPlayers = useCallback(async () => {
@@ -82,25 +82,13 @@ export default function FindMatchPage() {
     );
   });
 
-  const handleChallenge = async (receiverId: string) => {
+  const handleChallenge = (receiverId: string) => {
     if (!session) {
       openAuth("join");
       return;
     }
-    setChallengeLoading(receiverId);
-    try {
-      const res = await fetch("/api/match-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ receiverId, expiresInHours: 24 }),
-      });
-      if (res.ok) {
-        setChallengeSent(receiverId);
-      }
-    } catch {
-    } finally {
-      setChallengeLoading(null);
-    }
+    const p = players.find((pl) => pl.id === receiverId);
+    setChallengeTarget(p ? { id: p.id, name: p.displayName || p.username } : { id: receiverId, name: receiverId });
   };
 
   return (
@@ -218,9 +206,8 @@ export default function FindMatchPage() {
               </div>
             ) : (
               <div className="space-y-2 max-h-[400px] overflow-y-auto bc-no-scrollbar">
-                {filtered.map((player, i) => {
+                {filtered.map((player) => {
                   const isSelf = session && session.userId === player.id;
-                  const sent = challengeSent === player.id;
                   return (
                     <motion.div
                       key={player.id}
@@ -244,15 +231,12 @@ export default function FindMatchPage() {
                       </div>
                       {isSelf ? (
                         <span className="font-mono text-[10px] text-muted-faint uppercase tracking-wider">You</span>
-                      ) : sent ? (
-                        <span className="pill-accent text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Sent</span>
                       ) : (
                         <button
                           onClick={() => handleChallenge(player.id)}
-                          disabled={!!challengeLoading}
-                          className="rounded-[10px] border border-accent/20 bg-accent/8 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-accent hover:bg-accent/15 transition-all duration-200 disabled:opacity-50"
+                          className="rounded-[10px] border border-accent/20 bg-accent/8 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-accent hover:bg-accent/15 transition-all duration-200"
                         >
-                          {challengeLoading === player.id ? "..." : "Challenge"}
+                          Challenge
                         </button>
                       )}
                     </motion.div>
@@ -290,6 +274,12 @@ export default function FindMatchPage() {
           )}
         </section>
       </div>
+      <ChallengeModal
+        open={!!challengeTarget}
+        onClose={() => setChallengeTarget(null)}
+        opponentId={challengeTarget?.id}
+        opponentName={challengeTarget?.name}
+      />
     </div>
   );
 }

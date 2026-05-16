@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PLAYERS, cityTag } from "@/lib/players";
 import type { Player } from "@/lib/players";
 import { clubByPlayerId, type Club } from "@/lib/clubs";
+import { ChallengeModal } from "@/components/match/ChallengeModal";
 
 export type ModalMode = "detail" | "select" | "compare";
 
@@ -17,6 +18,7 @@ interface Props {
 export function PlayerDetailModal({ player, onClose, allPlayers = PLAYERS }: Props) {
   const [mode, setMode] = useState<ModalMode>("detail");
   const [compareId, setCompareId] = useState<string | null>(null);
+  const [challengeTarget, setChallengeTarget] = useState<{ id: string; name: string } | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const club = useMemo(() => clubByPlayerId(player.id) ?? null, [player.id]);
@@ -78,7 +80,7 @@ export function PlayerDetailModal({ player, onClose, allPlayers = PLAYERS }: Pro
 
           <AnimatePresence mode="wait">
             {mode === "detail" && !comparePlayer && (
-              <DetailView key="detail" player={player} club={club} onCompare={() => setMode("select")} />
+              <DetailView key="detail" player={player} club={club} onCompare={() => setMode("select")} onChallenge={() => setChallengeTarget({ id: player.id, name: player.gamertag })} />
             )}
             {mode === "select" && (
               <SelectPlayerView
@@ -102,6 +104,12 @@ export function PlayerDetailModal({ player, onClose, allPlayers = PLAYERS }: Pro
           </AnimatePresence>
         </motion.div>
       </motion.div>
+      <ChallengeModal
+        open={!!challengeTarget}
+        onClose={() => setChallengeTarget(null)}
+        opponentId={challengeTarget?.id}
+        opponentName={challengeTarget?.name}
+      />
     </AnimatePresence>
   );
 }
@@ -110,10 +118,12 @@ function DetailView({
   player,
   club,
   onCompare,
+  onChallenge,
 }: {
   player: Player;
   club: Club | null;
   onCompare: () => void;
+  onChallenge: () => void;
 }) {
   const stats = useMemo(() => {
     const total = player.wins + player.losses + player.draws;
@@ -293,17 +303,29 @@ function DetailView({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={onCompare}
-        className="w-full h-11 rounded-[14px] font-bold text-[11px] tracking-[0.18em] uppercase transition-all duration-200 flex items-center justify-center gap-2 bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 hover:border-accent/30 active:scale-[0.97]"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-          <path d="M16 3h5v5" /><path d="M8 3H3v5" /><path d="M3 16v5h5" /><path d="M21 16v5h-5" />
-          <path d="M21 21l-7-7" /><path d="M3 3l7 7" />
-        </svg>
-        Compare Player
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onChallenge}
+          className="flex-1 h-11 rounded-[14px] font-bold text-[11px] tracking-[0.18em] uppercase transition-all duration-200 flex items-center justify-center gap-2 bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 hover:border-accent/30 active:scale-[0.97]"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Challenge
+        </button>
+        <button
+          type="button"
+          onClick={onCompare}
+          className="flex-1 h-11 rounded-[14px] font-bold text-[11px] tracking-[0.18em] uppercase transition-all duration-200 flex items-center justify-center gap-2 bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 hover:border-accent/30 active:scale-[0.97]"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <path d="M16 3h5v5" /><path d="M8 3H3v5" /><path d="M3 16v5h5" /><path d="M21 16v5h-5" />
+            <path d="M21 21l-7-7" /><path d="M3 3l7 7" />
+          </svg>
+          Compare
+        </button>
+      </div>
     </motion.div>
   );
 }

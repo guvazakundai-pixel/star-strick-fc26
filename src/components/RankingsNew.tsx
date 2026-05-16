@@ -17,6 +17,7 @@ import { CLUBS, clubByPlayerId } from "@/lib/clubs";
 import type { Club } from "@/lib/clubs";
 import { useAuthModal } from "@/lib/auth-context";
 import { PlayerDetailModal } from "@/components/PlayerDetailModal";
+import { ChallengeModal } from "@/components/match/ChallengeModal";
 import {
   mostImproved,
   biggestFallers,
@@ -219,6 +220,7 @@ export function RankingsClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [swipedId, setSwipedId] = useState<string | null>(null);
+  const [challengeTarget, setChallengeTarget] = useState<{ id: string; name: string } | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
   const { openAuth } = useAuthModal();
 
@@ -273,21 +275,11 @@ export function RankingsClient() {
 
   const [challengeState, setChallengeState] = useState<Record<string, "idle" | "sending" | "sent" | "error">>({});
 
-  const handleChallenge = useCallback(async (playerId: string, e?: React.MouseEvent) => {
+  const handleChallenge = useCallback((playerId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!loggedIn) { openAuth("signin"); return; }
-    setChallengeState(prev => ({ ...prev, [playerId]: "sending" }));
-    try {
-      const res = await fetch("/api/match-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ receiverId: playerId, expiresInHours: 24 }),
-      });
-      if (!res.ok) throw new Error();
-      setChallengeState(prev => ({ ...prev, [playerId]: "sent" }));
-    } catch {
-      setChallengeState(prev => ({ ...prev, [playerId]: "error" }));
-    }
+    const p = PLAYERS.find((pl) => pl.id === playerId);
+    setChallengeTarget(p ? { id: p.id, name: p.gamertag } : { id: playerId, name: playerId });
   }, [loggedIn, openAuth]);
 
   const handleSort = useCallback((k: SortKey) => {
@@ -345,6 +337,12 @@ export function RankingsClient() {
           allPlayers={PLAYERS}
         />
       )}
+      <ChallengeModal
+        open={!!challengeTarget}
+        onClose={() => setChallengeTarget(null)}
+        opponentId={challengeTarget?.id}
+        opponentName={challengeTarget?.name}
+      />
     </div>
   );
 }

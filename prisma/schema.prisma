@@ -489,6 +489,22 @@ model Wager {
   @@map("wagers")
 }
 
+model ChallengeToken {
+  id            String   @id @default(uuid())
+  token         String   @unique
+  challengerId  String   @map("challenger_id")
+  opponentId    String?  @map("opponent_id")
+  matchType     String   @map("match_type")
+  platform      String
+  region        String
+  wagerAmount   Int      @default(0) @map("wager_amount")
+  expiresAt     DateTime @map("expires_at")
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("challenge_tokens")
+}
+
 model SystemHealth {
   id           String   @id @default(uuid())
   metric       String   @unique

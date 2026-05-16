@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { SignInButton } from "@/components/SignInButton";
+import { NotificationBell } from "@/components/match/NotificationBell";
 
 export async function TopBar() {
   const session = await getSession();
@@ -46,12 +47,15 @@ export async function TopBar() {
             </Link>
           )}
           {session && (
-            <Link
-              href="/dashboard"
-              className="hidden sm:inline-flex rounded-[10px] border border-border px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-ink-soft hover:bg-bg-highlight hover:text-ink hover:border-border-strong transition-all duration-300"
-            >
-              Dashboard
-            </Link>
+            <>
+              <NotificationBell />
+              <Link
+                href="/dashboard"
+                className="hidden sm:inline-flex rounded-[10px] border border-border px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-ink-soft hover:bg-bg-highlight hover:text-ink hover:border-border-strong transition-all duration-300"
+              >
+                Dashboard
+              </Link>
+            </>
           )}
           {!session && <SignInButton />}
           <span className="hidden md:inline-flex items-center gap-2 font-mono text-[10px] text-muted-soft">
