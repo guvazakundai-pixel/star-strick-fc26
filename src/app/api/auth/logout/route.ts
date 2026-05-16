@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server"
-import { clearSessionCookie } from "@/lib/session"
-
+import { NextResponse } from 'next/server';
 export async function POST() {
-  await clearSessionCookie()
-  return NextResponse.json({ success: true })
+  const response = NextResponse.json({ success: true, data: { message: 'Logged out' } });
+  response.cookies.set('token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 0, path: '/' });
+  return response;
 }

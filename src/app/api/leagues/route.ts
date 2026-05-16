@@ -1,114 +1,34 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/route-auth";
-import { generateInviteCode, DEFAULT_LEAGUE_SETTINGS } from "@/lib/league-engine";
+import { NextRequest } from 'next/server';
+import { connectDB } from '@/lib/db/connection';
+import { League } from '@/lib/db/models/League';
+import { User } from '@/lib/db/models/User';
+import { getAuthUser } from '@/lib/utils/auth';
+import { generateInviteCode } from '@/lib/utils/generate';
+import { successResponse, errorResponse, unauthorizedResponse } from '@/lib/utils/response';
 
-const CreateLeagueSchema = z.object({
-  name: z.string().min(2).max(80),
-  description: z.string().max(1000).optional(),
-  type: z.enum(["PUBLIC", "PRIVATE", "FRIENDS"]).default("PUBLIC"),
-  maxPlayers: z.number().int().min(4).max(32).default(16),
-  logoUrl: z.string().url().optional(),
-});
-
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type");
-  const search = searchParams.get("q") ?? "";
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 50);
-  const offset = (page - 1) * limit;
-
-  const where: any = {};
-  if (type && ["PUBLIC", "PRIVATE", "FRIENDS"].includes(type)) where.type = type;
-  if (search) where.name = { contains: search };
-
-  const [leagues, total] = await Promise.all([
-    prisma.league.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: offset,
-      take: limit,
-      include: {
-        admin: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        _count: { select: { participants: true, fixtures: true } },
-      },
-    }),
-    prisma.league.count({ where }),
-  ]);
-
-  return NextResponse.json({
-    leagues: leagues.map((l) => ({
-      ...l,
-      settings: l.settings ? JSON.parse(l.settings) : DEFAULT_LEAGUE_SETTINGS,
-      participantCount: l._count.participants,
-      fixtureCount: l._count.fixtures,
-    })),
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  });
+export async function GET(req: NextRequest) {
+  try {
+    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
+    await connectDB();
+    const filter: any = { participants: user._id };
+    const leagues = await League.find(filter).populate('adminId', 'username avatar').sort({ createdAt: -1 }).limit(50);
+    return successResponse({ leagues });
+  } catch (error: any) { return errorResponse(error.message, 500); }
 }
 
-export async function POST(req: Request) {
-  const auth = await requireAuth();
-  if (!auth.ok) return auth.response;
-
-  const body = await req.json().catch(() => null);
-  const parsed = CreateLeagueSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const { name, description, type, maxPlayers, logoUrl } = parsed.data;
-
-  const existing = await prisma.league.findFirst({ where: { name } });
-  if (existing) {
-    return NextResponse.json({ error: "A league with this name already exists" }, { status: 409 });
-  }
-
-  let inviteCode: string | undefined;
-  if (type !== "PUBLIC") {
-    inviteCode = generateInviteCode();
-    while (await prisma.league.findUnique({ where: { inviteCode } })) {
-      inviteCode = generateInviteCode();
-    }
-  }
-
-  const league = await prisma.league.create({
-    data: {
-      name,
-      description,
-      type,
-      maxPlayers,
-      logoUrl,
-      inviteCode,
-      adminId: auth.session.userId,
-      settings: JSON.stringify(DEFAULT_LEAGUE_SETTINGS),
-      participants: {
-        create: {
-          userId: auth.session.userId,
-        },
-      },
-      season: {
-        create: {
-          number: 1,
-          status: "PENDING",
-        },
-      },
-    },
-    include: {
-      admin: { select: { id: true, username: true, displayName: true } },
-      _count: { select: { participants: true } },
-    },
-  });
-
-  return NextResponse.json({
-    league: {
-      ...league,
-      settings: DEFAULT_LEAGUE_SETTINGS,
-      participantCount: league._count.participants,
-    },
-  }, { status: 201 });
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
+    await connectDB();
+    const body = await req.json();
+    if (!body.name) return errorResponse('League name required');
+    const league = await League.create({
+      name: body.name, description: body.description || '', adminId: user._id, inviteCode: generateInviteCode(),
+      type: body.type || 'PRIVATE', region: body.region || '', participants: [user._id], currentSeason: 1,
+      seasons: [{ seasonNumber: 1, status: 'UPCOMING', standings: [], fixtures: [] }],
+      settings: { rounds: body.settings?.rounds || 2, homeAway: body.settings?.homeAway ?? true, maxPlayers: body.settings?.maxPlayers || 20, minPlayers: body.settings?.minPlayers || 2, allowDraws: body.settings?.allowDraws ?? true, autoGenerateFixtures: body.settings?.autoGenerateFixtures ?? true, promotionSpots: body.settings?.promotionSpots || 0, relegationSpots: body.settings?.relegationSpots || 0, matchConfirmationType: body.settings?.matchConfirmationType || 'BOTH' },
+    });
+    await User.findByIdAndUpdate(user._id, { $push: { leagues: league._id } });
+    return successResponse({ league }, 201);
+  } catch (error: any) { return errorResponse(error.message, 500); }
 }
