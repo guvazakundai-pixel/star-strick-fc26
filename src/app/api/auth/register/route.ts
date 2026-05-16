@@ -17,6 +17,8 @@ const RegisterSchema = z.object({
   password: z.string().min(8).max(100),
   displayName: z.string().min(3).max(30),
   platform: z.enum(PLATFORMS).default("CROSSPLAY"),
+  phone: z.string().max(30).optional().default(""),
+  whatsapp: z.string().max(30).optional().default(""),
 });
 
 export async function POST(req: Request) {
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const { username, email, password, displayName, platform } = parsed.data;
+  const { username, email, password, displayName, platform, phone, whatsapp } = parsed.data;
 
   const existing = await db.execute({
     sql: "SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1",
@@ -54,9 +56,13 @@ export async function POST(req: Request) {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
+  try {
+    await db.execute({ sql: "ALTER TABLE users ADD COLUMN whatsapp TEXT", args: [] });
+  } catch {}
+
   await db.execute({
-    sql: "INSERT INTO users (id, username, email, password_hash, display_name, platform, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'PLAYER', ?, ?)",
-    args: [id, username, email, passwordHash, displayName, platform, now, now],
+    sql: "INSERT INTO users (id, username, email, password_hash, display_name, platform, phone, whatsapp, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PLAYER', ?, ?)",
+    args: [id, username, email, passwordHash, displayName, platform, phone || null, whatsapp || null, now, now],
   });
 
   await setSessionCookie({ userId: id, username, role: "PLAYER" });

@@ -8,6 +8,8 @@ const UpdateSchema = z.object({
   bio: z.string().max(200).optional(),
   country: z.string().max(60).optional(),
   platform: z.enum(["CROSSPLAY", "PS5", "XBOX", "PC"]).optional(),
+  phone: z.string().max(30).optional(),
+  whatsapp: z.string().max(30).optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -38,6 +40,14 @@ export async function PATCH(req: Request) {
   if (parsed.data.platform !== undefined) {
     sets.push("platform = ?");
     args.push(parsed.data.platform);
+  }
+  if (parsed.data.phone !== undefined) {
+    sets.push("phone = ?");
+    args.push(parsed.data.phone);
+  }
+  if (parsed.data.whatsapp !== undefined) {
+    sets.push("whatsapp = ?");
+    args.push(parsed.data.whatsapp);
   }
 
   if (sets.length === 0) {

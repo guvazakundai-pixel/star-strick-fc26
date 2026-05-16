@@ -144,6 +144,8 @@ function JoinForm({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [platform, setPlatform] = useState("CROSSPLAY");
+  const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -155,7 +157,7 @@ function JoinForm({ onClose }: { onClose: () => void }) {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, username, email, password, platform }),
+      body: JSON.stringify({ displayName, username, email, password, platform, phone, whatsapp }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -188,6 +190,8 @@ function JoinForm({ onClose }: { onClose: () => void }) {
           {PLATFORMS.map((p) => (<option key={p.value} value={p.value}>{p.label}</option>))}
         </select>
       </div>
+      <FieldInput label="Phone Number (optional)" type="tel" value={phone} onChange={setPhone} hint="For voice call challenges" />
+      <FieldInput label="WhatsApp (optional)" type="tel" value={whatsapp} onChange={setWhatsapp} hint="For WhatsApp contact" />
       <label className="flex items-start gap-2.5 cursor-pointer">
         <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} required className="mt-0.5 h-4 w-4 rounded border-white/[0.12] accent-[#00ff85]" />
         <span className="text-xs text-[#8E909A] leading-snug">I agree to the Star Strick FC26 rules and community guidelines</span>
