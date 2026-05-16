@@ -1,85 +1,32 @@
 import { NextResponse } from "next/server";
-import { requireClubManager } from "@/lib/route-auth";
 import { prisma } from "@/lib/prisma";
 
-export async function PATCH(
-  req: Request,
+export async function GET(
+  _req: Request,
   { params }: { params: Promise<{ clubId: string; memberId: string }> },
 ) {
   const { clubId, memberId } = await params;
-  const auth = await requireClubManager(clubId);
-  if (!auth.ok) return auth.response;
 
-  const body = await req.json().catch(() => null);
-  const status = body?.status;
-  const role = body?.role;
-
-  if (status && !["APPROVED", "REJECTED"].includes(status)) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-  }
-  if (role && !["PLAYER", "CAPTAIN"].includes(role)) {
-    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
-  }
-
-  const member = await prisma.clubMember.findUnique({ where: { id: memberId } });
-  if (!member || member.clubId !== clubId) {
-    return NextResponse.json({ error: "Member not found" }, { status: 404 });
-  }
-
-  const data: Record<string, unknown> = {};
-  if (status) data.status = status;
-  if (role) data.role = role;
-
-  const updated = await prisma.clubMember.update({
-    where: { id: memberId },
-    data,
-  });
-
-  if (status === "APPROVED") {
-    await prisma.user.update({
-      where: { id: member.userId },
-      data: { clubId },
-    });
-  }
-
-  await prisma.auditLog.create({
-    data: {
-      adminId: auth.session.userId,
-      action: status === "APPROVED" ? "MEMBER_APPROVE" : status === "REJECTED" ? "MEMBER_REJECT" : "MEMBER_PROMOTE",
-      target: `CLUB_MEMBER:${memberId}`,
+  const member = await prisma.clubMember.findFirst({
+    where: { id: memberId, clubId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          bio: true,
+          country: true,
+          platform: true,
+          stats: true,
+          playerRanking: { select: { rankPosition: true, prevPosition: true } },
+        },
+      },
     },
   });
 
-  return NextResponse.json({ member: updated });
-}
+  if (!member) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ clubId: string; memberId: string }> },
-) {
-  const { clubId, memberId } = await params;
-  const auth = await requireClubManager(clubId);
-  if (!auth.ok) return auth.response;
-
-  const member = await prisma.clubMember.findUnique({ where: { id: memberId } });
-  if (!member || member.clubId !== clubId) {
-    return NextResponse.json({ error: "Member not found" }, { status: 404 });
-  }
-
-  await prisma.clubMember.delete({ where: { id: memberId } });
-
-  await prisma.user.update({
-    where: { id: member.userId },
-    data: { clubId: null },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      adminId: auth.session.userId,
-      action: "MEMBER_REMOVE",
-      target: `CLUB_MEMBER:${memberId}`,
-    },
-  });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ member });
 }

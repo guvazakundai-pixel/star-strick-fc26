@@ -4,7 +4,8 @@ import { requireAuth } from "@/lib/route-auth";
 import { prisma } from "@/lib/prisma";
 
 const JoinClubSchema = z.object({
-  clubId: z.string().min(1),
+  clubId: z.string().min(1).optional(),
+  code: z.string().min(1).optional(),
 });
 
 export async function POST(req: Request) {
@@ -14,13 +15,33 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = JoinClubSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    return NextResponse.json({ error: "Provide clubId or invite code" }, { status: 400 });
   }
-  const { clubId } = parsed.data;
+
+  let clubId = parsed.data.clubId;
+
+  if (parsed.data.code && !clubId) {
+    const clubByCode = await prisma.club.findUnique({
+      where: { joinCode: parsed.data.code },
+      select: { id: true, name: true, membersInviteOnly: true, isPublic: true },
+    });
+    if (!clubByCode) {
+      return NextResponse.json({ error: "Invalid invite code" }, { status: 404 });
+    }
+    clubId = clubByCode.id;
+  }
+
+  if (!clubId) {
+    return NextResponse.json({ error: "Provide clubId or invite code" }, { status: 400 });
+  }
 
   const club = await prisma.club.findUnique({ where: { id: clubId } });
   if (!club) {
     return NextResponse.json({ error: "Club not found" }, { status: 404 });
+  }
+
+  if (!club.isPublic && !parsed.data.code) {
+    return NextResponse.json({ error: "This club is private. You need an invite code." }, { status: 403 });
   }
 
   const existing = await prisma.clubMember.findUnique({
@@ -38,33 +59,44 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "You are already in a club. Leave your current club first." }, { status: 400 });
   }
 
+  const autoApprove = !club.membersInviteOnly;
   const member = await prisma.clubMember.create({
     data: {
       userId: auth.session.userId,
       clubId,
-      role: "PLAYER",
-      status: club.membersInviteOnly ? "PENDING" : "APPROVED",
+      role: "RECRUIT",
+      status: autoApprove ? "APPROVED" : "PENDING",
     },
   });
 
-  if (!club.membersInviteOnly) {
+  if (autoApprove) {
     await prisma.user.update({
       where: { id: auth.session.userId },
       data: { clubId, joinedClubAt: new Date() },
+    });
+
+    await prisma.clubActivity.create({
+      data: {
+        clubId,
+        userId: auth.session.userId,
+        type: "MEMBER_JOINED",
+        message: `New member joined the club`,
+      },
     });
   }
 
   await prisma.auditLog.create({
     data: {
       adminId: auth.session.userId,
-      action: club.membersInviteOnly ? "CLUB_APPLY" : "CLUB_JOIN",
+      action: autoApprove ? "CLUB_JOIN" : "CLUB_APPLY",
       target: `CLUB:${clubId}`,
-      details: { clubName: club.name },
+      details: { clubName: club.name, method: parsed.data.code ? "invite_code" : "direct" },
     },
   });
 
   return NextResponse.json({
     member,
-    status: club.membersInviteOnly ? "PENDING" : "APPROVED",
+    status: autoApprove ? "APPROVED" : "PENDING",
+    clubName: club.name,
   });
 }

@@ -53,6 +53,7 @@ model User {
   posts             ClubPost[]
   likedPosts        PostLike[]
   postComments      PostComment[]
+  clubActivities    ClubActivity[]
   followers         Follow[]        @relation("Followers")
   following         Follow[]        @relation("Following")
   disputes          Dispute[]       @relation("DisputeReporter")
@@ -88,6 +89,7 @@ model Club {
   name              String      @unique
   slug              String      @unique
   tag               String?     @unique @map("tag")
+  tagline           String?
   city              String
   country           String      @default("Zimbabwe")
   description       String?
@@ -98,7 +100,13 @@ model Club {
   status            String      @default("PENDING") @map("status")
   platform          String?
   membersInviteOnly Boolean     @default(false) @map("members_invite_only")
+  clubXp            Int         @default(0) @map("club_xp")
+  winRate           Float       @default(0) @map("win_rate")
   momentum          Int         @default(50)
+  featuredLegends   String?     @map("featured_legends")
+  trophies          String?     @map("trophies")
+  joinCode          String?     @unique @map("join_code")
+  isPublic          Boolean     @default(true) @map("is_public")
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
@@ -117,6 +125,8 @@ model Club {
   createdByUserId   String?     @map("created_by_user_id")
   createdBy         User?       @relation("ClubCreator", fields: [createdByUserId], references: [id])
   clubMembers       User[]      @relation("UserClubMembership")
+  achievements      ClubAchievement[]
+  activity          ClubActivity[]
 
   @@map("clubs")
 }
@@ -125,8 +135,10 @@ model ClubMember {
   id        String     @id @default(uuid())
   userId    String     @map("user_id")
   clubId    String     @map("club_id")
-  role      String @default("PLAYER")
-  status    String @default("PENDING")
+  role      String     @default("MEMBER")
+  title     String?
+  clubXp    Int        @default(0) @map("club_xp")
+  status    String     @default("PENDING")
   joinedAt  DateTime   @default(now()) @map("joined_at")
 
   user      User   @relation(fields: [userId], references: [id])
@@ -134,6 +146,37 @@ model ClubMember {
 
   @@unique([userId, clubId])
   @@map("club_members")
+}
+
+model ClubAchievement {
+  id          String    @id @default(uuid())
+  clubId      String    @map("club_id")
+  title       String
+  description String?
+  icon        String    @default("🏆")
+  earnedAt    DateTime  @map("earned_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  club        Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@index([clubId])
+  @@map("club_achievements")
+}
+
+model ClubActivity {
+  id        String   @id @default(uuid())
+  clubId    String   @map("club_id")
+  userId    String   @map("user_id")
+  type      String
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([clubId, createdAt])
+  @@map("club_activities")
 }
 
 model ClubRanking {

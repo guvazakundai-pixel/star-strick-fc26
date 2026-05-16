@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     data: {
       userId: auth.session.userId,
       clubId: club.id,
-      role: "MANAGER",
+      role: "OWNER",
       status: "APPROVED",
     },
   });
