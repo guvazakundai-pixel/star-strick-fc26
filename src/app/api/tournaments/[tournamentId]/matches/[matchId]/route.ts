@@ -11,15 +11,15 @@ const ReportSchema = z.object({
   score2: z.number().int().min(0),
 });
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string; matchId: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ tournamentId: string; matchId: string }> }) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
 
-  const { id, matchId } = await params;
+  const { tournamentId, matchId } = await params;
 
   const matchRes = await db.execute({
     sql: "SELECT * FROM tournament_matches WHERE id = ? AND tournament_id = ?",
-    args: [matchId, id],
+    args: [matchId, tournamentId],
   });
   const match = matchRes.rows[0] as Record<string, unknown> | undefined;
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
@@ -51,10 +51,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     args: [winnerId, score1, score2, now, matchId],
   });
 
-  // Update bracket in tournament
   const tournRes = await db.execute({
     sql: "SELECT bracket, name FROM tournaments WHERE id = ?",
-    args: [id],
+    args: [tournamentId],
   });
   const tournRow = tournRes.rows[0] as Record<string, unknown> | undefined;
   if (tournRow?.bracket) {
@@ -63,10 +62,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     await db.execute({
       sql: "UPDATE tournaments SET bracket = ?, updated_at = ? WHERE id = ?",
-      args: [JSON.stringify(bracket), now, id],
+      args: [JSON.stringify(bracket), now, tournamentId],
     });
 
-    // Insert next round match records if they don't exist
     for (const round of bracket.rounds) {
       for (const m of round) {
         if (m.status !== "PENDING") continue;
@@ -77,13 +75,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (existingRes.rows.length === 0) {
           await db.execute({
             sql: "INSERT INTO tournament_matches (id, tournament_id, round, match_index, player1_id, player2_id, winner_id, score1, score2, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            args: [m.id, id, m.round, m.position, m.player1Id, m.player2Id, m.winnerId, m.score1, m.score2, m.status, now],
+            args: [m.id, tournamentId, m.round, m.position, m.player1Id, m.player2Id, m.winnerId, m.score1, m.score2, m.status, now],
           });
         }
       }
     }
 
-    // WhatsApp notifications for players who advanced to next round
     const tournName = tournRow.name as string;
     const roundNum = Number(match.round);
     const nextRound = roundNum + 1;
@@ -109,17 +106,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     }
 
-    // Check if tournament is complete (final match done)
     const finalRound = bracket.rounds[bracket.rounds.length - 1];
     const finalMatch = finalRound?.[0];
     if (finalMatch?.status === "COMPLETED") {
       await db.execute({
         sql: "UPDATE tournaments SET status = 'COMPLETED', end_at = ? WHERE id = ?",
-        args: [now, id],
+        args: [now, tournamentId],
       });
       await db.execute({
         sql: "UPDATE tournament_participants SET status = 'ELIMINATED' WHERE tournament_id = ? AND user_id != ?",
-        args: [id, finalMatch.winnerId],
+        args: [tournamentId, finalMatch.winnerId],
       });
     }
   }

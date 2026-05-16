@@ -189,8 +189,8 @@ export default async function TournamentDetailPage({
 }) {
   const { slug } = await params;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { slug },
+  const tournament = await prisma.tournament.findFirst({
+    where: { OR: [{ slug }, { id: slug }] },
     include: {
       organizer: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
       participants: {
