@@ -424,7 +424,7 @@ function FilterBar({
 
         <div className="flex items-center gap-2 overflow-x-auto bc-no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
           <div className="flex items-center gap-1 rounded-[12px] bg-bg-elevated/40 border border-border-faint p-0.5">
-            {["All", "Harare"].map((c) => (
+            {["All", ...CITIES].map((c) => (
               <button
                 key={c}
                 type="button"
@@ -436,7 +436,7 @@ function FilterBar({
                     : "text-muted-soft hover:text-ink")
                 }
               >
-                {c === "All" ? "🇿🇼 All ZW" : "🏛️ Harare"}
+                {c === "All" ? "🇿🇼 All ZW" : `🏛️ ${c}`}
               </button>
             ))}
           </div>

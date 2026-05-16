@@ -38,6 +38,10 @@ export type Player = {
   hardware: Hardware;
   whatsapp?: string;
   phone?: string;
+  discord?: string;
+  twitter?: string;
+  twitch?: string;
+  instagram?: string;
 };
 
 export const PLAYERS: Player[] = [
@@ -66,6 +70,10 @@ export const PLAYERS: Player[] = [
     },
     whatsapp: "+263 77 123 4567",
     phone: "+263 71 123 4567",
+    discord: "wilfy_z",
+    twitter: "@WILFY_Z",
+    twitch: "wilfy_z",
+    instagram: "@wilfy_z",
   },
   {
     id: "p02",
@@ -92,6 +100,9 @@ export const PLAYERS: Player[] = [
     },
     whatsapp: "+263 77 234 5678",
     phone: "+263 71 234 5678",
+    discord: "ash_mar",
+    twitter: "@ASH_MAR",
+    twitch: "ash_marimo",
   },
   {
     id: "p03",
@@ -118,6 +129,9 @@ export const PLAYERS: Player[] = [
     },
     whatsapp: "+263 77 345 6789",
     phone: "+263 71 345 6789",
+    discord: "kundai_g",
+    twitter: "@KUNDAI_FC",
+    instagram: "@kundai_g",
   },
   {
     id: "p04",
@@ -144,6 +158,9 @@ export const PLAYERS: Player[] = [
     },
     whatsapp: "+263 77 456 7890",
     phone: "+263 71 456 7890",
+    discord: "faraball",
+    twitch: "faraball_zw",
+    instagram: "@faraball",
   },
   {
     id: "p05",
@@ -170,6 +187,8 @@ export const PLAYERS: Player[] = [
     },
     whatsapp: "+263 77 000 0000",
     phone: "+263 71 000 0000",
+    discord: "muna_10",
+    twitter: "@MUNA10_ZW",
   },
   {
     id: "p06",
