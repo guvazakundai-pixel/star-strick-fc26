@@ -11,11 +11,10 @@ import {
   PLAYERS,
   CITIES,
   DIVISIONS,
-  type Player,
-  type Division,
-  type City,
 } from "@/lib/players";
-import { CLUBS, clubByPlayerId, type Club } from "@/lib/clubs";
+import type { Player, Division, City } from "@/lib/players";
+import { CLUBS, clubByPlayerId } from "@/lib/clubs";
+import type { Club } from "@/lib/clubs";
 import { useAuthModal } from "@/lib/auth-context";
 import { PlayerDetailModal } from "@/components/PlayerDetailModal";
 import {
@@ -24,10 +23,10 @@ import {
   playerOfTheWeek,
   cityRivalries,
   formSparkline,
-  type SparklineBar,
   eloTierTitle,
   eloTierEmoji,
 } from "@/lib/stats";
+import type { SparklineBar } from "@/lib/stats";
 
 type SortKey = "rank" | "points" | "winRate" | "gd" | "streak";
 type SortDir = "asc" | "desc";

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PLAYERS, cityTag, type Player } from "@/lib/players";
+import { PLAYERS, cityTag } from "@/lib/players";
+import type { Player } from "@/lib/players";
 import { clubByPlayerId, type Club } from "@/lib/clubs";
 
 export type ModalMode = "detail" | "select" | "compare";

@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { type Player, cityTag } from "@/lib/players";
+import { cityTag } from "@/lib/players";
+import type { Player } from "@/lib/players";
 import { clubByPlayerId } from "@/lib/clubs";
 
 interface Props {
