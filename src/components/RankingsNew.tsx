@@ -18,6 +18,16 @@ import {
 import { CLUBS, clubByPlayerId, type Club } from "@/lib/clubs";
 import { useAuthModal } from "@/lib/auth-context";
 import { PlayerDetailModal } from "@/components/PlayerDetailModal";
+import {
+  mostImproved,
+  biggestFallers,
+  playerOfTheWeek,
+  cityRivalries,
+  formSparkline,
+  type SparklineBar,
+  eloTierTitle,
+  eloTierEmoji,
+} from "@/lib/stats";
 
 type SortKey = "rank" | "points" | "winRate" | "gd" | "streak";
 type SortDir = "asc" | "desc";
@@ -296,6 +306,8 @@ export function RankingsClient() {
   return (
     <div className="broadcast-theme min-h-screen bc-grain">
       <Header />
+      <PlayerOfTheWeekBanner />
+      <MovementStrip />
       <FilterBar
         query={query}
         onQuery={setQuery}
@@ -594,7 +606,7 @@ function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChall
       className="block w-full text-left group"
     >
       <div
-        className={`relative overflow-hidden rounded-[24px] sm:rounded-[28px] transition-all duration-200 group-hover:scale-[1.005] ${isSelected ? "ring-1 ring-accent/30" : ""}`}
+        className={`relative overflow-hidden rounded-[24px] sm:rounded-[28px] transition-all duration-200 group-hover:scale-[1.005] will-change-transform ${isSelected ? "ring-1 ring-accent/30" : ""}`}
         style={{
           background: "linear-gradient(135deg, rgba(18,20,24,0.60) 0%, rgba(14,16,20,0.70) 100%)",
           backdropFilter: "blur(28px) saturate(1.4)",
@@ -865,7 +877,7 @@ function SwipeableRankRow({
   return (
     <button type="button" onClick={onSelect} className="block w-full text-left">
       <div
-        className={`relative overflow-hidden h-[76px] sm:h-[88px] rounded-[20px] sm:rounded-[22px] ${isSelected ? "ring-1 ring-accent/30" : ""}`}
+        className={`relative overflow-hidden h-[76px] sm:h-[88px] rounded-[20px] sm:rounded-[22px] will-change-transform ${isSelected ? "ring-1 ring-accent/30" : ""}`}
         style={{
           contain: "layout style paint",
           background: isElite
@@ -894,6 +906,7 @@ function SwipeableRankRow({
             touchAction: "pan-y",
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
+            contain: "layout style paint",
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -918,16 +931,16 @@ function SwipeableRankRow({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm sm:text-[15px] font-bold text-ink group-hover:text-accent transition-colors duration-200 truncate uppercase max-w-[180px]">
+                  <p className="text-sm sm:text-[15px] font-bold text-ink group-hover:text-accent transition-colors duration-200 truncate max-w-[160px] uppercase">
                     {player.gamertag}
                   </p>
                   {player.winStreak >= 3 && <span className="shrink-0 text-[9px] leading-none">🔥</span>}
                 </div>
-                <p className="text-[10px] text-muted-soft truncate leading-snug max-w-[180px]">
+                <p className="text-[10px] text-muted-soft truncate leading-snug max-w-[160px]">
                   {player.name}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5 h-[18px] overflow-hidden">
-                  <span className="font-mono text-[9px] tracking-wider text-muted-soft truncate max-w-[180px]">
+                  <span className="font-mono text-[9px] tracking-wider text-muted-soft truncate max-w-[120px]">
                     @{player.gamertag}
                   </span>
                   <span className="shrink-0 w-px h-3 bg-border-faint" />
@@ -962,16 +975,17 @@ function SwipeableRankRow({
             <span className="inline-flex items-center rounded-[3px] px-1.5 h-[16px] text-[7px] font-black tracking-[0.18em] uppercase" style={{ background: "rgba(0,255,133,0.06)", border: "1px solid rgba(0,255,133,0.14)", color: "var(--accent)" }}>
               ← Stats
             </span>
-            <div className="flex items-center gap-1.5 bc-mono-score text-[10px] leading-tight">
-              <span className="text-emerald">{player.wins}<span className="text-muted-faint">W</span></span>
-              <span className="text-muted-soft">{player.draws}<span className="text-muted-faint">D</span></span>
-              <span className="text-negative/80">{player.losses}<span className="text-muted-faint">L</span></span>
-            </div>
-            <div className="bc-mono-score text-[10px] leading-tight">
-              <span className="text-muted-soft">{Math.round(stats.winRate)}%</span>
-              {player.winStreak >= 3 && <span className="ml-1 text-accent">🔥{player.winStreak}</span>}
-            </div>
-            <div className="text-[8px] text-muted-faint leading-tight">{player.city}</div>
+              <div className="h-3 w-full max-w-[80px]">
+                <FormSparkline form={player.form} />
+              </div>
+              <div className="bc-mono-score text-[10px] leading-tight">
+                <span className="text-muted-soft">{Math.round(stats.winRate)}%</span>
+                {player.winStreak >= 3 && <span className="ml-1 text-accent">🔥{player.winStreak}</span>}
+              </div>
+              <div className="flex items-center gap-1 text-[8px] text-muted-faint leading-tight truncate max-w-[80px]">
+                <span>🇿🇼</span>
+                <span className="truncate">{player.city}</span>
+              </div>
             <div className="mt-0.5">
               <ChallengeButton playerId={player.id} loggedIn={loggedIn} onChallenge={onChallenge} state={challengeState[player.id] ?? "idle"} compact />
             </div>
@@ -1075,6 +1089,89 @@ function FireIcon() {
     <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-orange" aria-hidden>
       <path d="M12 2c.5 4-2.5 5-2.5 8 0 1.66 1.12 3 2.5 3s2.5-1.34 2.5-3c0-1.5-1-2-1-3 2 .5 4.5 3.5 4.5 7 0 3.87-3.13 7-7 7s-7-3.13-7-7c0-4 4-6.5 4-9 0-1.5-.5-2.5-1-3 2 0 5 1 5 0Z" />
     </svg>
+  );
+}
+
+function PlayerOfTheWeekBanner() {
+  const potw = useMemo(() => playerOfTheWeek(), []);
+  if (!potw) return null;
+  return (
+    <div className="mx-auto max-w-4xl px-3 sm:px-6 pt-4">
+      <div className="relative overflow-hidden rounded-[16px] border border-accent/15 bg-gradient-to-r from-accent/5 via-accent/8 to-transparent px-4 py-3 sm:px-5 sm:py-3.5">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <span className="shrink-0 text-2xl sm:text-3xl">🏆</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-black tracking-[0.22em] uppercase text-accent/70">Player of the Week</p>
+            <p className="cinematic-heading text-lg sm:text-xl text-ink truncate max-w-[300px]">{potw.gamertag}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="bc-mono-score text-lg sm:text-xl tabular-nums text-accent font-bold">{potw.points.toLocaleString()}</p>
+            <p className="text-[8px] font-black tracking-[0.2em] uppercase text-muted-faint">PTS</p>
+          </div>
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-[8px] px-2.5 h-7 text-[9px] font-black uppercase tracking-wider bg-accent/10 text-accent border border-accent/20 shrink-0">
+            <span className="text-[11px]">🔥</span> {potw.winStreak}W Streak
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MovementStrip() {
+  const improved = useMemo(() => mostImproved(3), []);
+  const fallers = useMemo(() => biggestFallers(3), []);
+  if (improved.length === 0 && fallers.length === 0) return null;
+  return (
+    <div className="mx-auto max-w-4xl px-3 sm:px-6 pt-3">
+      <div className="flex items-stretch gap-2 overflow-x-auto bc-no-scrollbar">
+        {improved.length > 0 && (
+          <div className="shrink-0 rounded-[12px] border border-accent/15 bg-accent/5 px-3 py-2 min-w-[200px]">
+            <p className="text-[8px] font-black tracking-[0.22em] uppercase text-accent/70 mb-1.5">🔥 Most Improved</p>
+            <div className="space-y-1">
+              {improved.map((m) => (
+                <div key={m.player.id} className="flex items-center gap-2 text-[11px]">
+                  <span className="font-bold text-ink truncate max-w-[100px]">{m.player.gamertag}</span>
+                  <span className="text-accent font-mono tabular-nums shrink-0">▲{m.delta}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {fallers.length > 0 && (
+          <div className="shrink-0 rounded-[12px] border border-negative/15 bg-negative/5 px-3 py-2 min-w-[200px]">
+            <p className="text-[8px] font-black tracking-[0.22em] uppercase text-negative/70 mb-1.5">📉 Biggest Fallers</p>
+            <div className="space-y-1">
+              {fallers.map((m) => (
+                <div key={m.player.id} className="flex items-center gap-2 text-[11px]">
+                  <span className="font-bold text-ink truncate max-w-[100px]">{m.player.gamertag}</span>
+                  <span className="text-negative font-mono tabular-nums shrink-0">▼{m.delta}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FormSparkline({ form }: { form: Player["form"] }) {
+  const bars = useMemo(() => formSparkline(form, 10), [form]);
+  return (
+    <div className="flex items-center gap-[2px] h-3">
+      {bars.map((b, i) => (
+        <span
+          key={i}
+          className="block rounded-[1px]"
+          style={{
+            width: `${b.width}%`,
+            height: "100%",
+            maxWidth: 8,
+            background: b.result === "W" ? "rgba(0,255,133,0.7)" : b.result === "L" ? "rgba(255,77,77,0.6)" : "rgba(255,255,255,0.15)",
+          }}
+        />
+      ))}
+    </div>
   );
 }
 

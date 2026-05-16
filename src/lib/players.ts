@@ -594,3 +594,11 @@ export const CITIES: City[] = [
 ];
 
 export const DIVISIONS: Division[] = ["Elite", "Pro", "Challenger", "Rookie"];
+
+export function cityTag(city: string): string {
+  const map: Record<string, string> = {
+    Harare: "HAR", Bulawayo: "BUL", Mutare: "MUT", Gweru: "GWE",
+    Kwekwe: "KWE", Masvingo: "MSV", Chitungwiza: "CHI", "Victoria Falls": "VFL",
+  };
+  return map[city] ?? city.slice(0, 3).toUpperCase();
+}

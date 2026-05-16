@@ -1,60 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { AuthModalCTA } from "@/components/AuthModalCTA";
 import { motion } from "framer-motion";
 import { StaggerContainer, NumberTicker } from "@/components/ui/PageTransition";
-import { HeroSkeleton, SkeletonCard, SkeletonLine, SkeletonAvatar } from "@/components/ui/Skeleton";
+import { HeroSkeleton } from "@/components/ui/Skeleton";
 import { PlayerDetailModal } from "@/components/PlayerDetailModal";
-import { PLAYERS, type Player } from "@/lib/players";
-
-type FeaturedPlayer = {
-  id: string;
-  username: string;
-  displayName: string | null;
-  rankPosition: number;
-  points: number;
-  skillRating: number;
-  winStreak: number;
-  matchesPlayed: number;
-  wins: number;
-  losses: number;
-  goalsScored: number;
-  goalsConceded: number;
-  formHistory: string | null;
-  clubName: string | null;
-  clubTag: string | null;
-};
-
-const PLAYER_QUOTES: Record<string, string> = {
-  "1": "The reigning king of Harare. Undefeated and untouchable. The mountain belongs to him.",
-  "2": "One step from the throne. Ruthless precision. The challenger who will not bow.",
-  "3": "Built different. The storm that rattles every bracket. Fear nothing.",
-  "4": "Silent assassin. Wins without noise, climbs without mercy.",
-  "5": "Hungry. Determined. Every match is a step toward immortality.",
-  "6": "The wall no one can break. Defense is an art form.",
-  "7": "Speed kills. The fastest hands in Zimbabwe.",
-  "8": "Calculating. Cold. Every move has a purpose.",
-  "9": "Born to compete. The grind never stops.",
-  "10": "From the shadows to the spotlight. Watch this space.",
-};
-
-function getQuote(rank: number, username: string): string {
-  return PLAYER_QUOTES[String(rank)] ?? `${username ?? "This player"} is here to prove something. Every match writes a new chapter.`;
-}
-
-function formFromHistory(formHistory: string | null | undefined): string[] {
-  if (!formHistory || typeof formHistory !== "string") return [];
-  return formHistory.split("").filter((c) => c === "W" || c === "L" || c === "D").slice(-5);
-}
-
-function getRankBadge(rank: number): string {
-  if (rank === 1) return "GOAT";
-  if (rank === 2) return "Elite";
-  if (rank === 3) return "Top 3";
-  return `#${rank}`;
-}
+import { SpotlightCard } from "@/components/SpotlightCard";
+import { PLAYERS } from "@/lib/players";
 
 function safeNumber(val: number | undefined | null, fallback: number = 0): number {
   if (val === null || val === undefined || !Number.isFinite(val)) return fallback;
@@ -72,13 +26,11 @@ export function HomeClient({
   totalGoals: totalGoalsRaw,
   playerCount: playerCountRaw,
   clubCount: clubCountRaw,
-  featuredPlayers: featuredPlayersRaw,
 }: {
   totalMatches: number;
   totalGoals: number;
   playerCount: number;
   clubCount: number;
-  featuredPlayers: FeaturedPlayer[];
 }) {
   const mounted = useMounted();
   const [modalPlayerId, setModalPlayerId] = useState<string | null>(null);
@@ -87,10 +39,9 @@ export function HomeClient({
   const totalGoals = safeNumber(totalGoalsRaw, 0);
   const playerCount = safeNumber(playerCountRaw, 0);
   const clubCount = safeNumber(clubCountRaw, 0);
-  const featuredPlayers = Array.isArray(featuredPlayersRaw) ? featuredPlayersRaw : [];
 
   const modalPlayer = useMemo(
-    () => (modalPlayerId ? PLAYERS.find((p) => p.gamertag === modalPlayerId || p.id === modalPlayerId) ?? null : null),
+    () => (modalPlayerId ? PLAYERS.find((p) => p.id === modalPlayerId) ?? null : null),
     [modalPlayerId],
   );
 
@@ -106,10 +57,10 @@ export function HomeClient({
         playerCount={playerCount}
         clubCount={clubCount}
       />
-      <FeaturedPlayersSection players={featuredPlayers} onSelect={setModalPlayerId} />
+      <SpotlightSection onSelect={setModalPlayerId} />
       <BottomCTA />
       {modalPlayer && (
-        <PlayerDetailModal player={modalPlayer} onClose={() => setModalPlayerId(null)} />
+        <PlayerDetailModal player={modalPlayer} onClose={() => setModalPlayerId(null)} allPlayers={PLAYERS} />
       )}
     </div>
   );
@@ -315,51 +266,10 @@ function StatCard({ label, value, icon, delay = 0 }: { label: string; value: num
   );
 }
 
-function FeaturedPlayersSection({ players, onSelect }: { players: FeaturedPlayer[]; onSelect: (id: string) => void }) {
-  if (!players || players.length === 0) {
-    return (
-      <section className="relative py-16 sm:py-24">
-        <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="flex items-center gap-2 mb-6">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent/60" />
-            <span className="text-[10px] font-black tracking-[0.28em] uppercase text-muted-soft">Featured</span>
-          </div>
-          <h2 className="cinematic-heading text-4xl sm:text-6xl text-ink leading-[0.88] mb-8">
-            The <span className="text-gradient-accent">Elite.</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 skeleton-stagger">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="skeleton-card p-5 sm:p-6 space-y-4" style={{ animationDelay: `${i * 60}ms` }}>
-                <div className="flex items-center gap-3">
-                  <SkeletonAvatar size={56} />
-                  <div className="flex-1 min-w-0 space-y-2.5">
-                    <SkeletonLine width="55%" />
-                    <SkeletonLine width="80%" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  <div className="space-y-1.5"><SkeletonLine width="50%" /><SkeletonLine width="70%" /></div>
-                  <div className="space-y-1.5"><SkeletonLine width="40%" /><SkeletonLine width="60%" /></div>
-                  <div className="space-y-1.5"><SkeletonLine width="45%" /><SkeletonLine width="55%" /></div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 text-center">
-            <Link
-              href="/rankings"
-              className="btn-ghost inline-flex items-center justify-center h-12 rounded-[18px] px-8 font-bold text-base tracking-wide text-ink group"
-            >
-              View Rankings
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1">
-                <path d="M5 12h14" /><path d="M13 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </section>
-    );
-  }
+function SpotlightSection({ onSelect }: { onSelect: (id: string) => void }) {
+  const spotlightPlayers = useMemo(() => {
+    return PLAYERS.filter((p) => p.rank <= 5);
+  }, []);
 
   return (
     <section className="relative py-16 sm:py-24">
@@ -379,19 +289,19 @@ function FeaturedPlayersSection({ players, onSelect }: { players: FeaturedPlayer
         >
           <div className="flex items-center gap-2 mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" style={{ boxShadow: "0 0 8px rgba(0,255,133,0.60)" }} />
-            <span className="text-[10px] font-black tracking-[0.28em] uppercase text-accent">Featured</span>
+            <span className="text-[10px] font-black tracking-[0.28em] uppercase text-accent">Spotlight</span>
           </div>
           <h2 className="cinematic-heading text-4xl sm:text-6xl md:text-7xl text-ink leading-[0.88]">
             The <span className="text-gradient-accent">Elite.</span>
           </h2>
           <p className="mt-4 max-w-lg text-[14px] sm:text-[15px] text-muted-soft leading-relaxed">
-            Zimbabwe&apos;s top FC players — every rank earned on local soil, every point fought for on the ZW ladder.
+            Zimbabwe&apos;s top 5 FC players — every rank earned on local soil, every point fought for on the ZW ladder.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 stagger-grid">
-          {players.map((player, i) => (
-            <FeaturedPlayerCard key={player.id || i} player={player} index={i} onSelect={onSelect} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 auto-rows-fr">
+          {spotlightPlayers.map((player, i) => (
+            <SpotlightCard key={player.id} player={player} index={i} onSelect={onSelect} />
           ))}
         </div>
 
@@ -414,183 +324,6 @@ function FeaturedPlayersSection({ players, onSelect }: { players: FeaturedPlayer
         </motion.div>
       </div>
     </section>
-  );
-}
-
-function FeaturedPlayerCard({ player, index, onSelect }: { player: FeaturedPlayer; index: number; onSelect: (id: string) => void }) {
-  const displayName = player?.displayName || player?.username || "Unknown Player";
-  const username = player?.username || "unknown";
-  const rankPosition = safeNumber(player?.rankPosition, 999);
-  const points = safeNumber(player?.points, 0);
-  const skillRating = safeNumber(player?.skillRating, 1000);
-  const winStreak = safeNumber(player?.winStreak, 0);
-  const matchesPlayed = safeNumber(player?.matchesPlayed, 0);
-  const wins = safeNumber(player?.wins, 0);
-  const losses = safeNumber(player?.losses, 0);
-  const form = formFromHistory(player?.formHistory);
-  const isTop3 = rankPosition <= 3 && rankPosition > 0;
-  const rankBadge = getRankBadge(rankPosition);
-  const clubTag = player?.clubTag || null;
-
-  const cardTone = isTop3
-    ? {
-        border: rankPosition === 1 ? "rgba(255,184,0,0.22)" : rankPosition === 2 ? "rgba(200,200,210,0.18)" : "rgba(205,127,50,0.18)",
-        glow: rankPosition === 1 ? "0 0 60px -12px rgba(255,184,0,0.22), 0 12px 40px rgba(0,0,0,0.25)" : rankPosition === 2 ? "0 0 60px -12px rgba(200,200,210,0.14), 0 12px 40px rgba(0,0,0,0.25)" : "0 0 60px -12px rgba(205,127,50,0.14), 0 12px 40px rgba(0,0,0,0.25)",
-      }
-    : {
-        border: "rgba(255,255,255,0.05)",
-        glow: "0 4px 24px rgba(0,0,0,0.18)",
-      };
-
-  const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 28, scale: 0.97 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.35), ease: [0.22, 1, 0.36, 1] }}
-    >
-      <button
-        type="button"
-        onClick={() => onSelect(username)}
-        className="block w-full text-left group card-interactive card-glow-line relative overflow-hidden rounded-[24px]"
-        style={{
-          border: `1px solid ${cardTone.border}`,
-          boxShadow: cardTone.glow,
-        }}
-      >
-        {isTop3 && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bc-spotlight"
-            style={{
-              background: rankPosition === 1
-                ? "radial-gradient(400px 200px at 15% 30%, rgba(255,184,0,0.08), transparent 65%)"
-                : rankPosition === 2
-                  ? "radial-gradient(400px 200px at 15% 30%, rgba(200,200,210,0.06), transparent 65%)"
-                  : "radial-gradient(400px 200px at 15% 30%, rgba(205,127,50,0.06), transparent 65%)",
-              "--spotlight-max": "0.12",
-            } as React.CSSProperties}
-          />
-        )}
-
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-4 right-2 select-none leading-none"
-          style={{
-            fontFamily: "var(--font-barlow), system-ui, sans-serif",
-            fontSize: "8rem",
-            fontWeight: 900,
-            fontStyle: "italic",
-            letterSpacing: "-0.06em",
-            color: isTop3
-              ? rankPosition === 1 ? "rgba(255,184,0,0.05)" : "rgba(255,255,255,0.03)"
-              : "rgba(255,255,255,0.02)",
-          }}
-        >
-          {displayName.slice(0, 6).toUpperCase()}
-        </div>
-
-        <div className="relative z-10 p-5 sm:p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className="flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-[var(--radius-md)] shrink-0"
-                style={{
-                  background: isTop3
-                    ? rankPosition === 1
-                      ? "linear-gradient(135deg, rgba(255,184,0,0.15), rgba(255,215,94,0.08))"
-                      : rankPosition === 2
-                        ? "linear-gradient(135deg, rgba(200,200,210,0.12), rgba(255,255,255,0.05))"
-                        : "linear-gradient(135deg, rgba(205,127,50,0.12), rgba(255,255,255,0.05))"
-                    : "linear-gradient(135deg, rgba(0,230,118,0.08), rgba(34,211,238,0.04))",
-                  border: isTop3
-                    ? rankPosition === 1 ? "1px solid rgba(255,184,0,0.25)" : rankPosition === 2 ? "1px solid rgba(200,200,210,0.20)" : "1px solid rgba(205,127,50,0.20)"
-                    : "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                <span
-                  className={`cinematic-heading text-2xl sm:text-3xl leading-none ${
-                    rankPosition === 1 ? "text-gold" : rankPosition === 2 ? "text-silver" : rankPosition === 3 ? "text-bronze" : "text-accent"
-                  }`}
-                >
-                  {rankPosition}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <h3 className="cinematic-heading text-xl sm:text-2xl text-ink leading-none truncate max-w-[180px] sm:max-w-[240px] group-hover:text-accent transition-colors duration-300">
-                  {displayName}
-                </h3>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-soft truncate max-w-[120px]">
-                    @{username}
-                  </span>
-                  {clubTag && (
-                    <>
-                      <span className="text-border-strong shrink-0">·</span>
-                      <span className="text-[10px] font-bold tracking-[0.16em] uppercase text-accent/60 shrink-0">
-                        [{clubTag}]
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-            {isTop3 && (
-              <span
-                className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-black tracking-[0.2em] uppercase"
-                style={{
-                  background: rankPosition === 1 ? "rgba(255,184,0,0.10)" : rankPosition === 2 ? "rgba(200,200,210,0.08)" : "rgba(205,127,50,0.08)",
-                  color: rankPosition === 1 ? "#ffb800" : rankPosition === 2 ? "#C8C8D2" : "#CD7F32",
-                  border: rankPosition === 1 ? "1px solid rgba(255,184,0,0.20)" : rankPosition === 2 ? "1px solid rgba(200,200,210,0.16)" : "1px solid rgba(205,127,50,0.16)",
-                }}
-              >
-                ★ {rankBadge}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="min-w-0">
-                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint truncate">Form</p>
-                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums">
-                  {form.length > 0 ? (
-                    <span className="flex items-center gap-0.5">
-                      {form.map((r, fi) => (
-                        <span
-                          key={fi}
-                          className={r === "W" ? "text-accent" : r === "L" ? "text-negative" : "text-muted-soft"}
-                        >
-                          {r}
-                        </span>
-                      ))}
-                    </span>
-                  ) : (
-                    <span className="text-muted-faint">—</span>
-                  )}
-                </p>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint truncate">Points</p>
-                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums text-ink truncate">
-                  {points.toLocaleString()}
-                </p>
-                <p className="text-[9px] text-muted-faint truncate">SR {skillRating.toLocaleString()}</p>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint truncate">Win Rate</p>
-                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums text-ink truncate">
-                  {matchesPlayed > 0 ? `${winRate}%` : "—"}
-                </p>
-                <p className="text-[9px] text-muted-faint truncate">{wins}W {losses}L</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </button>
-    </motion.div>
   );
 }
 
