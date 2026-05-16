@@ -81,6 +81,11 @@ model User {
   tournMatches2  TournamentMatch[] @relation("TournMatchP2")
   tournWins       TournamentMatch[] @relation("TournMatchWinner")
 
+  adminLeagues       League[]              @relation("LeagueAdmin")
+  leagueParticipants LeagueParticipant[]
+  homeFixtures       LeagueFixture[]       @relation("HomePlayer")
+  awayFixtures       LeagueFixture[]       @relation("AwayPlayer")
+
   @@map("users")
 }
 
@@ -639,4 +644,86 @@ model TournamentMatch {
 
   @@index([tournamentId, round])
   @@map("tournament_matches")
+}
+
+model League {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  logoUrl     String?  @map("logo_url")
+  type        String   @default("PUBLIC")  // PUBLIC, PRIVATE, FRIENDS
+  status      String   @default("REGISTRATION")  // REGISTRATION, ACTIVE, COMPLETED, PAUSED
+  inviteCode  String?  @unique @map("invite_code")
+  maxPlayers  Int      @default(16)
+  settings    String?  // JSON: rounds, homeAway, promotion/relegation settings
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  adminId     String   @map("admin_id")
+  admin       User     @relation("LeagueAdmin", fields: [adminId], references: [id])
+
+  season      LeagueSeason?
+  participants LeagueParticipant[]
+  fixtures    LeagueFixture[]
+
+  @@map("leagues")
+}
+
+model LeagueSeason {
+  id        String   @id @default(uuid())
+  leagueId   String   @map("league_id")
+  number     Int      @default(1)
+  startedAt  DateTime? @map("started_at")
+  endsAt     DateTime? @map("ends_at")
+  status     String   @default("PENDING")  // PENDING, ACTIVE, COMPLETED
+
+  league     League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, number])
+  @@map("league_seasons")
+}
+
+model LeagueParticipant {
+  id            String   @id @default(uuid())
+  leagueId      String   @map("league_id")
+  userId        String   @map("user_id")
+  joinedAt      DateTime @default(now()) @map("joined_at")
+  points        Int      @default(0)
+  played        Int      @default(0)
+  wins          Int      @default(0)
+  draws         Int      @default(0)
+  losses        Int      @default(0)
+  goalsFor      Int      @default(0) @map("goals_for")
+  goalsAgainst  Int      @default(0) @map("goals_against")
+  goalDifference Int     @default(0) @map("goal_difference")
+  form          String   @default("")  // "WWDLW" style
+  cleanSheets   Int      @default(0) @map("clean_sheets")
+
+  league        League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@unique([leagueId, userId])
+  @@map("league_participants")
+}
+
+model LeagueFixture {
+  id            String    @id @default(uuid())
+  leagueId      String    @map("league_id")
+  matchday      Int
+  homePlayerId  String    @map("home_player_id")
+  awayPlayerId  String    @map("away_player_id")
+  homeScore     Int?      @map("home_score")
+  awayScore     Int?      @map("away_score")
+  status        String    @default("SCHEDULED")  // SCHEDULED, PLAYED, CONFIRMED, DISPUTED
+  matchReportId String?   @map("match_report_id")
+  scheduledAt   DateTime? @map("scheduled_at")
+  playedAt      DateTime? @map("played_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  league        League    @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  homePlayer    User      @relation("HomePlayer", fields: [homePlayerId], references: [id])
+  awayPlayer    User      @relation("AwayPlayer", fields: [awayPlayerId], references: [id])
+
+  @@index([leagueId, matchday])
+  @@map("league_fixtures")
 }

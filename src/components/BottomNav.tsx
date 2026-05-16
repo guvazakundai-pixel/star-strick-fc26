@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 const ITEMS = [
   { href: "/", label: "Home", icon: HomeIcon },
   { href: "/rankings", label: "Rank", icon: RankIcon },
+  { href: "/leagues", label: "League", icon: LeagueIcon },
   { href: "/matches", label: "Play", icon: PlayIcon },
   { href: "/clubs", label: "Clubs", icon: ShieldIcon },
 ] as const;
@@ -161,6 +162,13 @@ function ShieldIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
       <path d="M12 3l8 3v6c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V6l8-3z" />
+    </svg>
+  );
+}
+function LeagueIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   );
 }
