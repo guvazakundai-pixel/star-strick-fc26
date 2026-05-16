@@ -17,6 +17,7 @@ import {
 } from "@/lib/players";
 import { CLUBS, clubByPlayerId, type Club } from "@/lib/clubs";
 import { useAuthModal } from "@/lib/auth-context";
+import { PlayerDetailModal } from "@/components/PlayerDetailModal";
 
 type SortKey = "rank" | "points" | "winRate" | "gd" | "streak";
 type SortDir = "asc" | "desc";
@@ -318,12 +319,13 @@ export function RankingsClient() {
           />
         )}
       </div>
-      <DetailSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        player={selectedPlayer}
-        club={selectedClub}
-      />
+      {selectedPlayer && sheetOpen && (
+        <PlayerDetailModal
+          player={selectedPlayer}
+          onClose={() => setSheetOpen(false)}
+          allPlayers={PLAYERS}
+        />
+      )}
     </div>
   );
 }
@@ -616,7 +618,7 @@ function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChall
           <div className="min-w-0 flex-1 flex flex-col justify-center gap-1 sm:gap-1.5 py-5 sm:py-6">
             {/* Row 1: GAMERTAG — always full width, never truncated */}
             <div className="flex items-center gap-2 min-w-0">
-              <h3 className="cinematic-heading text-xl sm:text-2xl md:text-3xl leading-none text-ink group-hover:text-accent transition-colors duration-150 truncate">
+              <h3 className="cinematic-heading text-xl sm:text-2xl md:text-3xl leading-none text-ink group-hover:text-accent transition-colors duration-150 truncate max-w-[180px]">
                 {gamertag}
               </h3>
               {isChampion && (
@@ -635,7 +637,7 @@ function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChall
             </div>
 
             {/* Row 2: Real name — below gamertag, muted */}
-            <p className="truncate text-[11px] sm:text-xs text-muted-soft leading-snug">
+            <p className="truncate text-[11px] sm:text-xs text-muted-soft leading-snug max-w-[180px]">
               {realName}
             </p>
 
@@ -864,16 +866,16 @@ function SwipeableRankRow({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm sm:text-[15px] font-bold text-ink group-hover:text-accent transition-colors duration-200 truncate uppercase max-w-[160px] sm:max-w-[220px]">
+                  <p className="text-sm sm:text-[15px] font-bold text-ink group-hover:text-accent transition-colors duration-200 truncate uppercase max-w-[180px]">
                     {player.gamertag}
                   </p>
                   {player.winStreak >= 3 && <span className="shrink-0 text-[9px] leading-none">🔥</span>}
                 </div>
-                <p className="text-[10px] text-muted-soft truncate leading-snug">
+                <p className="text-[10px] text-muted-soft truncate leading-snug max-w-[180px]">
                   {player.name}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5 h-[18px] overflow-hidden">
-                  <span className="font-mono text-[9px] tracking-wider text-muted-soft shrink-0">
+                  <span className="font-mono text-[9px] tracking-wider text-muted-soft truncate max-w-[180px]">
                     @{player.gamertag}
                   </span>
                   <span className="shrink-0 w-px h-3 bg-border-faint" />
@@ -935,247 +937,7 @@ function EmptyState() {
   );
 }
 
-function DetailSheet({ open, onClose, player, club }: { open: boolean; onClose: () => void; player: Player | null; club: Club | null }) {
-  const startY = useRef<number | null>(null);
-  const [dragY, setDragY] = useState(0);
 
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  if (!player) return null;
-
-  const stats = computeDerived(player);
-  const aiReport = generateAIReport(player, stats);
-  const t = getTierTheme(player.rank);
-  const delta = player.prev - player.rank;
-  const goalDiff = player.goalsFor - player.goalsAgainst;
-
-  const onTouchStart = (e: React.TouchEvent) => { startY.current = e.touches[0].clientY; setDragY(0); };
-  const onTouchMove = (e: React.TouchEvent) => { if (startY.current == null) return; const dy = e.touches[0].clientY - startY.current; if (dy > 0) setDragY(dy); };
-  const onTouchEnd = () => { if (dragY > 100) onClose(); setDragY(0); startY.current = null; };
-
-  return (
-    <div
-      aria-hidden={!open}
-      className={"fixed inset-0 z-50 " + (open ? "pointer-events-auto" : "pointer-events-none")}
-    >
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={onClose}
-        className={"absolute inset-0 bg-bg/60 backdrop-blur-sm transition-opacity duration-300 " + (open ? "opacity-100" : "opacity-0")}
-      />
-      <div
-        className="absolute inset-x-0 bottom-0 lg:inset-0 lg:flex lg:items-center lg:justify-center"
-      >
-        <aside
-          role="dialog"
-          aria-modal="true"
-          className={
-            "w-full lg:w-auto lg:max-w-2xl max-h-[90vh] lg:max-h-[85vh] overflow-y-auto rounded-t-[28px] lg:rounded-[28px] " +
-            "bg-bg-elevated/95 backdrop-blur-2xl border-t lg:border border-border-faint " +
-            "transition-transform duration-300 ease-out"
-          }
-          style={{
-            transform: open ? `translateY(${dragY}px)` : "translateY(100%)",
-            boxShadow: "0 -8px 40px rgba(0,0,0,0.30)",
-          }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className="sticky top-0 z-10 flex items-center justify-center pt-3 pb-2 bg-bg-elevated/90 backdrop-blur-lg lg:hidden">
-            <span className="h-1 w-10 rounded-full bg-border-strong" />
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute top-4 right-4 z-20 lg:top-6 lg:right-6 h-9 w-9 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: "0 0 20px rgba(0,230,118,0.10)",
-            }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-ink-soft">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-
-          <div className="px-4 sm:px-6 pb-8 pt-2 lg:pt-6">
-            <DetailContent player={player} club={club} stats={stats} aiReport={aiReport} t={t} delta={delta} goalDiff={goalDiff} />
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
-}
-
-function DetailContent({ player, club, stats, aiReport, t, delta, goalDiff }: { player: Player; club: Club | null; stats: ReturnType<typeof computeDerived>; aiReport: string; t: TierTheme; delta: number; goalDiff: number }) {
-  return (
-    <div className="relative">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -bottom-4 right-2 select-none leading-none"
-        style={{
-          fontFamily: "var(--font-barlow), system-ui, sans-serif",
-          fontSize: ghostFontSize(player.gamertag),
-          fontWeight: 900,
-          fontStyle: "italic",
-          letterSpacing: "-0.06em",
-          color: "transparent",
-          WebkitTextStroke: "1px rgba(255,255,255,0.06)",
-        }}
-      >
-        {player.gamertag}
-      </span>
-
-      <div className="relative z-10">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black tracking-[0.25em] text-accent">ACTIVE</span>
-            <span className="h-3 w-px bg-border-strong" />
-            <span className="text-[10px] font-bold tracking-[0.22em] text-muted-soft uppercase">{player.division}</span>
-            {player.winStreak >= 3 && <span className="text-accent text-[10px]">🔥{player.winStreak}</span>}
-          </div>
-          <span className="bc-headline text-4xl sm:text-5xl leading-none text-accent tabular-nums">
-            #{player.rank.toString().padStart(2, "0")}
-          </span>
-        </div>
-
-        <div className="mt-5 flex items-end gap-4">
-          <div
-            className="grid place-items-center h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 shrink-0"
-            style={{
-              background: "linear-gradient(135deg, rgba(22,24,28,0.90), rgba(18,20,24,0.80))",
-              borderColor: "rgba(0,255,133,0.30)",
-              boxShadow: "0 0 40px -6px rgba(0,255,133,0.40)",
-            }}
-          >
-            <span className="bc-headline text-4xl sm:text-5xl text-accent leading-none">
-              {player.gamertag.charAt(0)}
-            </span>
-          </div>
-          <div className="min-w-0 pb-1">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ background: t.accentBg, border: `1px solid ${t.accentBorder}`, color: t.accent }}>
-                ZW
-              </span>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-faint">CROSSPLAY</span>
-            </div>
-            <p className="mt-1 text-[10px] font-bold tracking-[0.2em] text-muted-soft uppercase">
-              {player.city}
-            </p>
-            {club && (
-              <p className="mt-0.5 text-[11px] font-bold tracking-[0.18em] text-muted-soft uppercase">
-                {club.name}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <h2 className="bc-headline mt-4 leading-[0.85] text-ink text-[36px] sm:text-[48px] lg:text-[56px] break-words">
-          {player.gamertag}
-        </h2>
-        <p className="mt-1 text-sm text-muted-soft">{player.name}</p>
-        {delta !== 0 && (
-          <div className="mt-2 flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black tracking-wider ${delta > 0 ? "text-accent" : "text-negative"}`} style={{ background: delta > 0 ? "rgba(0,255,133,0.08)" : "rgba(255,77,77,0.08)", border: `1px solid ${delta > 0 ? "rgba(0,255,133,0.20)" : "rgba(255,77,77,0.20)"}` }}>
-              {delta > 0 ? "▲" : "▼"} {Math.abs(delta)} {delta > 0 ? "positions up" : "positions down"}
-            </span>
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-black tracking-wider" style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}`, color: t.accent }}>
-              {t.badgeText}
-            </span>
-          </div>
-        )}
-        {delta === 0 && player.rank <= 3 && (
-          <div className="mt-2">
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-black tracking-wider" style={{ background: t.badgeBg, border: `1px solid ${t.badgeBorder}`, color: t.accent }}>
-              {t.badgeText}
-            </span>
-          </div>
-        )}
-
-        <div className="mt-6 grid grid-cols-2 gap-px bg-bg-highlight border border-border-faint rounded-[14px] overflow-hidden">
-          <Metric label="Streak" value={player.winStreak > 0 ? `${player.winStreak}W` : "0"} icon={<FireIcon />} accent={player.winStreak >= 5} />
-          <Metric label="Win / Loss" value={`${player.wins} / ${player.losses}`} />
-          <Metric label="Win Rate" value={`${stats.winRate.toFixed(1)}%`} />
-          <Metric label="G / Match" value={player.gpm.toFixed(2)} />
-          <Metric label="Goal Diff" value={goalDiff > 0 ? `+${goalDiff}` : `${goalDiff}`} tone={goalDiff > 0 ? "positive" : goalDiff < 0 ? "negative" : "default"} />
-          <Metric label="Matches" value={`${stats.matchesPlayed}`} />
-        </div>
-
-        <div className="mt-5">
-          <p className="text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase mb-2">Form</p>
-          <div className="flex items-center gap-1.5">
-            {player.form.map((r, i) => (
-              <span
-                key={i}
-                className={
-                  "inline-grid place-items-center h-8 w-8 rounded-[8px] text-xs font-black italic " +
-                  (r === "W"
-                    ? "bg-accent/15 text-accent border border-accent/25"
-                    : r === "L"
-                      ? "bg-negative/12 text-negative border border-negative/20"
-                      : "bg-bg-highlight text-muted-soft border border-border-faint")
-                }
-              >
-                {r}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6 pt-5 border-t border-border-faint">
-          <p className="text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase mb-4">Tactical Matrix</p>
-          <div className="space-y-4">
-            <TacticalBar label="Offensive Threat" value={stats.offensiveThreat} gradient="from-cyan-400 to-blue-500" icon="⚔️" />
-            <TacticalBar label="Defensive Integrity" value={stats.defensiveIntegrity} gradient="from-purple-400 to-indigo-500" icon="🛡️" />
-            <TacticalBar label="Control Metric" value={stats.controlMetric} gradient="from-teal-400 to-emerald-500" icon="🎯" />
-          </div>
-        </div>
-
-        <div className="mt-6 pt-5 border-t border-border-faint">
-          <div className="rounded-[18px] p-4 sm:p-5" style={{ background: "rgba(0,230,118,0.03)", border: "1px solid rgba(0,230,118,0.08)" }}>
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="h-8 w-8 rounded-[10px] grid place-items-center shrink-0" style={{ background: "linear-gradient(135deg, rgba(0,230,118,0.12), rgba(34,211,238,0.08))", border: "1px solid rgba(0,230,118,0.16)" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-accent">
-                  <path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93" />
-                  <path d="M12 2a4 4 0 0 0-4 4c0 1.95 1.4 3.58 3.25 3.93" />
-                  <path d="M8.56 13.07A8 8 0 0 0 12 20a8 8 0 0 0 3.44-6.93" />
-                  <circle cx="12" cy="6" r="2" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-black tracking-[0.25em] text-accent uppercase">AI Intelligence Report</p>
-                <p className="text-[9px] text-muted-faint">Automated tactical analysis</p>
-              </div>
-            </div>
-            <p className="text-[13px] sm:text-[14px] text-ink-soft leading-relaxed">
-              {aiReport}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 pt-5 border-t border-border-faint grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase">Prize Pool</p>
-            <p className="mt-1 bc-headline text-2xl text-ink tabular-nums">${player.prizeMoney.toLocaleString()}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-black tracking-[0.25em] text-muted-soft uppercase">Rig</p>
-            <p className="mt-1 text-[11px] text-ink-soft leading-tight truncate">{player.hardware.console}</p>
-            <p className="text-[10px] text-muted-soft truncate">{player.hardware.controller}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function Metric({ label, value, icon, accent = false, tone = "default" }: { label: string; value: string; icon?: React.ReactNode; accent?: boolean; tone?: "default" | "positive" | "negative" }) {
   const valueClass = tone === "positive" ? "text-accent" : tone === "negative" ? "text-negative" : accent ? "text-accent" : "text-ink";

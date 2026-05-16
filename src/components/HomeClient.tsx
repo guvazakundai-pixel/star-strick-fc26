@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { AuthModalCTA } from "@/components/AuthModalCTA";
 import { motion } from "framer-motion";
 import { StaggerContainer, NumberTicker } from "@/components/ui/PageTransition";
 import { HeroSkeleton, SkeletonCard, SkeletonLine, SkeletonAvatar } from "@/components/ui/Skeleton";
+import { PlayerDetailModal } from "@/components/PlayerDetailModal";
+import { PLAYERS, type Player } from "@/lib/players";
 
 type FeaturedPlayer = {
   id: string;
@@ -79,12 +81,18 @@ export function HomeClient({
   featuredPlayers: FeaturedPlayer[];
 }) {
   const mounted = useMounted();
+  const [modalPlayerId, setModalPlayerId] = useState<string | null>(null);
 
   const totalMatches = safeNumber(totalMatchesRaw, 0);
   const totalGoals = safeNumber(totalGoalsRaw, 0);
   const playerCount = safeNumber(playerCountRaw, 0);
   const clubCount = safeNumber(clubCountRaw, 0);
   const featuredPlayers = Array.isArray(featuredPlayersRaw) ? featuredPlayersRaw : [];
+
+  const modalPlayer = useMemo(
+    () => (modalPlayerId ? PLAYERS.find((p) => p.gamertag === modalPlayerId || p.id === modalPlayerId) ?? null : null),
+    [modalPlayerId],
+  );
 
   if (!mounted) {
     return <HeroSkeleton />;
@@ -98,8 +106,11 @@ export function HomeClient({
         playerCount={playerCount}
         clubCount={clubCount}
       />
-      <FeaturedPlayersSection players={featuredPlayers} />
+      <FeaturedPlayersSection players={featuredPlayers} onSelect={setModalPlayerId} />
       <BottomCTA />
+      {modalPlayer && (
+        <PlayerDetailModal player={modalPlayer} onClose={() => setModalPlayerId(null)} />
+      )}
     </div>
   );
 }
@@ -304,7 +315,7 @@ function StatCard({ label, value, icon, delay = 0 }: { label: string; value: num
   );
 }
 
-function FeaturedPlayersSection({ players }: { players: FeaturedPlayer[] }) {
+function FeaturedPlayersSection({ players, onSelect }: { players: FeaturedPlayer[]; onSelect: (id: string) => void }) {
   if (!players || players.length === 0) {
     return (
       <section className="relative py-16 sm:py-24">
@@ -380,7 +391,7 @@ function FeaturedPlayersSection({ players }: { players: FeaturedPlayer[] }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 stagger-grid">
           {players.map((player, i) => (
-            <FeaturedPlayerCard key={player.id || i} player={player} index={i} />
+            <FeaturedPlayerCard key={player.id || i} player={player} index={i} onSelect={onSelect} />
           ))}
         </div>
 
@@ -406,7 +417,7 @@ function FeaturedPlayersSection({ players }: { players: FeaturedPlayer[] }) {
   );
 }
 
-function FeaturedPlayerCard({ player, index }: { player: FeaturedPlayer; index: number }) {
+function FeaturedPlayerCard({ player, index, onSelect }: { player: FeaturedPlayer; index: number; onSelect: (id: string) => void }) {
   const displayName = player?.displayName || player?.username || "Unknown Player";
   const username = player?.username || "unknown";
   const rankPosition = safeNumber(player?.rankPosition, 999);
@@ -440,9 +451,10 @@ function FeaturedPlayerCard({ player, index }: { player: FeaturedPlayer; index: 
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.35), ease: [0.22, 1, 0.36, 1] }}
     >
-      <Link
-        href={`/player/${username}`}
-        className="block group card-interactive card-glow-line relative overflow-hidden rounded-[24px]"
+      <button
+        type="button"
+        onClick={() => onSelect(username)}
+        className="block w-full text-left group card-interactive card-glow-line relative overflow-hidden rounded-[24px]"
         style={{
           border: `1px solid ${cardTone.border}`,
           boxShadow: cardTone.glow,
@@ -507,17 +519,17 @@ function FeaturedPlayerCard({ player, index }: { player: FeaturedPlayer; index: 
                 </span>
               </div>
               <div className="min-w-0">
-                <h3 className="cinematic-heading text-xl sm:text-2xl text-ink leading-none truncate group-hover:text-accent transition-colors duration-300">
+                <h3 className="cinematic-heading text-xl sm:text-2xl text-ink leading-none truncate max-w-[180px] sm:max-w-[240px] group-hover:text-accent transition-colors duration-300">
                   {displayName}
                 </h3>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-soft">
+                  <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-soft truncate max-w-[120px]">
                     @{username}
                   </span>
                   {clubTag && (
                     <>
-                      <span className="text-border-strong">·</span>
-                      <span className="text-[10px] font-bold tracking-[0.16em] uppercase text-accent/60">
+                      <span className="text-border-strong shrink-0">·</span>
+                      <span className="text-[10px] font-bold tracking-[0.16em] uppercase text-accent/60 shrink-0">
                         [{clubTag}]
                       </span>
                     </>
@@ -541,8 +553,8 @@ function FeaturedPlayerCard({ player, index }: { player: FeaturedPlayer; index: 
 
           <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
             <div className="grid grid-cols-3 gap-3">
-              <div>
-                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">Form</p>
+              <div className="min-w-0">
+                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint truncate">Form</p>
                 <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums">
                   {form.length > 0 ? (
                     <span className="flex items-center gap-0.5">
@@ -560,24 +572,24 @@ function FeaturedPlayerCard({ player, index }: { player: FeaturedPlayer; index: 
                   )}
                 </p>
               </div>
-              <div>
-                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">Points</p>
-                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums text-ink">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint truncate">Points</p>
+                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums text-ink truncate">
                   {points.toLocaleString()}
                 </p>
-                <p className="text-[9px] text-muted-faint">SR {skillRating.toLocaleString()}</p>
+                <p className="text-[9px] text-muted-faint truncate">SR {skillRating.toLocaleString()}</p>
               </div>
-              <div>
-                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint">Win Rate</p>
-                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums text-ink">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black tracking-[0.22em] uppercase text-muted-faint truncate">Win Rate</p>
+                <p className="mt-1 bc-mono-score text-sm font-bold tabular-nums text-ink truncate">
                   {matchesPlayed > 0 ? `${winRate}%` : "—"}
                 </p>
-                <p className="text-[9px] text-muted-faint">{wins}W {losses}L</p>
+                <p className="text-[9px] text-muted-faint truncate">{wins}W {losses}L</p>
               </div>
             </div>
           </div>
         </div>
-      </Link>
+      </button>
     </motion.div>
   );
 }
