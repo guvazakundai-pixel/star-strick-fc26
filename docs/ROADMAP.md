@@ -109,27 +109,28 @@ model Tournament {
 5. Admin auto-resolves disputes after 48h
 6. Bracket advances automatically
 
-### 1.2 WhatsApp Notification Integration
+### 1.2 WhatsApp Notification Integration ✅
 
-**New files:**
+**Files (implemented):**
 ```
-src/lib/whatsapp.ts           # WhatsApp Business API client
-src/app/api/webhooks/whatsapp/route.ts  # Incoming webhook handler
+src/lib/whatsapp.ts           # WhatsApp Cloud API client (sendTemplate + sendText)
 ```
 
 **Architecture:**
 ```
-Server Action → WhatsApp API → User receives message → User replies → Webhook → Update record
+Server Action → WhatsApp API → User receives message
 ```
 
-**Trigger events:**
-- Challenge received → "Farai Chikomo (FARABALL) has challenged you! Reply 'ACCEPT' to confirm"
-- Match reminder → "Your Round 2 match vs Tapiwa Gono starts in 1 hour"
-- Tournament bracket advance → "You advanced to the semi-finals!"
-- EcoCash payment received → "Entry fee confirmed, you're registered for Harare Cup"
-- New ranking position → "You moved up to #4 in Harare! 🔥"
+**Trigger events wired:**
+- Challenge received → "Player challenged you!" (`notifyChallengeReceived` in wager POST)
+- Challenge accepted → "Player accepted your challenge!" (`notifyChallengeAccepted` in wager PATCH)
+- Tournament registration → Organizer notified when someone joins
+- Tournament bracket start → Both players notified of first round match (`notifyTournamentStart` in register route)
+- Tournament bracket advance → Players notified of next round match (`notifyTournamentBracketAdvance` in match report route)
+- Wager result → Both players notified of win/loss (`notifyWagerResult` in wager PATCH resolve)
+- Payment request/confirmed → Support functions available (`notifyPaymentRequest`, `notifyPaymentConfirmed`)
 
-**Implementation:** Use WhatsApp Business API (free tier available) or WhatsApp Cloud API (Meta). Store phone numbers in User model (already have `phone` field).
+**Pending:** WhatsApp webhook handler for incoming replies. Requires `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_ID` env vars to activate.
 
 ### 1.3 Clubs / Squads System
 
@@ -201,32 +202,32 @@ Tournament ends
 
 **Registration:** Requires EcoCash developer account at `developers.ecocash.co.zw`. Get API key, set up callback URL.
 
-### 2.2 Challenge Wager System
+### 2.2 Challenge Wager System ✅
 
-**New files:**
+**Files (implemented):**
 ```
 src/app/api/wagers/
-├── route.ts                  # Create wager
-├── [id]/accept/route.ts      # Accept wager
-├── [id]/resolve/route.ts     # Resolve (report result)
-├── [id]/dispute/route.ts     # Dispute resolution
-src/components/WagerModal.tsx  # Wager UI
+├── route.ts                  # Create + list wagers (POST/GET)
+├── [id]/route.ts             # Accept/reject/cancel/resolve (PATCH)
+src/components/WagerModal.tsx  # Wager UI with amount input, fee breakdown
+src/lib/whatsapp.ts           # WhatsApp notifications for wager events
+prisma/schema.prisma          # Wager model (id, sender, receiver, amount, status)
 ```
 
 **Flow:**
 ```
-Player A challenges Player B with $5 wager
-  → Both players' EcoCash held in escrow (total $10)
+Player A challenges Player B with $5 wager via WagerModal
+  → POST /api/wagers creates PENDING wager
+  → WhatsApp notification sent to Player B
+  → Player B accepts via PATCH /api/wagers/[id] { action: "accept" }
+  → WhatsApp notification sent to Player A
   → Players play match
-  → Both report score (or upload screenshot)
-  → If match, winner gets $10 - 5% fee = $9.50
-  → Platform keeps $0.50 (micro-commission)
+  → Either player resolves via PATCH { action: "resolve", winnerId: "..." }
+  → Both players get WhatsApp result notification
+  → Platform fee: 5% of total pot ($0.50 on $10 pot)
 ```
 
-**Dispute resolution:**
-- Both players upload match screenshots
-- Admin panel for dispute review
-- If one player doesn't respond in 48h, default to other player
+**Note:** EcoCash escrow not yet implemented — wager system is trust-based for now. EcoCash integration planned for 2.1.
 
 ### 2.3 Prize Pool & Season Pass
 
@@ -357,11 +358,11 @@ app/api/[resource]/[id]/route.ts → Single resource
 | Social links on profile | 0.5 day | Medium | 0 |
 | ZW badges & city titles | 0.5 day | Medium | 0 |
 | Shona/Ndebele toggle | 1 day | Medium | 0 |
-| Tournament system | 2 weeks | Very High | 1 |
-| WhatsApp notifications | 1 week | Very High | 1 |
+| Tournament system | 2 weeks | Very High | 1 ✅ |
+| WhatsApp notifications | 1 week | Very High | 1 ✅ |
 | Clubs (already in schema) | 1 week | High | 1 |
 | EcoCash payments | 2 weeks | Very High | 2 |
-| Challenge wagers | 1.5 weeks | High | 2 |
+| Challenge wagers | 1.5 weeks | High | 2 ✅ |
 | Season pass | 1 week | Medium | 2 |
 | Data-saver mode | 3 days | High | 3 |
 | PWA companion | 1 week | Medium | 3 |
