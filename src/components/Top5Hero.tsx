@@ -44,7 +44,7 @@ export async function Top5Hero() {
       <div className="mb-5 sm:mb-6 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 px-3 px-4 py-1.5 mb-3" style={{ background: "rgba(0,255,133,0.05)" }}>
-            <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" style={{ boxShadow: "0 0 8px rgba(0,255,133,0.50)" }} />
+            <span className="h-1.5 w-1.5 rounded-full bg-accent live-ring" />
             <span className="text-[10px] font-black tracking-[0.28em] uppercase text-accent">Live · Season 1</span>
           </div>
           <h2

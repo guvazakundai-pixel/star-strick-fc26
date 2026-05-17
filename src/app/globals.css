@@ -75,13 +75,6 @@
   --silver: #C8C8D2;
   --bronze: #CD7F32;
 
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
-  --radius-xl: 28px;
-  --radius-2xl: 32px;
-  --radius-3xl: 40px;
-
   --spring-out: cubic-bezier(0.16, 1, 0.3, 1);
   --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2673,4 +2666,166 @@ html {
 }
 .card-cinematic:hover::before {
   opacity: 1;
+}
+
+/* ── LEGACY UTILITIES — widely used across components ───── */
+
+.bc-headline {
+  font-family: var(--font-broadcast), var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.bc-live-dot {
+  animation: live-pulse-broadcast 2s ease-in-out infinite;
+}
+
+.bc-no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.bc-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.bc-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+.bc-noise {
+  position: relative;
+}
+.bc-noise::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bc-sweep {
+  font-size: clamp(4rem, 12vw, 10rem);
+  opacity: 0.03;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   V5 REFINEMENT — Controlled Glow · Broadcast Energy · Surface Depth
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1. CONTROLLED GLOW SYSTEM ──────────────────────────── */
+
+/* Subtle ambient edge (always-on, never overpowering) */
+.glow-ambient-accent {
+  box-shadow:
+    0 0 0 0.5px rgba(0,255,133,0.06) inset,
+    0 0 24px rgba(0,255,133,0.03);
+  transition: box-shadow var(--duration-morph) var(--ease-soft);
+}
+
+/* Intentional hover glow — only on interaction */
+.glow-hover-accent {
+  transition: box-shadow var(--duration-morph) var(--ease-soft);
+}
+.glow-hover-accent:hover {
+  box-shadow:
+    0 0 0 0.5px rgba(0,255,133,0.10) inset,
+    0 0 28px rgba(0,255,133,0.06);
+}
+
+/* Strong glow for active/live state */
+.glow-active-accent {
+  box-shadow:
+    0 0 0 0.5px rgba(0,255,133,0.12) inset,
+    0 0 32px rgba(0,255,133,0.08),
+    0 0 64px rgba(0,255,133,0.03);
+}
+
+/* ── 2. BROADCAST ENERGY SYSTEM ─────────────────────────── */
+
+/* Live pulse ring — used for "LIVE" indicators */
+@keyframes live-pulse-broadcast {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0,255,133,0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0,255,133,0);
+  }
+}
+.live-ring {
+  animation: live-pulse-broadcast 2s ease-in-out infinite;
+}
+
+/* Scrolling ticker text */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: ticker-scroll 30s linear infinite;
+  will-change: transform;
+}
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* Broadcast beam — clean separator */
+.broadcast-beam {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,255,133,0.12), rgba(34,211,238,0.06), transparent);
+}
+
+/* ── 3. SURFACE CARD VARIANTS ──────────────────────────── */
+
+/* Premium card with subtle glass + controlled border */
+.card-premium {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: background var(--duration-ok) var(--ease-soft),
+              border-color var(--duration-ok) var(--ease-soft),
+              box-shadow var(--duration-ok) var(--ease-soft);
+}
+.card-premium:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+}
+
+/* Elevated card — deeper, more prominent */
+.card-elevated {
+  background: var(--surface-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+
+/* ── 4. TYPOGRAPHY REFINEMENT ──────────────────────────── */
+
+/* Compact heading — tighter tracking for hierarchy */
+.heading-compact {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.heading-section {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* ── 5. MOBILE FIRST OVERRIDES ─────────────────────────── */
+
+@media (max-width: 480px) {
+  .card-premium { border-radius: var(--radius-md); }
+  .card-elevated { border-radius: var(--radius-md); }
+  .glow-ambient-accent { box-shadow: none; }
+  .glow-active-accent { box-shadow: 0 0 0 0.5px rgba(0,255,133,0.12) inset; }
 }

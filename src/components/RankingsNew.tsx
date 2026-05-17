@@ -359,7 +359,7 @@ function Header() {
       />
       <div className="relative mx-auto max-w-4xl px-4 sm:px-6 pt-6 sm:pt-10 pb-4">
         <div className="inline-flex items-center gap-2.5 rounded-full border border-accent/20 px-4 py-1.5 mb-5" style={{ background: "rgba(0,255,133,0.05)" }}>
-          <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" style={{ boxShadow: "0 0 8px rgba(0,255,133,0.60)" }} />
+          <span className="h-1.5 w-1.5 rounded-full bg-accent live-ring" />
           <span className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Live · Season 1</span>
         </div>
         <h1 className="cinematic-heading text-[3.5rem] sm:text-8xl md:text-9xl text-ink leading-[0.82]">

@@ -88,6 +88,7 @@ export default function ClubsPage() {
       const data = await res.json();
       setClubs(data.clubs ?? []);
     } catch {
+      setClubs([]);
     } finally {
       setLoading(false);
     }

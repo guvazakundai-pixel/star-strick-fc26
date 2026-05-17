@@ -161,7 +161,7 @@ export function MatchCenter({
             { label: "Streak", value: `${stats.currentStreak}`, color: stats.currentStreak >= 3 ? "text-gold" : "text-muted-soft" },
           ].map((s) => (
             <div key={s.label} className="frosted-card-sm p-4 sm:p-5 rounded-[18px] text-center">
-              <p className={`bc-headline text-2xl sm:text-3xl tabular-nums ${s.color}`}>{s.value}</p>
+              <p className={`text-2xl sm:text-3xl font-bold tabular-nums ${s.color}`}>{s.value}</p>
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-faint mt-1">{s.label}</p>
             </div>
           ))}
@@ -202,7 +202,7 @@ export function MatchCenter({
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-black tracking-[0.2em] uppercase text-accent mb-1">Quick Match</p>
-              <h2 className="bc-headline text-2xl sm:text-3xl text-ink leading-[0.9]">Play Now</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-ink leading-[0.9]">Play Now</h2>
               <p className="mt-1 text-[13px] text-muted-soft">Challenge a player, submit scores, climb the ranks.</p>
             </div>
             <div className="shrink-0 ml-auto hidden sm:flex items-center gap-2 text-[11px] font-bold tracking-[0.2em] uppercase text-accent">
@@ -250,7 +250,7 @@ export function MatchCenter({
           className="space-y-3"
         >
           <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" />
+            <span className="h-1.5 w-1.5 rounded-full bg-accent live-ring" />
             <h3 className="text-[10px] font-black tracking-[0.28em] uppercase text-accent">
               Active Matches ({activeMatches.length})
             </h3>
@@ -434,7 +434,7 @@ function MatchCard({
           <div className="shrink-0 flex flex-col items-center gap-0.5 min-w-[72px]">
             <div className="flex items-center gap-1.5">
               <span
-                className={`bc-headline text-xl tabular-nums ${
+                className={`text-xl font-bold tabular-nums ${
                   isP1Win ? "text-accent" : "text-ink"
                 }`}
               >
@@ -442,7 +442,7 @@ function MatchCard({
               </span>
               <span className="text-muted-faint text-[11px] font-mono">:</span>
               <span
-                className={`bc-headline text-xl tabular-nums ${
+                className={`text-xl font-bold tabular-nums ${
                   isP2Win ? "text-accent" : "text-ink"
                 }`}
               >

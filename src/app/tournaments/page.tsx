@@ -10,7 +10,9 @@ export const metadata = {
 export default function TournamentsPage() {
   return (
     <div className="broadcast-theme min-h-screen bc-grain">
-      <TournamentListClient />
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6">
+        <TournamentListClient />
+      </div>
     </div>
   );
 }

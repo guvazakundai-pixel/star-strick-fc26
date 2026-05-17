@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthModal } from "@/lib/auth-context";
 import { useSession } from "@/lib/session-client";
-import { motion } from "framer-motion";
+import { motion, LayoutGroup } from "framer-motion";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: HomeIcon },
@@ -28,16 +28,17 @@ export function BottomNav() {
       className="fixed bottom-0 inset-x-0 z-50 pb-[env(safe-area-inset-bottom)]"
     >
       <div className="mx-auto max-w-lg px-3 pb-3 pt-1">
-        <div
-          className="flex items-center justify-around rounded-[28px] px-2 py-1.5"
-          style={{
-            background: "rgba(8,8,10,0.92)",
-            backdropFilter: "blur(40px) saturate(1.8)",
-            WebkitBackdropFilter: "blur(40px) saturate(1.8)",
-            border: "1px solid rgba(255,255,255,0.04)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.02) inset, 0 0 48px rgba(0,255,133,0.03)",
-          }}
-        >
+        <LayoutGroup>
+          <div
+            className="flex items-center justify-around rounded-[28px] px-2 py-1.5"
+            style={{
+              background: "rgba(8,8,10,0.92)",
+              backdropFilter: "blur(40px) saturate(1.8)",
+              WebkitBackdropFilter: "blur(40px) saturate(1.8)",
+              border: "1px solid rgba(255,255,255,0.04)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.02) inset, 0 0 48px rgba(0,255,133,0.03)",
+            }}
+          >
           {ITEMS.map(({ href, label, icon: Icon }) => {
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
@@ -128,6 +129,7 @@ export function BottomNav() {
             </button>
           )}
         </div>
+        </LayoutGroup>
       </div>
     </nav>
   );

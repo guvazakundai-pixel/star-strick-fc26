@@ -76,6 +76,7 @@ export function HomeClient({
         playerCount={playerCount}
         clubCount={clubCount}
       />
+      <BroadcastTicker />
       <CreateCTASection />
       <HowItWorksSection />
       <LiveTournamentsCarousel />
@@ -108,10 +109,10 @@ function FloatingOrbs() {
     <>
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute w-[500px] h-[500px] rounded-full opacity-[0.07]"
+        className="pointer-events-none absolute w-[350px] h-[350px] rounded-full opacity-[0.06]"
         style={{
-          background: "radial-gradient(circle, rgba(0,230,118,0.5), transparent 70%)",
-          filter: "blur(80px)",
+          background: "radial-gradient(circle, rgba(0,230,118,0.4), transparent 70%)",
+          filter: "blur(60px)",
           left: "10%",
           top: "20%",
         }}
@@ -123,10 +124,10 @@ function FloatingOrbs() {
       />
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute w-[400px] h-[400px] rounded-full opacity-[0.05]"
+        className="pointer-events-none absolute w-[280px] h-[280px] rounded-full opacity-[0.04]"
         style={{
-          background: "radial-gradient(circle, rgba(34,211,238,0.4), transparent 70%)",
-          filter: "blur(80px)",
+          background: "radial-gradient(circle, rgba(34,211,238,0.35), transparent 70%)",
+          filter: "blur(60px)",
           right: "15%",
           bottom: "30%",
         }}
@@ -164,25 +165,25 @@ function HeroSection({
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
-          background: "conic-gradient(from 180deg at 50% 50%, rgba(0,230,118,0.08) 0deg, rgba(34,211,238,0.05) 90deg, rgba(0,255,133,0.10) 180deg, rgba(168,85,247,0.04) 270deg, rgba(0,230,118,0.08) 360deg)",
-          filter: "blur(120px)",
+          background: "conic-gradient(from 180deg at 50% 50%, rgba(0,230,118,0.06) 0deg, rgba(34,211,238,0.03) 90deg, rgba(0,255,133,0.08) 180deg, rgba(168,85,247,0.03) 270deg, rgba(0,230,118,0.06) 360deg)",
+          filter: "blur(100px)",
         }}
         animate={{ rotate: 360 }}
-        transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
       />
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
-          background: "radial-gradient(900px 400px at 80% -10%, rgba(0,230,118,0.18), transparent 55%), radial-gradient(700px 350px at 10% 110%, rgba(168,85,247,0.06), transparent 55%), radial-gradient(500px 300px at 50% 50%, rgba(34,211,238,0.04), transparent 60%)",
+          background: "radial-gradient(700px 300px at 80% -10%, rgba(0,230,118,0.12), transparent 55%), radial-gradient(500px 250px at 10% 110%, rgba(168,85,247,0.04), transparent 55%), radial-gradient(400px 200px at 50% 50%, rgba(34,211,238,0.03), transparent 60%)",
         }}
         animate={{ opacity: [0.8, 1, 0.8] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-[0.04]"
-        style={{ background: "radial-gradient(circle, rgba(0,230,118,0.6), transparent 70%)" }}
+        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-[0.03]"
+        style={{ background: "radial-gradient(circle, rgba(0,230,118,0.5), transparent 70%)" }}
       />
 
       <motion.div style={{ y: heroY, opacity: heroOpacity }} className="w-full">
@@ -194,12 +195,8 @@ function HeroSection({
             className="flex items-center gap-2 mb-8 sm:mb-10"
           >
             <span className="relative flex h-3 w-3">
-              <motion.span
-                className="absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"
-                animate={{ scale: [1, 1.8, 1], opacity: [0.75, 0, 0.75] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-accent" style={{ boxShadow: "0 0 12px rgba(0,255,133,0.6)" }} />
+              <span className="live-ring absolute inline-flex h-full w-full rounded-full bg-accent opacity-60" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-accent" style={{ boxShadow: "0 0 8px rgba(0,255,133,0.4)" }} />
             </span>
             <span className="text-[11px] font-black tracking-[0.28em] uppercase text-accent">
               ZW &middot; Season 1 Live
@@ -341,6 +338,49 @@ function HeroSection({
   );
 }
 
+function BroadcastTicker() {
+  const items = [
+    { type: "live", text: "ZW SEASON 1 — LIVE NOW" },
+    { type: "divider" },
+    { type: "match", text: "KingKai 3-2 Ghost_ZW" },
+    { type: "match", text: "Prodigy 1-1 ShadowX" },
+    { type: "match", text: "Neon_Striker 4-0 Vex_FC" },
+    { type: "match", text: "BlazeZW 2-1 Fury_Elite" },
+    { type: "divider" },
+    { type: "stat", text: "1,284 MATCHES PLAYED" },
+    { type: "stat", text: "4,871 GOALS SCORED" },
+    { type: "stat", text: "342 ACTIVE PLAYERS" },
+    { type: "divider" },
+    { type: "live", text: "NEXT TOURNAMENT: HARARE OPEN — 3 DAYS" },
+  ];
+
+  return (
+    <div className="relative border-y border-border-faint overflow-hidden bg-bg-deep/50">
+      <div className="ticker-track flex whitespace-nowrap will-change-transform">
+        {[...items, ...items].map((item, i) => (
+          <span key={i} className="inline-flex items-center px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.2em]">
+            {item.type === "live" && (
+              <span className="flex items-center gap-2 text-accent">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent live-ring flex-shrink-0" />
+                {item.text}
+              </span>
+            )}
+            {item.type === "match" && (
+              <span className="text-muted-soft">{item.text}</span>
+            )}
+            {item.type === "stat" && (
+              <span className="text-muted-faint">{item.text}</span>
+            )}
+            {item.type === "divider" && (
+              <span className="text-border-strong mx-2" aria-hidden>///</span>
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ label, value, icon, delay = 0 }: { label: string; value: number; icon: string; delay?: number }) {
   const iconEl = (() => {
     switch (icon) {
@@ -378,13 +418,13 @@ function StatCard({ label, value, icon, delay = 0 }: { label: string; value: num
       initial={{ opacity: 0, y: 22, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, delay, type: "spring", stiffness: 260, damping: 24, mass: 0.8 }}
-      className="frosted-card-sm p-5 rounded-[22px] card-interactive card-glow-line neon-glow-accent"
+      className="card-premium p-5 rounded-[22px] glow-ambient-accent"
     >
       <div className="flex items-start justify-between mb-3">
         <span className="text-accent/50">{iconEl}</span>
       </div>
       <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-soft">{label}</p>
-      <p className="bc-headline mt-1.5 text-3xl sm:text-4xl tabular-nums leading-none text-gradient-accent">
+      <p className="mt-1.5 text-3xl sm:text-4xl tabular-nums leading-none text-gradient-accent">
         <NumberTicker value={value} />
       </p>
     </motion.div>
@@ -601,7 +641,7 @@ function SpotlightSection({ onSelect }: { onSelect: (id: string) => void }) {
           className="mb-8 sm:mb-12"
         >
           <div className="flex items-center gap-2 mb-4">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" style={{ boxShadow: "0 0 8px rgba(0,255,133,0.60)" }} />
+            <span className="h-1.5 w-1.5 rounded-full bg-accent live-ring" />
             <span className="text-[10px] font-black tracking-[0.28em] uppercase text-accent">Spotlight</span>
           </div>
           <h2 className="cinematic-heading text-4xl sm:text-6xl md:text-7xl text-ink leading-[0.88]">
@@ -627,7 +667,7 @@ function SpotlightSection({ onSelect }: { onSelect: (id: string) => void }) {
         >
           <Link
             href="/rankings"
-            className="btn-ghost inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] px-8 bc-headline text-base tracking-[0.14em] text-ink group"
+            className="btn-ghost inline-flex items-center justify-center h-12 sm:h-13 rounded-[18px] px-8 text-base tracking-[0.14em] text-ink group"
           >
             View Full Rankings
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1">

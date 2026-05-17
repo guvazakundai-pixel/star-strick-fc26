@@ -25,7 +25,7 @@ export default function LeaguesPage() {
     fetch("/api/leagues?limit=50")
       .then((r) => r.json())
       .then((d) => { setLeagues(d.data?.leagues || []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch(() => { setLeagues([]); setLoading(false); });
   }, []);
 
   const filtered = leagues.filter((l) =>

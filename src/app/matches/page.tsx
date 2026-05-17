@@ -10,7 +10,7 @@ export default function MatchesPage() {
 
   return (
     <div className="broadcast-theme min-h-screen bc-grain">
-      <div className="mx-auto max-w-4xl px-4 pt-4 pb-28">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-4 pb-28">
         <div className="flex gap-1.5 mb-6 bg-bg-elevated/40 rounded-[14px] p-1 border border-border-faint">
           <button
             onClick={() => setTab("play")}
@@ -56,7 +56,7 @@ export default function MatchesPage() {
             >
               <div className="mb-6">
                 <p className="text-[10px] font-black uppercase tracking-widest text-accent">Match History</p>
-                <h1 className="bc-headline mt-1 text-3xl sm:text-4xl text-ink">Your Battles</h1>
+                <h1 className="mt-1 text-3xl sm:text-4xl text-ink">Your Battles</h1>
               </div>
               <MatchHistoryClient />
             </motion.div>
