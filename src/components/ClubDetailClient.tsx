@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedTabs, TabContent, type Tab } from "@/components/ui/AnimatedTabs";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 import { ClubChat } from "@/components/ClubChat";
+import { JoinRequestsManager } from "@/components/JoinRequestsManager";
 
 type GlobalRank = {
   rankPosition: number;
@@ -418,6 +419,9 @@ export function ClubDetailClient({
               activities={activities}
               memberCount={members.length}
             />
+            <div className="mt-4">
+              <JoinRequestsManager clubId={club.id} isManager={isManager} isMember={isMember} onJoin={onJoin} />
+            </div>
           </TabContent>
 
           <TabContent id="roster" activeTab={activeTab}>
