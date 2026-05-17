@@ -75,7 +75,7 @@ export async function notifyChallengeReceived(
 ): Promise<boolean> {
   return sendText(
     phone,
-    `⚔️ *Challenge Received!*\n\n${challengerName} has challenged you on Star Strick FC26!\n\nOpen the app to accept or decline.`,
+    `⚔️ *Challenge Received!*\n\n${challengerName} has challenged you on ZIM FCPRO!\n\nOpen the app to accept or decline.`,
   );
 }
 
@@ -132,7 +132,7 @@ export async function notifyPaymentConfirmed(
 ): Promise<boolean> {
   return sendText(
     phone,
-    `✅ *Payment Confirmed*\n\n$${amount.toFixed(2)} USD received for ${reason}.\n\nYou're all set on Star Strick FC26!`,
+    `✅ *Payment Confirmed*\n\n$${amount.toFixed(2)} USD received for ${reason}.\n\nYou're all set on ZIM FCPRO!`,
   );
 }
 

@@ -12,27 +12,27 @@ import { HeroSkeleton } from "@/components/ui/Skeleton";
 import { QueryProvider } from "@/lib/query-provider";
 import "./globals.css";
 
-const SITE_URL = "https://star-strick-fc26.vercel.app";
-const SITE_TITLE = "Star Strick FC26 — Zimbabwe Pro EA FC Rankings";
+const SITE_URL = "https://zimfcpro.vercel.app";
+const SITE_TITLE = "ZIM FCPRO — Zimbabwe Pro EA FC Rankings";
 const SITE_DESC =
   "Official rankings, clubs and tournaments for Zimbabwe's competitive EA Sports FC scene.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: SITE_TITLE, template: "%s · Star Strick FC26" },
+  title: { default: SITE_TITLE, template: "%s · ZIM FCPRO" },
   description: SITE_DESC,
-  applicationName: "Star Strick FC26",
+  applicationName: "ZIM FCPRO",
   keywords: [
     "EA FC",
     "FC26",
     "Zimbabwe esports",
     "FIFA Zimbabwe",
     "EA Sports FC league",
-    "Star Strick",
+    "ZIM FCPRO",
   ],
   openGraph: {
     type: "website",
-    siteName: "Star Strick FC26",
+    siteName: "ZIM FCPRO",
     url: SITE_URL,
     title: SITE_TITLE,
     description: SITE_DESC,

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 const DEFAULT_PASSWORD = "changeme123";
-const ADMIN_EMAIL = "admin@starstrick.fc";
+const ADMIN_EMAIL = "admin@zimfcpro.zw";
 
 const fakeEmail = (slug: string) => `${slug}@zimfc.local`;
 

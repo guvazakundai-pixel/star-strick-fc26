@@ -3,7 +3,7 @@ import { TournamentListClient } from "@/components/tournaments/TournamentListCli
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Tournaments · Star Strick FC26",
+  title: "Tournaments · ZIM FCPRO",
   description: "Compete in ZW tournaments — knockout, round-robin, city-based, and more.",
 };
 

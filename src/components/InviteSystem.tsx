@@ -20,7 +20,7 @@ const TYPE_META: Record<InviteType, { label: string; gradient: string }> = {
 
 const SHARE_LINKS = [
   { name: "WhatsApp", color: "#25D366", url: (c: string) => `https://wa.me/?text=Join%20my%20game%20on%20STAR%20STRICK%20FC26%21%20Code%3A%20${c}` },
-  { name: "Telegram", color: "#0088CC", url: (c: string) => `https://t.me/share/url?url=starstrick&text=Join%20my%20game%20on%20STAR%20STRICK%20FC26%21%20Code%3A%20${c}` },
+  { name: "Telegram", color: "#0088CC", url: (c: string) => `https://t.me/share/url?url=zimfcpro&text=Join%20my%20game%20on%20ZIM%20FCPRO%21%20Code%3A%20${c}` },
   { name: "Discord", color: "#5865F2", url: (c: string) => `https://discord.com/app` },
 ];
 

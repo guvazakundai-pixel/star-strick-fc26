@@ -29,7 +29,7 @@ export async function TopBar() {
           </span>
           <div className="leading-tight">
             <p className="cinematic-heading tracking-wider text-ink text-sm sm:text-base">
-              STAR STRICK
+              ZIM FCPRO
             </p>
             <p className="font-mono text-[9px] text-muted-faint tracking-wider">
               FC26 · ZW

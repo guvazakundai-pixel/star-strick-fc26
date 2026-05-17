@@ -1,4 +1,4 @@
-# Star Strick FC26 — Product Roadmap
+# ZIM FCPRO — Product Roadmap
 
 ## Overview
 Zimbabwe's competitive EA FC ladder. Features ordered by impact vs. effort.

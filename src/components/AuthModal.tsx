@@ -124,7 +124,7 @@ function SignInForm({ onClose }: { onClose: () => void }) {
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <p className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">
-          Star Strick FC26
+          ZIM FCPRO
         </p>
         <h2 className="heading-cinematic text-2xl text-ink mt-1">Welcome back</h2>
       </div>
@@ -182,7 +182,7 @@ function JoinForm({ onClose }: { onClose: () => void }) {
     <form onSubmit={onSubmit} className="space-y-3.5">
       <div>
         <p className="font-mono text-[10px] uppercase tracking-wider text-muted-soft">
-          Star Strick FC26
+          ZIM FCPRO
         </p>
         <h2 className="heading-cinematic text-2xl text-ink mt-1">Create account</h2>
       </div>
@@ -201,10 +201,10 @@ function JoinForm({ onClose }: { onClose: () => void }) {
       <FieldInput label="WhatsApp (optional)" type="tel" value={whatsapp} onChange={setWhatsapp} hint="For WhatsApp contact" />
       <label className="flex items-start gap-2.5 cursor-pointer">
         <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} required className="mt-0.5 h-4 w-4 rounded border-white/[0.12] accent-[#00ff85]" />
-        <span className="text-xs text-[#8E909A] leading-snug">I agree to the Star Strick FC26 rules and community guidelines</span>
+        <span className="text-xs text-[#8E909A] leading-snug">I agree to the ZIM FCPRO rules and community guidelines</span>
       </label>
       <button type="submit" disabled={pending || !terms} className="w-full rounded-[14px] cta-primary py-3 font-bold uppercase tracking-wider disabled:opacity-50 disabled:transform-none">
-        {pending ? "Creating account…" : "Join Star Strick FC26"}
+        {pending ? "Creating account…" : "Join ZIM FCPRO"}
       </button>
     </form>
   );

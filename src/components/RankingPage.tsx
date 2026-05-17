@@ -204,7 +204,7 @@ function BroadcastHeader({ hidden }: { hidden: boolean }) {
           </div>
           <span className="h-5 w-px bg-border-strong" />
           <span className="bc-headline truncate text-base sm:text-lg leading-none text-ink">
-            Star Strick
+            ZIM FCPRO
             <span className="text-accent">·</span>
             <span className="text-muted-soft">FC26</span>
           </span>

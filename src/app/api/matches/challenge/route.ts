@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     matchRequestId,
     shareToken,
-    shareUrl: `https://star-strick-fc26.vercel.app/match/claim/${shareToken}`,
+    shareUrl: `https://zimfcpro.vercel.app/match/claim/${shareToken}`,
     shareUrls,
     expiresIn: "30 minutes",
   });

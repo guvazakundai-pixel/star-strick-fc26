@@ -4,8 +4,8 @@ import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? "dev-only-secret-do-not-use-in-prod"
 );
-const ISSUER = "star-strick-fc26";
-const AUDIENCE = "star-strick-fc26";
+const ISSUER = "zimfcpro";
+const AUDIENCE = "zimfcpro";
 const TTL = "7d";
 
 export type Role = "PLAYER" | "MANAGER" | "ADMIN";

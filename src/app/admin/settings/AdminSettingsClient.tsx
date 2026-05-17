@@ -35,7 +35,7 @@ export function AdminSettingsClient({
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [platform, setPlatform] = useState({
-    siteName: "Star Strick FC26",
+    siteName: "ZIM FCPRO",
     siteDescription: "Zimbabwe's Premier EA FC League Platform",
     maintenanceMode: false,
   });
@@ -101,7 +101,7 @@ export function AdminSettingsClient({
 
   const handleReset = useCallback(() => {
     if (activeTab === "platform") {
-      setPlatform({ siteName: "Star Strick FC26", siteDescription: "", maintenanceMode: false });
+      setPlatform({ siteName: "ZIM FCPRO", siteDescription: "", maintenanceMode: false });
     } else if (activeTab === "points") {
       setPointsConfig({ winPoints: 3, drawPoints: 1, lossPoints: 0 });
     } else if (activeTab === "ranking") {

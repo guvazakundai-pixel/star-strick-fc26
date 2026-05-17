@@ -108,7 +108,7 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
 
   const shareNative = useCallback(async (url: string) => {
     if (navigator.share && url === shareData?.shareUrl) {
-      await navigator.share({ url, title: "STAR STRICK Challenge", text: "Join my match on STAR STRICK FC26!" });
+      await navigator.share({ url, title: "ZIM FCPRO Challenge", text: "Join my match on ZIM FCPRO!" });
     } else {
       window.open(url, "_blank", "noopener");
     }

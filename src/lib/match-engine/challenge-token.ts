@@ -78,9 +78,9 @@ export function shareUrls(token: string): {
   app: string;
   shareUrl: string;
 }[] {
-  const base = "https://star-strick-fc26.vercel.app/match/claim";
+  const base = "https://zimfcpro.vercel.app/match/claim";
   const url = `${base}/${token}`;
-  const text = `⚡ ${token.slice(0, 6).toUpperCase()} is challenging you on STAR STRICK FC26! Accept the battle: ${url}`;
+  const text = `⚡ ${token.slice(0, 6).toUpperCase()} is challenging you on ZIM FCPRO! Accept the battle: ${url}`;
 
   return [
     { app: "Copy Link", shareUrl: url },

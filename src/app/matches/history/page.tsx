@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "Match History · Star Strick FC26",
+  title: "Match History · ZIM FCPRO",
   description: "Browse confirmed and approved match results.",
 };
 
