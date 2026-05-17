@@ -4,8 +4,7 @@ import { ErrorBoundary, ScopedErrorBoundary } from "@/components/ErrorBoundary";
 import { HomeClient } from "@/components/HomeClient";
 import { HeroSkeleton } from "@/components/ui/Skeleton";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 30;
 
 function safeNumber(val: unknown, fallback: number = 0): number {
   if (val === null || val === undefined) return fallback;
@@ -20,18 +19,15 @@ async function getSiteStats(): Promise<{
   clubCount: number;
 }> {
   try {
-    const [matchesRes, goalsRes, playersRes, clubsRes] = await Promise.all([
-      db.execute("SELECT COALESCE(SUM(matches_played),0) as v FROM player_stats").catch(() => ({ rows: [{ v: 0 }] })),
-      db.execute("SELECT COALESCE(SUM(goals_scored),0) as v FROM player_stats").catch(() => ({ rows: [{ v: 0 }] })),
-      db.execute("SELECT count(*) as v FROM player_stats").catch(() => ({ rows: [{ v: 0 }] })),
-      db.execute("SELECT count(*) as v FROM clubs").catch(() => ({ rows: [{ v: 0 }] })),
-    ]);
-
+    const res = await db.execute(
+      "SELECT COALESCE(SUM(matches_played),0) as total_matches, COALESCE(SUM(goals_scored),0) as total_goals, count(*) as player_count, (SELECT count(*) FROM clubs) as club_count FROM player_stats"
+    ).catch(() => ({ rows: [{ total_matches: 0, total_goals: 0, player_count: 0, club_count: 0 }] }));
+    const row = res.rows[0] ?? { total_matches: 0, total_goals: 0, player_count: 0, club_count: 0 };
     return {
-      totalMatches: safeNumber(matchesRes?.rows?.[0]?.v, 0),
-      totalGoals: safeNumber(goalsRes?.rows?.[0]?.v, 0),
-      playerCount: safeNumber(playersRes?.rows?.[0]?.v, 0),
-      clubCount: safeNumber(clubsRes?.rows?.[0]?.v, 0),
+      totalMatches: safeNumber(row.total_matches, 0),
+      totalGoals: safeNumber(row.total_goals, 0),
+      playerCount: safeNumber(row.player_count, 0),
+      clubCount: safeNumber(row.club_count, 0),
     };
   } catch (err) {
     console.error("[HomePage] getSiteStats failed:", err);
