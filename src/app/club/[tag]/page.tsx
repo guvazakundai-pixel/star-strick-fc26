@@ -254,6 +254,7 @@ export default async function ClubDetailPage({
           participantCount: t._count.participants,
           maxPlayers: t.maxPlayers,
         }))}
+        currentUserId={session?.userId}
         achievements={achievements.map((a) => ({
           ...a,
           earnedAt: a.earnedAt.toISOString(),

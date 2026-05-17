@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedTabs, TabContent, type Tab } from "@/components/ui/AnimatedTabs";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
+import { ClubChat } from "@/components/ClubChat";
 
 type GlobalRank = {
   rankPosition: number;
@@ -130,6 +131,7 @@ export interface ClubDetailClientProps {
   members: MemberDetail[];
   isMember: boolean;
   isManager: boolean;
+  currentUserId?: string;
   onJoin?: () => void;
   onLeave?: () => void;
   onInvite?: () => void;
@@ -246,6 +248,7 @@ export function ClubDetailClient({
   members,
   isMember,
   isManager,
+  currentUserId,
   onJoin,
   onLeave,
   onInvite,
@@ -283,8 +286,9 @@ export function ClubDetailClient({
       ...(leagues.length > 0 ? [{ id: "leagues", label: "Club Leagues", badge: leagues.length } as Tab] : []),
       ...(tournaments.length > 0 ? [{ id: "tournaments", label: "Club Tournaments", badge: tournaments.length } as Tab] : []),
       { id: "activity", label: "Activity Feed", badge: activities.length > 5 ? activities.length : undefined },
+      ...(isMember ? [{ id: "chat", label: "Chat" } as Tab] : []),
     ],
-    [achievements.length, members.length, leagues.length, tournaments.length, activities.length],
+    [achievements.length, members.length, leagues.length, tournaments.length, activities.length, isMember],
   );
 
   const clubLevel = Math.floor(club.clubXp / 1000) + 1;
@@ -441,6 +445,13 @@ export function ClubDetailClient({
               hasMore={hasMoreActivity}
               onLoadMore={() => setActivityPage((p) => p + 1)}
             />
+          </TabContent>
+
+          <TabContent id="chat" activeTab={activeTab}>
+            <div className="frosted-card p-4 rounded-[24px]">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.24em] text-accent mb-4">Club Chat</h2>
+              {currentUserId && <ClubChat clubId={club.id} currentUserId={currentUserId} />}
+            </div>
           </TabContent>
         </div>
       </div>

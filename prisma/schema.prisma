@@ -722,6 +722,7 @@ model TournamentGroup {
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   standings TournamentGroupStanding[]
+  matches   TournamentMatch[]
 
   @@unique([tournamentId, name])
   @@map("tournament_groups")
@@ -829,11 +830,14 @@ model TournamentMatch {
   matchReportId String?   @map("match_report_id")
   scheduledAt   DateTime? @map("scheduled_at")
   completedAt   DateTime? @map("completed_at")
+  bracket       String?   // WB or LB for double elimination
+  groupId       String?   @map("group_id")
 
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   player1    User?      @relation("TournMatchP1", fields: [player1Id], references: [id])
   player2    User?      @relation("TournMatchP2", fields: [player2Id], references: [id])
   winner     User?      @relation("TournMatchWinner", fields: [winnerId], references: [id])
+  group      TournamentGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([tournamentId, round])
   @@map("tournament_matches")
