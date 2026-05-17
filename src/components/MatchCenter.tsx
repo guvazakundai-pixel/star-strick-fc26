@@ -226,7 +226,7 @@ export function MatchCenter({
           <h3 className="text-[10px] font-black tracking-[0.28em] uppercase text-muted-soft">Challenge a Player</h3>
         </div>
         <div className="relative">
-          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-faint" />
+          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-faint" />
           <input
             type="text"
             value={challengeSearch}

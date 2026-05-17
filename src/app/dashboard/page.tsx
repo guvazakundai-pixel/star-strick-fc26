@@ -6,7 +6,8 @@ import { PlayerHubClient } from "@/components/PlayerHubClient";
 export const dynamic = "force-dynamic";
 
 export default async function PlayerDashboard() {
-  const session = await getSession();
+  try {
+    const session = await getSession();
   if (!session) redirect("/login?next=/dashboard");
 
   const userId = session.userId;
@@ -279,4 +280,34 @@ export default async function PlayerDashboard() {
       />
     </div>
   );
+  } catch (error) {
+    console.error("[Dashboard] Prisma query failed:", error);
+    return (
+      <div className="broadcast-theme min-h-screen bc-grain">
+        <div className="mx-auto max-w-4xl px-4 py-6">
+          <div className="text-center py-20 px-6">
+            <div
+              className="h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6"
+              style={{
+                background: "rgba(255,77,77,0.06)",
+                border: "1px solid rgba(255,77,77,0.12)",
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-9 w-9 text-negative/70">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4M12 16h.01" />
+              </svg>
+            </div>
+            <h2 className="bc-headline text-2xl text-ink mb-2">Failed to load dashboard</h2>
+            <p className="text-sm text-muted-soft max-w-md mx-auto mb-6">
+              We couldn&apos;t load your player data. The database might still be initializing. Please try again.
+            </p>
+            <a href="/dashboard" className="btn-primary inline-flex items-center justify-center h-11 px-6 rounded-[14px] text-sm font-bold">
+              Try Again
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
