@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useAuthModal } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/auth-store";
 
 type Tab = "signin" | "join";
 
@@ -39,7 +40,7 @@ export function AuthModal() {
       onClick={(e) => {
         if (e.target === backdropRef.current) closeAuth();
       }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 pt-20 sm:pt-4 overflow-y-auto"
       style={{ background: "rgba(10,10,12,0.82)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
     >
       <div
@@ -95,6 +96,7 @@ function SignInForm({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -109,6 +111,8 @@ function SignInForm({ onClose }: { onClose: () => void }) {
       setError(j.error || "Login failed");
       return;
     }
+    const data = await res.json();
+    setUser(data.user);
     startTransition(() => {
       onClose();
       router.push("/dashboard");
@@ -150,6 +154,7 @@ function JoinForm({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -164,6 +169,8 @@ function JoinForm({ onClose }: { onClose: () => void }) {
       setError(j.error || "Registration failed");
       return;
     }
+    const data = await res.json();
+    setUser(data.user);
     startTransition(() => {
       onClose();
       router.push("/dashboard");

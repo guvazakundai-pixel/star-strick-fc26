@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { TopBar } from "@/components/TopBar";
 import { AuthProvider, AuthUrlHandler } from "@/lib/auth-context";
+import { AuthHydrator } from "@/components/AuthHydrator";
 import { AuthModal } from "@/components/AuthModal";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -63,14 +64,15 @@ export default function RootLayout({
       <head>
         <meta name="format-detection" content="telephone=no" />
       </head>
-      <body className="min-h-full bg-bg text-ink antialiased overflow-x-hidden" suppressHydrationWarning>
+      <body className="min-h-dynamic bg-bg text-ink antialiased overflow-x-hidden" suppressHydrationWarning>
         <AuthProvider>
           <ErrorBoundary scope="app-shell">
             <Suspense fallback={null}>
               <AuthUrlHandler />
+              <AuthHydrator />
             </Suspense>
             <AmbientBackground />
-            <div className="relative z-10 min-h-screen flex flex-col">
+            <div className="relative z-10 min-h-screen flex flex-col pl-[var(--safe-area-left)] pr-[var(--safe-area-right)]">
               <ErrorBoundary scope="topbar">
                 <TopBar />
               </ErrorBoundary>
