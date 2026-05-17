@@ -90,6 +90,9 @@ model User {
   sentFriendRequests       Friend[]                  @relation("FriendRequestSent")
   receivedFriendRequests   Friend[]                  @relation("FriendRequestReceived")
 
+  playoffP1                LeaguePlayoffMatch[] @relation("PlayoffP1")
+  playoffP2                LeaguePlayoffMatch[] @relation("PlayoffP2")
+  playoffWins              LeaguePlayoffMatch[] @relation("PlayoffWinner")
   clubJoinRequests         ClubJoinRequest[]
   playerAchievements       PlayerAchievement[]
   chatMemberships          ChatMember[]
@@ -630,6 +633,12 @@ model League {
   seasons      LeagueSeason[]
   inviteCodes  LeagueInviteCode[]
 
+  playoffQualifiers Int      @default(0) @map("playoff_qualifiers") // 0 = no playoffs, 4/8 = top N
+  playoffType       String?  @map("playoff_type") // SINGLE_ELIM, DOUBLE_ELIM
+  playoffGenerated  Boolean  @default(false) @map("playoff_generated")
+
+  playoffMatches LeaguePlayoffMatch[]
+
   @@map("leagues")
 }
 
@@ -707,6 +716,31 @@ model LeagueFixture {
 
   @@index([leagueId, matchday])
   @@map("league_fixtures")
+}
+
+model LeaguePlayoffMatch {
+  id          String    @id @default(uuid())
+  leagueId    String    @map("league_id")
+  round       Int       @default(1)
+  matchIndex  Int       @default(0) @map("match_index")
+  player1Id   String?   @map("player1_id")
+  player2Id   String?   @map("player2_id")
+  winnerId    String?   @map("winner_id")
+  score1      Int?      @map("score1")
+  score2      Int?      @map("score2")
+  status      String    @default("PENDING") // PENDING, READY, LIVE, COMPLETED
+  bracket     String?   // WB or LB for double elimination
+  scheduledAt DateTime? @map("scheduled_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  player1 User? @relation("PlayoffP1", fields: [player1Id], references: [id])
+  player2 User? @relation("PlayoffP2", fields: [player2Id], references: [id])
+  winner  User? @relation("PlayoffWinner", fields: [winnerId], references: [id])
+
+  @@index([leagueId, round])
+  @@map("league_playoff_matches")
 }
 
 // ═══════════════════════════════════════════════════════════

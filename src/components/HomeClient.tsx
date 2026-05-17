@@ -15,6 +15,7 @@ import { TrendingClubs } from "@/components/TrendingClubs";
 import { CommunityFeed } from "@/components/CommunityFeed";
 import { JoinCTA } from "@/components/JoinCTA";
 import { Particles } from "@/components/ui/Particles";
+import { LiveRankingsWidget } from "@/components/LiveRankingsWidget";
 
 function safeNumber(val: number | undefined | null, fallback: number = 0): number {
   if (val === null || val === undefined || !Number.isFinite(val)) return fallback;
@@ -68,6 +69,7 @@ export function HomeClient({
       <HowItWorksSection />
       <LiveTournamentsCarousel />
       <ActiveLeaguesSection />
+      <LiveRankingsWidget />
       <TrendingClubs />
       <CommunityFeed />
       <SpotlightSection onSelect={setModalPlayerId} />
@@ -76,6 +78,54 @@ export function HomeClient({
         <PlayerDetailModal player={modalPlayer} onClose={() => setModalPlayerId(null)} allPlayers={PLAYERS} />
       )}
     </div>
+  );
+}
+
+function useMousePosition() {
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    const handler = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
+    window.addEventListener("mousemove", handler);
+    return () => window.removeEventListener("mousemove", handler);
+  }, []);
+  return pos;
+}
+
+function FloatingOrbs() {
+  const mouse = useMousePosition();
+  return (
+    <>
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute w-[500px] h-[500px] rounded-full opacity-[0.07]"
+        style={{
+          background: "radial-gradient(circle, rgba(0,230,118,0.5), transparent 70%)",
+          filter: "blur(80px)",
+          left: "10%",
+          top: "20%",
+        }}
+        animate={{
+          x: mouse.x * 0.02,
+          y: mouse.y * 0.02,
+        }}
+        transition={{ type: "spring", stiffness: 50, damping: 30 }}
+      />
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute w-[400px] h-[400px] rounded-full opacity-[0.05]"
+        style={{
+          background: "radial-gradient(circle, rgba(34,211,238,0.4), transparent 70%)",
+          filter: "blur(80px)",
+          right: "15%",
+          bottom: "30%",
+        }}
+        animate={{
+          x: mouse.x * -0.015,
+          y: mouse.y * -0.015,
+        }}
+        transition={{ type: "spring", stiffness: 50, damping: 30 }}
+      />
+    </>
   );
 }
 
@@ -98,6 +148,7 @@ function HeroSection({
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden min-h-[90vh] flex items-center">
+      <FloatingOrbs />
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -233,7 +284,7 @@ function HeroSection({
           </motion.div>
 
           {hasStats && (
-            <StaggerContainer className="mt-10 sm:mt-14 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4" initial="hidden" animate="visible">
+            <StaggerContainer className="mt-10 sm:mt-14 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <StatCard label="Matches" value={totalMatches} icon="match" delay={0} />
               <StatCard label="Goals" value={totalGoals} icon="goal" delay={0.06} />
               <StatCard label="Players" value={playerCount} icon="player" delay={0.12} />
