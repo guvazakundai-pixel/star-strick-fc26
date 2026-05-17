@@ -1,21 +1,23 @@
-import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/db/connection';
-import { League } from '@/lib/db/models/League';
-import { User } from '@/lib/db/models/User';
-import { getAuthUser } from '@/lib/utils/auth';
-import { successResponse, errorResponse, unauthorizedResponse, notFoundResponse } from '@/lib/utils/response';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/route-auth";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
-    await connectDB(); const { id } = await params;
-    const league = await League.findById(id);
-    if (!league) return notFoundResponse();
-    if (league.adminId.toString() === user._id.toString()) return errorResponse('Admin cannot leave');
-    league.participants = league.participants.filter((p: any) => p.toString() !== user._id.toString()) as any;
-    const season = league.seasons.find((s: any) => s.seasonNumber === league.currentSeason);
-    if (season) season.standings = season.standings.filter((s: any) => s.playerId.toString() !== user._id.toString());
-    await league.save(); await User.findByIdAndUpdate(user._id, { $pull: { leagues: league._id } });
-    return successResponse({ message: 'Left league' });
-  } catch (error: any) { return errorResponse(error.message, 500); }
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
+  const { id } = await params;
+
+  const participant = await prisma.leagueParticipant.findUnique({
+    where: { leagueId_userId: { leagueId: id, userId: auth.session.userId } },
+  });
+  if (!participant) return NextResponse.json({ error: "Not in this league" }, { status: 404 });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.leagueStanding.deleteMany({
+      where: { leagueId: id, userId: auth.session.userId },
+    });
+    await tx.leagueParticipant.delete({ where: { id: participant.id } });
+  });
+
+  return NextResponse.json({ success: true });
 }

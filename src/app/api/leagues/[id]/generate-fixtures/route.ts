@@ -1,26 +1,59 @@
-import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/db/connection';
-import { League } from '@/lib/db/models/League';
-import { Match } from '@/lib/db/models/Match';
-import { getAuthUser } from '@/lib/utils/auth';
-import { generateRoundRobinFixtures } from '@/lib/utils/league-engine';
-import { successResponse, errorResponse, unauthorizedResponse, notFoundResponse } from '@/lib/utils/response';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/route-auth";
+import { generateRoundRobinFixtures } from "@/lib/league-engine";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
-    await connectDB(); const { id } = await params;
-    const league = await League.findById(id);
-    if (!league) return notFoundResponse();
-    if (league.adminId.toString() !== user._id.toString()) return unauthorizedResponse('Only admin');
-    const season = league.seasons.find((s: any) => s.seasonNumber === league.currentSeason);
-    if (!season) return notFoundResponse('No active season');
-    const playerIds = league.participants.map((p: any) => p.toString());
-    if (playerIds.length < 2) return errorResponse('Need 2+ players');
-    const fixtures = generateRoundRobinFixtures(playerIds, league.settings.rounds, league.settings.homeAway);
-    const matches = await Promise.all(fixtures.map((f) => Match.create({ leagueId: league._id, homePlayerId: f.homePlayerId, awayPlayerId: f.awayPlayerId, matchday: f.matchday, status: 'SCHEDULED', confirmation: { home: 'PENDING', away: 'PENDING' } })));
-    season.fixtures = matches.map((m) => m._id); season.status = 'ACTIVE'; season.startedAt = new Date();
-    league.markModified('seasons'); await league.save();
-    return successResponse({ fixtures: matches }, 201);
-  } catch (error: any) { return errorResponse(error.message, 500); }
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
+  const { id } = await params;
+
+  const league = await prisma.league.findUnique({ where: { id } });
+  if (!league) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (league.adminId !== auth.session.userId && auth.session.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const existing = await prisma.leagueFixture.count({ where: { leagueId: id } });
+  if (existing > 0) {
+    return NextResponse.json({ error: "Fixtures already generated" }, { status: 409 });
+  }
+
+  const participants = await prisma.leagueParticipant.findMany({
+    where: { leagueId: id },
+    select: { userId: true },
+  });
+
+  if (participants.length < 2) {
+    return NextResponse.json({ error: "Need at least 2 participants" }, { status: 400 });
+  }
+
+  const season = await prisma.leagueSeason.findFirst({
+    where: { leagueId: id, status: "ACTIVE" },
+    orderBy: { seasonNumber: "desc" },
+  });
+  if (!season) return NextResponse.json({ error: "No active season" }, { status: 400 });
+
+  const fixtureInputs = generateRoundRobinFixtures(
+    id,
+    season.id,
+    participants.map((p) => p.userId),
+    league.rounds,
+    league.homeAway,
+  );
+
+  await prisma.leagueFixture.createMany({ data: fixtureInputs });
+
+  await prisma.league.update({ where: { id }, data: { status: "LIVE" } });
+
+  const fixtures = await prisma.leagueFixture.findMany({
+    where: { leagueId: id },
+    include: {
+      homeUser: { select: { id: true, username: true, displayName: true } },
+      awayUser: { select: { id: true, username: true, displayName: true } },
+    },
+    orderBy: [{ matchday: "asc" }, { createdAt: "asc" }],
+  });
+
+  return NextResponse.json({ success: true, data: { fixtures, count: fixtureInputs.length } });
 }

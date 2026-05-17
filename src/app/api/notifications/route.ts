@@ -1,24 +1,18 @@
-import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/db/connection';
-import { Notification } from '@/lib/db/models/Notification';
-import { getAuthUser } from '@/lib/utils/auth';
-import { successResponse, errorResponse, unauthorizedResponse } from '@/lib/utils/response';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/route-auth";
 
 export async function GET() {
-  try {
-    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
-    await connectDB();
-    const notifications = await Notification.find({ userId: user._id }).sort({ createdAt: -1 }).limit(50);
-    const unreadCount = await Notification.countDocuments({ userId: user._id, read: false });
-    return successResponse({ notifications, unreadCount });
-  } catch (error: any) { return errorResponse(error.message, 500); }
-}
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
 
-export async function PATCH() {
-  try {
-    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
-    await connectDB();
-    await Notification.updateMany({ userId: user._id, read: false }, { read: true });
-    return successResponse({ message: 'Marked all read' });
-  } catch (error: any) { return errorResponse(error.message, 500); }
+  const notifications = await prisma.notification.findMany({
+    where: { userId: auth.session.userId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  return NextResponse.json({ notifications, unreadCount });
 }

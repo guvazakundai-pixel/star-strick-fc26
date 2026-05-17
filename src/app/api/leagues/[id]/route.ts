@@ -1,40 +1,80 @@
-import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/db/connection';
-import { League } from '@/lib/db/models/League';
-import { getAuthUser } from '@/lib/utils/auth';
-import { successResponse, errorResponse, unauthorizedResponse, notFoundResponse } from '@/lib/utils/response';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/route-auth";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
-    await connectDB(); const { id } = await params;
-    const league = await League.findById(id).populate('adminId', 'username avatar').populate('participants', 'username avatar rating stats');
-    if (!league) return notFoundResponse();
-    const currentSeason = league.seasons.find((s: any) => s.seasonNumber === league.currentSeason);
-    return successResponse({ league: { ...league.toObject(), currentSeasonData: currentSeason || null } });
-  } catch (error: any) { return errorResponse(error.message, 500); }
+  const { id } = await params;
+
+  const league = await prisma.league.findUnique({
+    where: { id },
+    include: {
+      admin: { select: { id: true, username: true, displayName: true } },
+      participants: {
+        include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+        orderBy: { joinedAt: "asc" },
+      },
+      standings: {
+        include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+        orderBy: { points: "desc" },
+      },
+      fixtures: {
+        include: {
+          homeUser: { select: { id: true, username: true, displayName: true } },
+          awayUser: { select: { id: true, username: true, displayName: true } },
+        },
+        orderBy: [{ matchday: "asc" }, { createdAt: "asc" }],
+      },
+      seasons: { orderBy: { seasonNumber: "desc" } },
+      _count: { select: { participants: true } },
+    },
+  });
+
+  if (!league) {
+    return NextResponse.json({ error: "League not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ success: true, data: league });
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
-    await connectDB(); const { id } = await params; const body = await req.json();
-    const league = await League.findById(id);
-    if (!league) return notFoundResponse();
-    if (league.adminId.toString() !== user._id.toString()) return unauthorizedResponse('Only admin');
-    const allowed = ['name', 'description', 'logo', 'banner', 'region', 'settings'];
-    allowed.forEach((f) => { if (body[f] !== undefined) (league as any)[f] = body[f]; });
-    await league.save(); return successResponse({ league });
-  } catch (error: any) { return errorResponse(error.message, 500); }
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
+  const { id } = await params;
+
+  const league = await prisma.league.findUnique({ where: { id } });
+  if (!league) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (league.adminId !== auth.session.userId && auth.session.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const body = await req.json();
+  const updated = await prisma.league.update({
+    where: { id },
+    data: {
+      name: body.name ?? undefined,
+      description: body.description ?? undefined,
+      type: body.type ?? undefined,
+      maxPlayers: body.maxPlayers ?? undefined,
+      rounds: body.rounds ?? undefined,
+      homeAway: body.homeAway ?? undefined,
+      status: body.status ?? undefined,
+    },
+  });
+
+  return NextResponse.json({ success: true, data: updated });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
-    await connectDB(); const { id } = await params;
-    const league = await League.findById(id);
-    if (!league) return notFoundResponse();
-    if (league.adminId.toString() !== user._id.toString()) return unauthorizedResponse('Only admin');
-    await League.findByIdAndDelete(id); return successResponse({ message: 'Deleted' });
-  } catch (error: any) { return errorResponse(error.message, 500); }
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
+  const { id } = await params;
+
+  const league = await prisma.league.findUnique({ where: { id } });
+  if (!league) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (league.adminId !== auth.session.userId && auth.session.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await prisma.league.delete({ where: { id } });
+  return NextResponse.json({ success: true });
 }

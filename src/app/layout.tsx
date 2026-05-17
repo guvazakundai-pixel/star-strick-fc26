@@ -1,22 +1,97 @@
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
-import './globals.css';
-import { Providers } from './providers';
+import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
+import { BottomNav } from "@/components/BottomNav";
+import { TopBar } from "@/components/TopBar";
+import { AuthProvider, AuthUrlHandler } from "@/lib/auth-context";
+import { AuthModal } from "@/components/AuthModal";
+import { AmbientBackground } from "@/components/AmbientBackground";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageTransition } from "@/components/ui/PageTransition";
+import { HeroSkeleton } from "@/components/ui/Skeleton";
+import "./globals.css";
 
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
+const SITE_URL = "https://star-strick-fc26.vercel.app";
+const SITE_TITLE = "Star Strick FC26 — Zimbabwe Pro EA FC Rankings";
+const SITE_DESC =
+  "Official rankings, clubs and tournaments for Zimbabwe's competitive EA Sports FC scene.";
 
 export const metadata: Metadata = {
-  title: 'STAR STRICK FC26 | Next-Gen Esports Ecosystem',
-  description: 'Create leagues, tournaments, and compete in the ultimate esports ecosystem.',
-  keywords: ['esports', 'tournament', 'league', 'gaming', 'competitive', 'fc26'],
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: "%s · Star Strick FC26" },
+  description: SITE_DESC,
+  applicationName: "Star Strick FC26",
+  keywords: [
+    "EA FC",
+    "FC26",
+    "Zimbabwe esports",
+    "FIFA Zimbabwe",
+    "EA Sports FC league",
+    "Star Strick",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "Star Strick FC26",
+    url: SITE_URL,
+    title: SITE_TITLE,
+    description: SITE_DESC,
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_TITLE,
+    description: SITE_DESC,
+  },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const viewport: Viewport = {
+  themeColor: "#0c0c10",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}>
-        <Providers>{children}</Providers>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className="h-full"
+    >
+      <head>
+        <meta name="format-detection" content="telephone=no" />
+      </head>
+      <body className="min-h-full bg-bg text-ink antialiased overflow-x-hidden" suppressHydrationWarning>
+        <AuthProvider>
+          <ErrorBoundary scope="app-shell">
+            <Suspense fallback={null}>
+              <AuthUrlHandler />
+            </Suspense>
+            <AmbientBackground />
+            <div className="relative z-10 min-h-screen flex flex-col">
+              <ErrorBoundary scope="topbar">
+                <TopBar />
+              </ErrorBoundary>
+              <main className="flex-1 pb-28">
+                <ErrorBoundary scope="page-content">
+                  <Suspense fallback={<HeroSkeleton />}>
+                    <PageTransition>
+                      {children}
+                    </PageTransition>
+                  </Suspense>
+                </ErrorBoundary>
+              </main>
+              <ErrorBoundary scope="bottom-nav">
+                <BottomNav />
+              </ErrorBoundary>
+            </div>
+            <ErrorBoundary scope="auth-modal">
+              <AuthModal />
+            </ErrorBoundary>
+          </ErrorBoundary>
+        </AuthProvider>
       </body>
     </html>
   );

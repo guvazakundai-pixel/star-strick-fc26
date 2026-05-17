@@ -1,14 +1,28 @@
-import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/db/connection';
-import { League } from '@/lib/db/models/League';
-import { successResponse, errorResponse } from '@/lib/utils/response';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
-  try {
-    await connectDB();
-    const limit = parseInt(new URL(req.url).searchParams.get('limit') || '20');
-    const leagues = await League.find({ type: 'PUBLIC' }).populate('adminId', 'username avatar').select('name logo type region participants currentSeason createdAt').sort({ createdAt: -1 }).limit(limit);
-    const enriched = leagues.map((l) => ({ _id: l._id, name: l.name, logo: l.logo, type: l.type, region: l.region, admin: l.adminId, playerCount: l.participants.length, currentSeason: l.currentSeason, createdAt: l.createdAt }));
-    return successResponse({ leagues: enriched });
-  } catch (error: any) { return errorResponse(error.message, 500); }
+  const { searchParams } = new URL(req.url);
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+  const skip = (page - 1) * limit;
+
+  const [leagues, total] = await Promise.all([
+    prisma.league.findMany({
+      where: { type: "PUBLIC" },
+      include: {
+        _count: { select: { participants: true } },
+        admin: { select: { id: true, username: true, displayName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.league.count({ where: { type: "PUBLIC" } }),
+  ]);
+
+  return NextResponse.json({
+    success: true,
+    data: { leagues, total, page, limit },
+  });
 }

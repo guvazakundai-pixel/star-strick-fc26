@@ -1,17 +1,81 @@
-'use client';
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-interface LeagueDraft { name: string; description: string; type: 'PUBLIC' | 'PRIVATE' | 'FRIENDS'; region: string; maxPlayers: number; rounds: number; homeAway: boolean; }
-interface TournamentDraft { name: string; description: string; type: 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY'; format: 'KNOCKOUT' | 'GROUP_STAGE' | 'DOUBLE_ELIMINATION' | 'HYBRID'; maxPlayers: number; groupSize: number; bestOf: number; }
+export interface LeagueDraft {
+  name: string;
+  description: string;
+  type: "PUBLIC" | "PRIVATE" | "FRIENDS" | "RANKED" | "REGIONAL";
+  maxPlayers: number;
+  rounds: number;
+  homeAway: boolean;
+  inviteOnly: boolean;
+  region: string;
+  minRank: number;
+  maxRank: number;
+  prizePool: number;
+  entryFee: number;
+  seasonDuration: number;
+  promotedSpots: number;
+  relegatedSpots: number;
+}
 
-const defaultLeague: LeagueDraft = { name: '', description: '', type: 'PRIVATE', region: '', maxPlayers: 20, rounds: 2, homeAway: true };
-const defaultTournament: TournamentDraft = { name: '', description: '', type: 'PUBLIC', format: 'KNOCKOUT', maxPlayers: 16, groupSize: 4, bestOf: 1 };
+export interface TournamentDraft {
+  name: string;
+  description: string;
+  type: "KNOCKOUT" | "ROUND_ROBIN" | "GROUPS" | "DOUBLE_ELIM" | "HYBRID" | "SWISS";
+  maxPlayers: number;
+  prizePool: number;
+  entryFee: number;
+  platform: string;
+  city: string;
+  groupStage: boolean;
+  groupCount: number;
+  qualifiedPerGroup: number;
+  bestOf: number;
+  homeAway: boolean;
+  seeding: "RANDOM" | "RANKED" | "MANUAL";
+  registrationDeadline: string;
+  startDate: string;
+  visibility: "PUBLIC" | "PRIVATE" | "INVITE_ONLY";
+  minRank: number;
+  maxRank: number;
+  allowDraws: boolean;
+  thirdPlace: boolean;
+}
 
-export const useDraftStore = create<{ leagueDraft: LeagueDraft; tournamentDraft: TournamentDraft; updateLeagueDraft: (d: Partial<LeagueDraft>) => void; updateTournamentDraft: (d: Partial<TournamentDraft>) => void; resetLeagueDraft: () => void; resetTournamentDraft: () => void; }>()(persist((set) => ({
-  leagueDraft: defaultLeague, tournamentDraft: defaultTournament,
-  updateLeagueDraft: (d) => set((s) => ({ leagueDraft: { ...s.leagueDraft, ...d } })),
-  updateTournamentDraft: (d) => set((s) => ({ tournamentDraft: { ...s.tournamentDraft, ...d } })),
-  resetLeagueDraft: () => set({ leagueDraft: defaultLeague }),
-  resetTournamentDraft: () => set({ tournamentDraft: defaultTournament }),
-}), { name: 'draft-storage' }));
+interface DraftStore {
+  leagueDraft: LeagueDraft | null;
+  tournamentDraft: TournamentDraft | null;
+  setLeagueDraft: (draft: Partial<LeagueDraft>) => void;
+  setTournamentDraft: (draft: Partial<TournamentDraft>) => void;
+  clearLeagueDraft: () => void;
+  clearTournamentDraft: () => void;
+  hasDraft: () => boolean;
+}
+
+export const useDraftStore = create<DraftStore>()(
+  persist(
+    (set, get) => ({
+      leagueDraft: null,
+      tournamentDraft: null,
+      setLeagueDraft: (draft) =>
+        set({ leagueDraft: { ...(get().leagueDraft || {
+          name: "", description: "", type: "PUBLIC", maxPlayers: 20, rounds: 2,
+          homeAway: true, inviteOnly: false, region: "All", minRank: 1, maxRank: 9999,
+          prizePool: 0, entryFee: 0, seasonDuration: 30, promotedSpots: 2, relegatedSpots: 2
+        }), ...draft } }),
+      setTournamentDraft: (draft) =>
+        set({ tournamentDraft: { ...(get().tournamentDraft || {
+          name: "", description: "", type: "KNOCKOUT", maxPlayers: 32, prizePool: 0,
+          entryFee: 0, platform: "CROSSPLAY", city: "", groupStage: false, groupCount: 4,
+          qualifiedPerGroup: 2, bestOf: 1, homeAway: false, seeding: "RANDOM",
+          registrationDeadline: "", startDate: "", visibility: "PUBLIC",
+          minRank: 1, maxRank: 9999, allowDraws: false, thirdPlace: false
+        }), ...draft } }),
+      clearLeagueDraft: () => set({ leagueDraft: null }),
+      clearTournamentDraft: () => set({ tournamentDraft: null }),
+      hasDraft: () => !!get().leagueDraft || !!get().tournamentDraft,
+    }),
+    { name: "ss-drafts" },
+  ),
+);

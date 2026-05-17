@@ -1,49 +1,70 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { PageLoading } from '@/components/ui/loading';
-import { useAuthStore } from '@/store/auth-store';
-import { toast } from 'sonner';
+"use client";
 
-export default function InvitePage() {
-  const params = useParams(); const router = useRouter();
-  const { user, isLoading } = useAuthStore();
-  const [invite, setInvite] = useState<any>(null); const [target, setTarget] = useState<any>(null);
-  const [loading, setLoading] = useState(true); const [joining, setJoining] = useState(false);
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+
+export default function InviteRedemptionPage() {
+  const { code } = useParams<{ code: string }>();
+  const router = useRouter();
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (isLoading) return;
-    if (!user) { router.push(`/login?redirect=/invite/${params.code}`); return; }
-    fetch(`/api/invites/${params.code}`, { credentials: 'include' }).then(r => r.json())
-      .then(json => { if (json.success) { setInvite(json.data.invite); setTarget(json.data.invite.target); } else toast.error(json.error); })
-      .catch(() => toast.error('Failed')) .finally(() => setLoading(false));
-  }, [params.code, user, isLoading, router]);
-
-  const handleJoin = async () => {
-    setJoining(true);
-    try {
-      const res = await fetch(`/api/invites/${params.code}`, { method: 'POST', credentials: 'include' });
-      const json = await res.json();
-      if (json.success) { toast.success('Joined!'); router.push(invite?.type === 'LEAGUE' ? `/leagues/${target._id}` : `/tournaments/${target._id}`); }
-      else toast.error(json.error);
-    } catch { toast.error('Failed'); } finally { setJoining(false); }
-  };
-
-  if (isLoading || loading) return <PageLoading />;
-  if (!invite) return null;
+    async function redeem() {
+      try {
+        const res = await fetch("/api/invites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setStatus("success");
+          setMessage(`Joined ${data.data.name}!`);
+          setTimeout(() => {
+            if (data.data.leagueId) router.push(`/leagues/${data.data.leagueId}`);
+            else if (data.data.clubId) router.push(`/club/${data.data.tag}`);
+            else router.push("/dashboard");
+          }, 1500);
+        } else {
+          setStatus("error");
+          setMessage(data.error || "Invalid invite");
+        }
+      } catch {
+        setStatus("error");
+        setMessage("Network error");
+      }
+    }
+    redeem();
+  }, [code, router]);
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md text-center"><CardContent className="p-8">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-neon-purple/30 to-electric-green/30 flex items-center justify-center text-3xl font-bold mx-auto mb-4">{target?.name?.[0] || '?'}</div>
-        <CardTitle className="text-xl mb-1">{target?.name || 'Competition'}</CardTitle>
-        <CardDescription className="mb-4">{invite.type === 'LEAGUE' ? 'League' : 'Tournament'} invitation</CardDescription>
-        <div className="flex justify-center gap-2 mb-6"><Badge variant={invite.type === 'LEAGUE' ? 'purple' : 'green'} size="md">{invite.type === 'LEAGUE' ? 'League' : 'Tournament'}</Badge></div>
-        <Button onClick={handleJoin} loading={joining} className="w-full">Join {target?.name}</Button>
-      </CardContent></Card>
+    <div className="broadcast-theme min-h-screen bc-grain flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="frosted-card p-8 rounded-[28px] max-w-sm w-full text-center">
+        {status === "loading" && (
+          <div>
+            <div className="h-12 w-12 rounded-full border-2 border-accent border-t-transparent animate-spin mx-auto" />
+            <p className="mt-4 text-ink text-lg">Redeeming invite...</p>
+          </div>
+        )}
+        {status === "success" && (
+          <div>
+            <span className="text-5xl">✅</span>
+            <p className="mt-4 text-accent text-lg font-bold">{message}</p>
+            <p className="text-muted-soft text-sm mt-2">Redirecting...</p>
+          </div>
+        )}
+        {status === "error" && (
+          <div>
+            <span className="text-5xl">❌</span>
+            <p className="mt-4 text-negative text-lg font-bold">{message}</p>
+            <button onClick={() => router.push("/leagues")} className="btn-primary mt-4 h-11 px-6 text-xs rounded-[14px]">
+              Browse Leagues
+            </button>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

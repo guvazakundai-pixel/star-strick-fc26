@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="40" fill="#030509"/>
+  <rect x="6" y="6" width="168" height="168" rx="34" fill="none" stroke="#00FF57" stroke-width="3" stroke-opacity="0.55"/>
+  <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle"
+        font-family="Bebas Neue, Impact, sans-serif" font-weight="700" font-size="130" fill="#00FF57"
+        letter-spacing="-2">S</text>
+  <circle cx="138" cy="50" r="9" fill="#00FF57"/>
+</svg>

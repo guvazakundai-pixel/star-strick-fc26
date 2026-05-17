@@ -1,16 +1,39 @@
-import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/db/connection';
-import { User } from '@/lib/db/models/User';
-import { getAuthUser } from '@/lib/utils/auth';
-import { successResponse, errorResponse, unauthorizedResponse } from '@/lib/utils/response';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/route-auth";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
+
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get("q") || "";
+  if (q.length < 2) return NextResponse.json({ users: [] });
+
   try {
-    const user = await getAuthUser(); if (!user) return unauthorizedResponse();
-    await connectDB();
-    const q = new URL(req.url).searchParams.get('q');
-    if (!q || q.length < 2) return successResponse({ users: [] });
-    const users = await User.find({ username: { $regex: q, $options: 'i' }, _id: { $ne: user._id } }).select('username avatar rating stats').limit(20);
-    return successResponse({ users });
-  } catch (error: any) { return errorResponse(error.message, 500); }
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { username: { contains: q } },
+          { displayName: { contains: q } },
+        ],
+        NOT: { id: auth.session.userId },
+      },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        playerRanking: { select: { rankPosition: true } },
+      },
+      take: 10,
+    });
+
+    return NextResponse.json({ users });
+  } catch (error) {
+    console.error("[UserSearch] Failed:", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
 }
