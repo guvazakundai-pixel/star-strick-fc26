@@ -412,8 +412,7 @@ function MatchCard({
         }}
       >
         {isLive && (
-          <span className="absolute top-3 right-3 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-wider text-accent">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent bc-live-dot" />
+          <span className="absolute top-3 right-3 match-badge match-badge-live">
             LIVE
           </span>
         )}

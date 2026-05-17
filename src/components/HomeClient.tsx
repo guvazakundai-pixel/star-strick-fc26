@@ -57,7 +57,18 @@ export function HomeClient({
   }
 
   return (
-    <div className="broadcast-theme min-h-screen bc-grain">
+    <div className="broadcast-theme min-h-screen">
+      {/* Animated grid overlay */}
+      <div
+        aria-hidden
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0,255,133,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,133,0.015) 1px, transparent 1px)`,
+          backgroundSize: "60px 60px",
+          maskImage: "radial-gradient(ellipse 70% 50% at 50% 0%, black 20%, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(ellipse 70% 50% at 50% 0%, black 20%, transparent 70%)",
+        }}
+      />
       <Particles count={20} color="rgba(0,255,133,0.12)" />
       <HeroSection
         totalMatches={totalMatches}
@@ -284,12 +295,25 @@ function HeroSection({
           </motion.div>
 
           {hasStats && (
-            <StaggerContainer className="mt-10 sm:mt-14 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <StatCard label="Matches" value={totalMatches} icon="match" delay={0} />
-              <StatCard label="Goals" value={totalGoals} icon="goal" delay={0.06} />
-              <StatCard label="Players" value={playerCount} icon="player" delay={0.12} />
-              <StatCard label="Clubs" value={clubCount} icon="club" delay={0.18} />
-            </StaggerContainer>
+            <>
+              <div className="mt-10 sm:mt-14 relative">
+                <div
+                  aria-hidden
+                  className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-3/4"
+                  style={{
+                    background: "linear-gradient(90deg, transparent, rgba(0,255,133,0.15), rgba(34,211,238,0.1), transparent)",
+                  }}
+                />
+                <div className="pt-6 sm:pt-8">
+                  <StaggerContainer className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                    <StatCard label="Matches" value={totalMatches} icon="match" delay={0} />
+                    <StatCard label="Goals" value={totalGoals} icon="goal" delay={0.06} />
+                    <StatCard label="Players" value={playerCount} icon="player" delay={0.12} />
+                    <StatCard label="Clubs" value={clubCount} icon="club" delay={0.18} />
+                  </StaggerContainer>
+                </div>
+              </div>
+            </>
           )}
 
           <motion.div

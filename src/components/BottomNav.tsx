@@ -27,14 +27,15 @@ export function BottomNav() {
       aria-label="Primary"
       className="fixed bottom-0 inset-x-0 z-50 pb-[env(safe-area-inset-bottom)]"
     >
-      <div className="mx-auto max-w-lg px-3 pb-2 pt-1">
+      <div className="mx-auto max-w-lg px-3 pb-3 pt-1">
         <div
-          className="flex items-center justify-around rounded-[24px] px-1.5 py-1.5 dock-glow"
+          className="flex items-center justify-around rounded-[28px] px-2 py-1.5"
           style={{
-            background: "rgba(10,10,12,0.88)",
-            backdropFilter: "blur(32px) saturate(1.8)",
-            WebkitBackdropFilter: "blur(32px) saturate(1.8)",
+            background: "rgba(8,8,10,0.92)",
+            backdropFilter: "blur(40px) saturate(1.8)",
+            WebkitBackdropFilter: "blur(40px) saturate(1.8)",
             border: "1px solid rgba(255,255,255,0.04)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.02) inset, 0 0 48px rgba(0,255,133,0.03)",
           }}
         >
           {ITEMS.map(({ href, label, icon: Icon }) => {
@@ -71,7 +72,7 @@ export function BottomNav() {
                     className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-[3px] min-w-[22px] rounded-full"
                     style={{
                       background: "var(--accent)",
-                      boxShadow: "0 0 16px rgba(0,255,133,0.60), 0 0 4px rgba(0,255,133,0.30)",
+                      boxShadow: "0 0 12px rgba(0,255,133,0.4), 0 0 4px rgba(0,255,133,0.2)",
                     }}
                     transition={SPRING_CONFIG}
                   />
@@ -107,7 +108,7 @@ export function BottomNav() {
                   className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-[3px] min-w-[22px] rounded-full"
                   style={{
                     background: "var(--accent)",
-                    boxShadow: "0 0 16px rgba(0,255,133,0.60), 0 0 4px rgba(0,255,133,0.30)",
+                    boxShadow: "0 0 12px rgba(0,255,133,0.4), 0 0 4px rgba(0,255,133,0.2)",
                   }}
                   transition={SPRING_CONFIG}
                 />

@@ -45,14 +45,14 @@ interface XPBreakdown {
   loserNewRating: number;
 }
 
-const STATUS_META: Record<string, { label: string; color: string; glow: string }> = {
-  PENDING_ACCEPTANCE: { label: "Awaiting Acceptance", color: "text-gold", glow: "rgba(255,184,0,0.15)" },
-  ACTIVE: { label: "Match Active", color: "text-accent", glow: "rgba(0,255,133,0.2)" },
-  SCORE_SUBMITTED: { label: "Score Submitted", color: "text-cyan", glow: "rgba(34,211,238,0.15)" },
-  PENDING_VERIFICATION: { label: "Verifying", color: "text-cyan", glow: "rgba(34,211,238,0.15)" },
-  COMPLETED: { label: "Completed", color: "text-emerald", glow: "rgba(52,211,153,0.15)" },
-  CONFIRMED: { label: "Confirmed", color: "text-cyan", glow: "rgba(34,211,238,0.15)" },
-  APPROVED: { label: "Approved", color: "text-accent", glow: "rgba(0,255,133,0.15)" },
+const STATUS_META: Record<string, { label: string; color: string; glow: string; badgeClass?: string }> = {
+  PENDING_ACCEPTANCE: { label: "Awaiting Acceptance", color: "text-gold", glow: "rgba(255,184,0,0.15)", badgeClass: "match-badge-upcoming" },
+  ACTIVE: { label: "LIVE", color: "text-accent", glow: "rgba(0,255,133,0.2)", badgeClass: "match-badge-live" },
+  SCORE_SUBMITTED: { label: "Score Submitted", color: "text-cyan", glow: "rgba(34,211,238,0.15)", badgeClass: "match-badge-live" },
+  PENDING_VERIFICATION: { label: "Verifying", color: "text-cyan", glow: "rgba(34,211,238,0.15)", badgeClass: "match-badge-live" },
+  COMPLETED: { label: "FT", color: "text-emerald", glow: "rgba(52,211,153,0.15)", badgeClass: "match-badge-ft" },
+  CONFIRMED: { label: "Confirmed", color: "text-cyan", glow: "rgba(34,211,238,0.15)", badgeClass: "match-badge-ft" },
+  APPROVED: { label: "Approved", color: "text-accent", glow: "rgba(0,255,133,0.15)", badgeClass: "match-badge-ft" },
   DISPUTED: { label: "Disputed", color: "text-negative", glow: "rgba(255,77,77,0.2)" },
   CANCELLED: { label: "Cancelled", color: "text-muted-soft", glow: "transparent" },
   EXPIRED: { label: "Expired", color: "text-muted-soft", glow: "transparent" },
@@ -195,12 +195,11 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
 
         <div className="text-center space-y-2">
           {meta && (
-            <div
-              className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 border"
-              style={{ background: `${meta.glow}`, borderColor: meta.glow === "transparent" ? "rgba(255,255,255,0.06)" : meta.glow }}
-            >
-              {!isTerminal && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
-              <span className={`text-[10px] font-black tracking-[0.22em] uppercase ${meta.color}`}>{meta.label}</span>
+            <div className={meta.badgeClass || "inline-flex items-center gap-2 rounded-full px-4 py-1.5 border"}>
+              {meta.badgeClass?.includes("match-badge-live") || (!isTerminal && !meta.badgeClass) ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
+              ) : null}
+              <span>{meta.label}</span>
             </div>
           )}
           {match.isDisputed && (

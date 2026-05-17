@@ -9,6 +9,7 @@ import { AmbientBackground } from "@/components/AmbientBackground";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageTransition } from "@/components/ui/PageTransition";
 import { HeroSkeleton } from "@/components/ui/Skeleton";
+import { QueryProvider } from "@/lib/query-provider";
 import "./globals.css";
 
 const SITE_URL = "https://star-strick-fc26.vercel.app";
@@ -65,6 +66,7 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body className="min-h-dynamic bg-bg text-ink antialiased overflow-x-hidden" suppressHydrationWarning>
+        <QueryProvider>
         <AuthProvider>
           <ErrorBoundary scope="app-shell">
             <Suspense fallback={null}>
@@ -94,6 +96,7 @@ export default function RootLayout({
             </ErrorBoundary>
           </ErrorBoundary>
         </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

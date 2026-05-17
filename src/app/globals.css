@@ -2217,3 +2217,460 @@ html {
     flex: 0 0 260px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   V4 MASTER UPGRADE — Depth · Controlled Glow · Broadcast Polish
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1. SURFACE DEPTH SYSTEM ────────────────────────────── */
+
+.surface-base {
+  background: var(--bg);
+}
+.surface-raised {
+  background: var(--bg-raised);
+}
+.surface-elevated {
+  background: var(--bg-elevated);
+}
+.surface-highlight {
+  background: var(--bg-highlight);
+}
+
+.surface-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-2xl);
+}
+
+.surface-glass-raised {
+  background: rgba(20, 22, 26, 0.62);
+  backdrop-filter: blur(32px) saturate(1.6);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.04) inset,
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 8px 32px rgba(0,0,0,0.28),
+    0 24px 64px rgba(0,0,0,0.22);
+  border-radius: var(--radius-2xl);
+}
+
+/* ── 2. CONTAINER SYSTEM ────────────────────────────────── */
+
+.content-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .content-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.content-container-narrow {
+  max-width: 1024px;
+}
+
+.content-container-wide {
+  max-width: 1400px;
+}
+
+/* ── 3. CONTROLLED EDGE GLOW SYSTEM ─────────────────────── */
+
+.glow-edge-accent {
+  position: relative;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+}
+.glow-edge-accent::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(0,255,133,0.15), transparent 40%, transparent 60%, rgba(34,211,238,0.08));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glow-edge-gold {
+  position: relative;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+}
+.glow-edge-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,184,0,0.18), transparent 40%, transparent 60%, rgba(255,215,94,0.08));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glow-edge-purple {
+  position: relative;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+}
+.glow-edge-purple::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(168,85,247,0.15), transparent 40%, transparent 60%, rgba(236,72,153,0.08));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── 4. MATCH STATUS BADGE SYSTEM ───────────────────────── */
+
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.match-badge-live {
+  background: rgba(0, 255, 133, 0.1);
+  border: 1px solid rgba(0, 255, 133, 0.25);
+  color: var(--accent);
+  box-shadow: 0 0 16px rgba(0, 255, 133, 0.1);
+}
+.match-badge-live::before {
+  content: '';
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: bc-live-dot 1.5s ease-in-out infinite;
+}
+
+.match-badge-ft {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  color: var(--emerald);
+}
+
+.match-badge-et {
+  background: rgba(255, 184, 0, 0.1);
+  border: 1px solid rgba(255, 184, 0, 0.2);
+  color: var(--gold);
+}
+
+.match-badge-pens {
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  color: var(--orange);
+}
+
+.match-badge-upcoming {
+  background: rgba(191, 195, 201, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--muted-soft);
+}
+
+/* ── 5. PREMIUM HOVER SYSTEM ────────────────────────────── */
+
+.hover-elevate {
+  transition: transform var(--duration-morph) var(--ease-snap),
+              box-shadow var(--duration-morph) var(--ease-soft),
+              border-color var(--duration-morph) var(--ease-soft);
+  will-change: transform;
+}
+.hover-elevate:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 40px rgba(0,0,0,0.18),
+    0 0 0 0.5px rgba(255,255,255,0.04) inset;
+}
+.hover-elevate:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: var(--duration-instant);
+}
+
+.hover-glow {
+  transition: border-color var(--duration-morph) var(--ease-soft),
+              box-shadow var(--duration-morph) var(--ease-soft),
+              transform var(--duration-morph) var(--ease-snap);
+  will-change: transform, border-color;
+}
+.hover-glow:hover {
+  border-color: rgba(0, 255, 133, 0.15);
+  box-shadow: 0 0 32px rgba(0, 255, 133, 0.04), 0 0 0 1px rgba(0, 255, 133, 0.06);
+  transform: translateY(-1px);
+}
+.hover-glow:active {
+  transform: translateY(0) scale(0.985);
+  transition-duration: var(--duration-instant);
+}
+
+.hover-glow-gold:hover {
+  border-color: rgba(255, 184, 0, 0.18) !important;
+  box-shadow: 0 0 32px rgba(255, 184, 0, 0.05), 0 0 0 1px rgba(255, 184, 0, 0.08) !important;
+}
+
+.hover-glow-purple:hover {
+  border-color: rgba(168, 85, 247, 0.18) !important;
+  box-shadow: 0 0 32px rgba(168, 85, 247, 0.05), 0 0 0 1px rgba(168, 85, 247, 0.08) !important;
+}
+
+/* ── 6. TOUCH TARGET SIZE HELPER ─────────────────────────── */
+
+.touch-target {
+  position: relative;
+}
+.touch-target::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* ── 7. TYPOGRAPHY SCALE EXTENSION ───────────────────────── */
+
+.heading-hero {
+  font-family: var(--font-broadcast), var(--font-sans);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  line-height: 0.88;
+}
+
+.heading-xl {
+  font-family: var(--font-broadcast), var(--font-sans);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  line-height: 0.92;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.heading-lg {
+  font-family: var(--font-broadcast), var(--font-sans);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  line-height: 0.94;
+  font-size: clamp(1.75rem, 4vw, 3rem);
+}
+
+.heading-md {
+  font-family: var(--font-broadcast), var(--font-sans);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  line-height: 0.96;
+  font-size: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.heading-sm {
+  font-family: var(--font-broadcast), var(--font-sans);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  line-height: 1;
+  font-size: clamp(1rem, 1.8vw, 1.375rem);
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-soft);
+}
+
+/* ── 8. LIVE ENERGY SYSTEM ──────────────────────────────── */
+
+.live-pulse {
+  position: relative;
+}
+.live-pulse::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(0,255,133,0.2), transparent 50%);
+  z-index: -1;
+  animation: live-pulse-border 3s ease-in-out infinite;
+}
+
+@keyframes live-pulse-border {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ── 9. RANK ANIMATION ──────────────────────────────────── */
+
+@keyframes rank-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes rank-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rank-enter-up {
+  animation: rank-slide-up 0.4s var(--spring-out) backwards;
+}
+.rank-enter-down {
+  animation: rank-slide-down 0.4s var(--spring-out) backwards;
+}
+
+@keyframes rank-change-glow {
+  0% { box-shadow: 0 0 0 0 rgba(0,255,133,0.4); }
+  100% { box-shadow: 0 0 20px 8px rgba(0,255,133,0); }
+}
+.rank-changed {
+  animation: rank-change-glow 1s ease-out;
+}
+
+/* ── 10. MOBILE OPTIMIZATION OVERRIDES ──────────────────── */
+
+@media (max-width: 480px) {
+  .content-container {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  .mobile-stack {
+    flex-direction: column;
+  }
+
+  .mobile-full {
+    width: 100% !important;
+  }
+
+  .mobile-gap-2 {
+    gap: 0.5rem;
+  }
+
+  .mobile-text-sm {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Safe bottom padding for mobile CTAs */
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+/* ── 11. RESPONSIVE GRID IMPROVEMENTS ───────────────────── */
+
+.grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    gap: 1.25rem;
+  }
+}
+
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+  gap: 0.75rem;
+}
+
+.grid-responsive-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 1rem;
+}
+
+/* ── 12. CINEMATIC CARD ENHANCEMENTS ────────────────────── */
+
+.card-cinematic {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(135deg, rgba(18,20,24,0.55) 0%, rgba(14,16,20,0.65) 100%);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: var(--radius-2xl);
+  transition: transform var(--duration-morph) var(--ease-snap),
+              border-color var(--duration-morph) var(--ease-soft),
+              box-shadow var(--duration-morph) var(--ease-soft);
+  will-change: transform;
+}
+.card-cinematic:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0,255,133,0.12);
+  box-shadow:
+    0 12px 44px rgba(0,0,0,0.22),
+    0 0 0 0.5px rgba(0,255,133,0.04) inset;
+}
+.card-cinematic:active {
+  transform: translateY(0) scale(0.985);
+  transition-duration: var(--duration-instant);
+}
+
+.card-cinematic::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: radial-gradient(600px 200px at 50% 0%, rgba(0,230,118,0.04), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--duration-morph) var(--ease-soft);
+  pointer-events: none;
+  z-index: 0;
+}
+.card-cinematic:hover::before {
+  opacity: 1;
+}
