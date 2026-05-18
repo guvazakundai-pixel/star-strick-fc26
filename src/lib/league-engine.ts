@@ -238,3 +238,46 @@ export async function updateStandingsFromFixture(
     }
   }
 }
+
+export async function updateStandingsFromFixtureDb(
+  leagueId: string,
+  seasonId: string,
+  fixture: { homeUserId: string; awayUserId: string; homeScore: number; awayScore: number }
+) {
+  const { db } = await import("@/lib/db");
+
+  for (const userId of [fixture.homeUserId, fixture.awayUserId]) {
+    const isHome = userId === fixture.homeUserId;
+    const scored = isHome ? fixture.homeScore : fixture.awayScore;
+    const conceded = isHome ? fixture.awayScore : fixture.homeScore;
+
+    const existing = await db.execute({
+      sql: "SELECT * FROM league_standings WHERE league_id=? AND season_id=? AND user_id=?",
+      args: [leagueId, seasonId, userId],
+    });
+
+    const prev = existing.rows[0] as Record<string, unknown> | undefined;
+    const played = (prev?.played as number ?? 0) + 1;
+    const gf = (prev?.goals_for as number ?? 0) + scored;
+    const ga = (prev?.goals_against as number ?? 0) + conceded;
+    let wins = prev?.wins as number ?? 0;
+    let draws = prev?.draws as number ?? 0;
+    let losses = prev?.losses as number ?? 0;
+    let points = prev?.points as number ?? 0;
+    let form: string = prev?.form as string ?? "";
+
+    let result: "W" | "D" | "L";
+    if (scored > conceded) { wins++; points += 3; result = "W"; }
+    else if (scored < conceded) { losses++; result = "L"; }
+    else { draws++; points += 1; result = "D"; }
+
+    form = getFormString(form, result);
+    const gd = gf - ga;
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO league_standings (id, league_id, season_id, user_id, points, played, wins, draws, losses, goals_for, goals_against, goal_difference, form)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [prev?.id || crypto.randomUUID(), leagueId, seasonId, userId, points, played, wins, draws, losses, gf, ga, gd, form],
+    });
+  }
+}

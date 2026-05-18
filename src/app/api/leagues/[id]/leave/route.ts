@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/route-auth";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -7,17 +7,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!auth.ok) return auth.response;
   const { id } = await params;
 
-  const participant = await prisma.leagueParticipant.findUnique({
-    where: { leagueId_userId: { leagueId: id, userId: auth.session.userId } },
-  });
-  if (!participant) return NextResponse.json({ error: "Not in this league" }, { status: 404 });
-
-  await prisma.$transaction(async (tx) => {
-    await tx.leagueStanding.deleteMany({
-      where: { leagueId: id, userId: auth.session.userId },
+  try {
+    await db.execute({
+      sql: "DELETE FROM league_participants WHERE league_id=? AND user_id=?",
+      args: [id, auth.session.userId],
     });
-    await tx.leagueParticipant.delete({ where: { id: participant.id } });
-  });
-
-  return NextResponse.json({ success: true });
+    await db.execute({
+      sql: "DELETE FROM league_standings WHERE league_id=? AND user_id=?",
+      args: [id, auth.session.userId],
+    });
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }

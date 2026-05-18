@@ -1,50 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/route-auth";
+import { generateRoundRobinFixtures } from "@/lib/league-engine";
+
+type Row = Record<string, unknown>;
+function uuid() { return crypto.randomUUID(); }
+function now() { return new Date().toISOString(); }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
 
-  const league = await prisma.league.findUnique({
-    where: { id },
-    include: { _count: { select: { participants: true } } },
-  });
-  if (!league) return NextResponse.json({ error: "League not found" }, { status: 404 });
+  try {
+    const league = await db.execute({ sql: "SELECT * FROM leagues WHERE id=?", args: [id] });
+    if (league.rows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (league.status === "COMPLETED") {
-    return NextResponse.json({ error: "League has ended" }, { status: 400 });
-  }
-
-  if (league._count.participants >= league.maxPlayers) {
-    return NextResponse.json({ error: "League is full" }, { status: 400 });
-  }
-
-  const existing = await prisma.leagueParticipant.findUnique({
-    where: { leagueId_userId: { leagueId: id, userId: auth.session.userId } },
-  });
-  if (existing) return NextResponse.json({ error: "Already joined" }, { status: 409 });
-
-  const season = await prisma.leagueSeason.findFirst({
-    where: { leagueId: id, status: "ACTIVE" },
-    orderBy: { seasonNumber: "desc" },
-  });
-
-  await prisma.$transaction(async (tx) => {
-    await tx.leagueParticipant.create({
-      data: { leagueId: id, userId: auth.session.userId },
+    const existing = await db.execute({
+      sql: "SELECT id FROM league_participants WHERE league_id=? AND user_id=?",
+      args: [id, auth.session.userId],
     });
-    if (season) {
-      await tx.leagueStanding.create({
-        data: {
-          leagueId: id,
-          userId: auth.session.userId,
-          seasonId: season.id,
-        },
-      });
-    }
-  });
+    if (existing.rows.length > 0) return NextResponse.json({ error: "Already joined" }, { status: 409 });
 
-  return NextResponse.json({ success: true });
+    const count = await db.execute({
+      sql: "SELECT count(*) as cnt FROM league_participants WHERE league_id=?",
+      args: [id],
+    });
+    const l = league.rows[0] as any;
+    if (Number(count.rows[0]?.cnt || 0) >= Number(l.max_players || 20)) {
+      return NextResponse.json({ error: "League is full" }, { status: 409 });
+    }
+
+    const participantId = uuid();
+    const standingId = uuid();
+
+    await db.execute({
+      sql: "INSERT INTO league_participants (id, league_id, user_id, joined_at) VALUES (?,?,?,?)",
+      args: [participantId, id, auth.session.userId, now()],
+    });
+
+    const season = await db.execute({
+      sql: "SELECT id FROM league_seasons WHERE league_id=? AND status='ACTIVE' ORDER BY season_number DESC LIMIT 1",
+      args: [id],
+    });
+    const seasonId = (season.rows[0] as any)?.id || "";
+
+    await db.execute({
+      sql: "INSERT OR IGNORE INTO league_standings (id, league_id, season_id, user_id, points, played, wins, draws, losses, goals_for, goals_against, goal_difference) VALUES (?,?,?,?,0,0,0,0,0,0,0,0)",
+      args: [standingId, id, seasonId, auth.session.userId],
+    });
+
+    return NextResponse.json({ success: true, data: { participantId } });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
