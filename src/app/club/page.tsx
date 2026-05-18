@@ -16,20 +16,21 @@ export default function ClubHubPage() {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 pb-28 space-y-3">
-        <Section title="My Club">
-          <Link href="/club/star-strick-fc" className="glass-card">View Profile</Link>
-          <Link href="/club/star-strick-fc/manage" className="glass-card">Management Dashboard</Link>
+        <Section title="Star Strick FC">
+          <Link href="/club/star-strick-fc" className="glass-card">View Club Profile</Link>
+          <Link href="/club/star-strick-fc/manage" className="glass-card">Club Management Dashboard</Link>
         </Section>
 
-        <Section title="Browse & Create">
+        <Section title="Operations Center">
+          <Link href="/club/control-tower" className="glass-card">Club Control Tower</Link>
           <Link href="/clubs" className="glass-card">Browse All Clubs</Link>
           <Link href="/clubs?q=star-strick-fc" className="glass-card">Find Star Strick FC</Link>
         </Section>
 
         <Section title="Quick Links">
           <Link href="/dashboard" className="glass-card">Player Dashboard</Link>
-          <Link href="/admin/control-tower" className="glass-card">Control Tower</Link>
-          <Link href="/admin/command-center" className="glass-card">Command Center (Admin)</Link>
+          <Link href="/admin/control-tower" className="glass-card">Admin Control Tower</Link>
+          <Link href="/admin/command-center" className="glass-card">Command Center (Super Admin)</Link>
         </Section>
       </div>
 
