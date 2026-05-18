@@ -76,6 +76,17 @@ model User {
   tournMatches2  TournamentMatch[] @relation("TournMatchP2")
   tournWins       TournamentMatch[] @relation("TournMatchWinner")
 
+  ownedLeagues        League[]              @relation("LeagueOwner")
+  leagueMemberships   LeagueMember[]        @relation("LeagueMemberUser")
+  leagueParticipations LeagueParticipant[]  @relation("LeagueParticipantUser")
+  fixturesHome        Fixture[]             @relation("FixtureHome")
+  fixturesAway        Fixture[]             @relation("FixtureAway")
+  fixturesSubmitted   Fixture[]             @relation("FixtureSubmitter")
+  fixturesConfirmed   Fixture[]             @relation("FixtureConfirmer")
+  fixturesAuthenticated Fixture[]           @relation("FixtureAuthenticator")
+  standings           Standing[]            @relation("StandingUser")
+  invitesCreated      InviteCode[]          @relation("InviteCreator")
+
   @@map("users")
 }
 
@@ -554,4 +565,158 @@ model TournamentMatch {
 
   @@index([tournamentId, round])
   @@map("tournament_matches")
+}
+
+model League {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  description   String?
+  logoUrl       String?  @map("logo_url")
+  bannerUrl     String?  @map("banner_url")
+  region        String   @default("Zimbabwe")
+  visibility    String   @default("PUBLIC")        // PUBLIC, UNLISTED, PRIVATE
+  format        String   @default("ROUND_ROBIN")   // ROUND_ROBIN, DOUBLE_RR, LADDER, GROUPS
+  maxPlayers    Int      @default(16) @map("max_players")
+  joinPolicy    String   @default("INVITE") @map("join_policy")  // OPEN, INVITE, APPROVAL, PASSWORD
+  joinPasswordHash String? @map("join_password_hash")
+  status        String   @default("DRAFT")         // DRAFT, REGISTRATION, LIVE, COMPLETED, ARCHIVED
+  ownerId       String   @map("owner_id")
+  owner         User     @relation("LeagueOwner", fields: [ownerId], references: [id])
+
+  seasons       LeagueSeason[]
+  invites       InviteCode[]
+  members       LeagueMember[]
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([status, visibility])
+  @@map("leagues")
+}
+
+model LeagueMember {
+  id          String   @id @default(uuid())
+  leagueId    String   @map("league_id")
+  userId      String   @map("user_id")
+  status      String   @default("ACTIVE")  // PENDING, ACTIVE, BANNED, LEFT
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  league      League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user        User     @relation("LeagueMemberUser", fields: [userId], references: [id])
+
+  @@unique([leagueId, userId])
+  @@map("league_members")
+}
+
+model LeagueSeason {
+  id            String   @id @default(uuid())
+  leagueId      String   @map("league_id")
+  seasonNumber  Int      @map("season_number")
+  name          String
+  phase         String   @default("REGULAR")       // REGULAR, PLAYOFF, SEMI, FINAL, COMPLETE
+  startAt       DateTime? @map("start_at")
+  endAt         DateTime? @map("end_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  league        League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  participants  LeagueParticipant[]
+  fixtures      Fixture[]
+  standings     Standing[]
+
+  @@unique([leagueId, seasonNumber])
+  @@map("league_seasons")
+}
+
+model LeagueParticipant {
+  id          String   @id @default(uuid())
+  seasonId    String   @map("season_id")
+  userId      String   @map("user_id")
+  status      String   @default("ACTIVE")          // PENDING, ACTIVE, WITHDRAWN, BANNED
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  season      LeagueSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user        User     @relation("LeagueParticipantUser", fields: [userId], references: [id])
+
+  @@unique([seasonId, userId])
+  @@map("league_participants")
+}
+
+model Fixture {
+  id                String    @id @default(uuid())
+  seasonId          String    @map("season_id")
+  matchday          Int
+  homeId            String    @map("home_id")
+  awayId            String    @map("away_id")
+  homeScore         Int?      @map("home_score")
+  awayScore         Int?      @map("away_score")
+  status            String    @default("SCHEDULED")  // SCHEDULED, SUBMITTED, CONFIRMED, AUTHENTICATED, DISPUTED, VOID
+  submittedById     String?   @map("submitted_by")
+  submittedAt       DateTime? @map("submitted_at")
+  submittedHomeScore Int?     @map("submitted_home_score")
+  submittedAwayScore Int?     @map("submitted_away_score")
+  confirmedById     String?   @map("confirmed_by")
+  confirmedAt       DateTime? @map("confirmed_at")
+  disputedHomeScore Int?      @map("disputed_home_score")
+  disputedAwayScore Int?      @map("disputed_away_score")
+  authenticatedById String?   @map("authenticated_by")
+  authenticatedAt   DateTime? @map("authenticated_at")
+  scheduledFor      DateTime? @map("scheduled_for")
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  season            LeagueSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  home              User      @relation("FixtureHome", fields: [homeId], references: [id])
+  away              User      @relation("FixtureAway", fields: [awayId], references: [id])
+  submittedBy       User?     @relation("FixtureSubmitter", fields: [submittedById], references: [id])
+  confirmedBy       User?     @relation("FixtureConfirmer", fields: [confirmedById], references: [id])
+  authenticatedBy   User?     @relation("FixtureAuthenticator", fields: [authenticatedById], references: [id])
+
+  @@index([seasonId, matchday])
+  @@index([status])
+  @@map("fixtures")
+}
+
+model Standing {
+  id            String   @id @default(uuid())
+  seasonId      String   @map("season_id")
+  userId        String   @map("user_id")
+  played        Int      @default(0)
+  wins          Int      @default(0)
+  draws         Int      @default(0)
+  losses        Int      @default(0)
+  goalsFor      Int      @default(0) @map("goals_for")
+  goalsAgainst  Int      @default(0) @map("goals_against")
+  points        Int      @default(0)
+  form          String   @default("")              // last 5: "WWDLW"
+  position      Int      @default(0)
+  prevPosition  Int?     @map("prev_position")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  season        LeagueSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user          User     @relation("StandingUser", fields: [userId], references: [id])
+
+  @@unique([seasonId, userId])
+  @@index([seasonId, points])
+  @@map("standings")
+}
+
+model InviteCode {
+  id          String   @id @default(uuid())
+  leagueId    String?  @map("league_id")
+  tournamentId String? @map("tournament_id")
+  code        String   @unique
+  createdById String   @map("created_by")
+  maxUses     Int?     @map("max_uses")
+  uses        Int      @default(0)
+  expiresAt   DateTime? @map("expires_at")
+  disabled    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  league      League?  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation("InviteCreator", fields: [createdById], references: [id])
+
+  @@index([code, disabled])
+  @@map("invite_codes")
 }
