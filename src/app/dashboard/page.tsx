@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { db } from "@/lib/db";
 import { prisma } from "@/lib/prisma";
 import { PlayerHubClient } from "@/components/PlayerHubClient";
 
 export const dynamic = "force-dynamic";
+
+type Row = Record<string, unknown>;
 
 export default async function PlayerDashboard() {
   const session = await getSession();
@@ -15,30 +18,15 @@ export default async function PlayerDashboard() {
     try { return await fn(); } catch (e) { console.error("[Dashboard] Query failed:", e); return fallback; }
   }
 
-  const [
-    user,
-    tournamentParticipations,
-    leagueParticipations,
-    activities,
-    notifications,
-    achievements,
-    friends,
-    upcomingFixtures,
-  ] = await Promise.all([
-    safeQuery(() =>
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          platform: true,
-          country: true,
-          avatarUrl: true,
-          bio: true,
-        },
-      })
-    , null),
+  const user = await safeQuery(async () => {
+    const result = await db.execute({
+      sql: `SELECT id, username, display_name AS displayName, platform, COALESCE(country, 'Zimbabwe') AS country, avatar_url AS avatarUrl, bio FROM users WHERE id = ? LIMIT 1`,
+      args: [userId],
+    });
+    return (result.rows[0] as Row) ?? null;
+  }, null);
+
+  const [tournamentParticipations, leagueParticipations, activities, notifications, achievements, friends, upcomingFixtures] = await Promise.all([
 
     safeQuery(() =>
       prisma.tournamentParticipant.findMany({
