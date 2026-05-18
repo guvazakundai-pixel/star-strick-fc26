@@ -4,20 +4,29 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/route-auth";
 import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
+const FORMATS = ["KNOCKOUT", "ROUND_ROBIN", "GROUPS"] as const;
+const VISIBILITY = ["PUBLIC", "PRIVATE", "INVITE_ONLY"] as const;
 const PLATFORMS = ["CROSSPLAY", "PS5", "XBOX", "PC"] as const;
 
 const CreateSchema = z.object({
   name: z.string().min(3).max(60),
-  type: z.enum(["KNOCKOUT", "ROUND_ROBIN"]).default("KNOCKOUT"),
+  type: z.enum(FORMATS).default("KNOCKOUT"),
   city: z.string().max(30).nullable().optional(),
   platform: z.enum(PLATFORMS).default("CROSSPLAY"),
   maxPlayers: z.number().int().min(4).max(64).default(16),
   entryFee: z.number().int().min(0).max(2000).default(0),
   description: z.string().max(500).optional(),
   startAt: z.string().optional(),
+  visibility: z.enum(VISIBILITY).default("PUBLIC"),
+  settings: z
+    .object({
+      halfLengthMinutes: z.number().int().min(2).max(14).default(6),
+      gameSpeed: z.enum(["Slow", "Normal", "Fast"]).default("Normal"),
+      cameraAngle: z.string().default("Tele Broadcast"),
+      squadType: z.enum(["Default", "Custom"]).default("Default"),
+    })
+    .default({}),
 });
-
-const CREATOR_FEE_USD = 500;
 
 export async function GET() {
   const res = await db.execute({
@@ -65,26 +74,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { name, type, city, platform, maxPlayers, entryFee, description, startAt } = parsed.data;
+  const { name, type, city, platform, maxPlayers, entryFee, description, startAt, visibility, settings } = parsed.data;
 
   const id = crypto.randomUUID();
   const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${id.slice(0, 8)}`;
   const now = new Date().toISOString();
 
   try {
-    await db.execute({ sql: "ALTER TABLE tournaments ADD COLUMN entry_fee INTEGER DEFAULT 0", args: [] });
+    await db.execute({ sql: "ALTER TABLE tournaments ADD COLUMN visibility TEXT DEFAULT 'PUBLIC'", args: [] });
   } catch {}
   try {
-    await db.execute({ sql: "ALTER TABLE tournaments ADD COLUMN creator_fee INTEGER DEFAULT 0", args: [] });
-  } catch {}
-  try {
-    await db.execute({ sql: "ALTER TABLE tournaments ADD COLUMN platform TEXT", args: [] });
+    await db.execute({ sql: "ALTER TABLE tournaments ADD COLUMN settings TEXT", args: [] });
   } catch {}
 
   await db.execute({
-    sql: `INSERT INTO tournaments (id, name, slug, type, status, city, platform, prize_pool, entry_fee, creator_fee, max_players, description, start_at, organizer_id, created_at, updated_at)
-          VALUES (?, ?, ?, ?, 'REGISTRATION', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, name, slug, type, city ?? null, platform, entryFee, CREATOR_FEE_USD, maxPlayers, description ?? null, startAt ?? null, auth.session.userId, now, now],
+    sql: `INSERT INTO tournaments (id, name, slug, type, status, city, platform, prize_pool, entry_fee, creator_fee, max_players, description, start_at, visibility, settings, organizer_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'REGISTRATION', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, name, slug, type, city ?? null, platform, entryFee, 500, maxPlayers, description ?? null, startAt ?? null, visibility, JSON.stringify(settings), auth.session.userId, now, now],
   });
 
   return NextResponse.json({ tournament: { id, name, type, status: "REGISTRATION", slug } }, { status: 201 });

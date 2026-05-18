@@ -1,51 +1,56 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/route-auth";
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ tournamentId: string }> },
 ) {
   const { tournamentId } = await params;
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-    select: { id: true, status: true, maxPlayers: true },
-  });
-  if (!tournament) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const body = await req.json().catch(() => ({}));
+  const assignedTeam = body.assignedTeam || null;
 
-  if (tournament.status !== "REGISTRATION") {
-    return NextResponse.json(
-      { error: "Registration is not open for this tournament" },
-      { status: 400 },
-    );
+  const tournRes = await db.execute({
+    sql: "SELECT id, status, max_players FROM tournaments WHERE id = ?",
+    args: [tournamentId],
+  });
+  const tourn = tournRes.rows[0] as any;
+  if (!tourn) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (tourn.status !== "REGISTRATION") {
+    return NextResponse.json({ error: "Registration is not open" }, { status: 400 });
   }
 
-  const existing = await prisma.tournamentParticipant.findUnique({
-    where: { tournamentId_userId: { tournamentId, userId: auth.session.userId } },
+  const existingRes = await db.execute({
+    sql: "SELECT id FROM tournament_participants WHERE tournament_id = ? AND user_id = ?",
+    args: [tournamentId, auth.session.userId],
   });
-  if (existing) {
+  if (existingRes.rows.length > 0) {
     return NextResponse.json({ error: "Already registered" }, { status: 409 });
   }
 
-  const participantCount = await prisma.tournamentParticipant.count({
-    where: { tournamentId, status: { in: ["REGISTERED", "ACTIVE"] } },
+  const countRes = await db.execute({
+    sql: "SELECT count(*) as c FROM tournament_participants WHERE tournament_id = ? AND status IN ('REGISTERED', 'ACTIVE')",
+    args: [tournamentId],
   });
-  if (participantCount >= tournament.maxPlayers) {
+  const count = Number((countRes.rows[0] as any)?.c ?? 0);
+  if (count >= Number(tourn.max_players)) {
     return NextResponse.json({ error: "Tournament is full" }, { status: 400 });
   }
 
-  const participant = await prisma.tournamentParticipant.create({
-    data: {
-      tournamentId,
-      userId: auth.session.userId,
-      seed: participantCount + 1,
-    },
+  try {
+    await db.execute({ sql: "ALTER TABLE tournament_participants ADD COLUMN assigned_team TEXT", args: [] });
+  } catch {}
+
+  await db.execute({
+    sql: "INSERT INTO tournament_participants (id, tournament_id, user_id, seed, status, assigned_team, created_at) VALUES (?, ?, ?, ?, 'REGISTERED', ?, ?)",
+    args: [crypto.randomUUID(), tournamentId, auth.session.userId, count + 1, assignedTeam, new Date().toISOString()],
   });
 
-  return NextResponse.json({ participant }, { status: 201 });
+  return NextResponse.json({ success: true }, { status: 201 });
 }
 
 export async function DELETE(
@@ -56,19 +61,20 @@ export async function DELETE(
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
 
-  const existing = await prisma.tournamentParticipant.findUnique({
-    where: { tournamentId_userId: { tournamentId, userId: auth.session.userId } },
+  const existingRes = await db.execute({
+    sql: "SELECT id, status FROM tournament_participants WHERE tournament_id = ? AND user_id = ?",
+    args: [tournamentId, auth.session.userId],
   });
-  if (!existing) {
-    return NextResponse.json({ error: "Not registered" }, { status: 404 });
-  }
-  if (existing.status === "ELIMINATED" || existing.status === "WITHDRAWN") {
+  const row = existingRes.rows[0] as any;
+  if (!row) return NextResponse.json({ error: "Not registered" }, { status: 404 });
+
+  if (row.status === "ELIMINATED" || row.status === "WITHDRAWN") {
     return NextResponse.json({ error: "Cannot withdraw in current state" }, { status: 400 });
   }
 
-  await prisma.tournamentParticipant.update({
-    where: { id: existing.id },
-    data: { status: "WITHDRAWN" },
+  await db.execute({
+    sql: "UPDATE tournament_participants SET status = 'WITHDRAWN' WHERE id = ?",
+    args: [row.id],
   });
 
   return NextResponse.json({ success: true });

@@ -4,83 +4,105 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { AnimatedBracket } from "@/components/ui/AnimatedBracket";
+import { MatchdayHub } from "@/components/tournaments/MatchdayHub";
 
 type Participant = {
   id: string;
   userId: string;
   username: string;
   displayName?: string | null;
+  avatarUrl?: string | null;
   seed: number;
   status: string;
-};
-
-type BracketMatch = {
-  id: string;
-  round: number;
-  position: number;
-  player1Id: string | null;
-  player2Id: string | null;
-  winnerId: string | null;
-  score1: number | null;
-  score2: number | null;
-  status: string;
+  finalPosition?: number | null;
+  assignedTeam?: string | null;
 };
 
 type TournamentMatch = {
   id: string;
   round: number;
-  position: number;
-  player1: { id: string; username: string; displayName?: string | null } | null;
-  player2: { id: string; username: string; displayName?: string | null } | null;
+  matchIndex: number;
+  player1: { id: string; username: string; displayName?: string | null; avatarUrl?: string | null } | null;
+  player2: { id: string; username: string; displayName?: string | null; avatarUrl?: string | null } | null;
+  winner: { id: string; username: string; displayName?: string | null } | null;
   score1: number | null;
   score2: number | null;
-  winnerId: string | null;
   status: string;
+  groupId?: string | null;
+  bracket?: string | null;
   scheduledAt?: string | null;
+  completedAt?: string | null;
+};
+
+type GroupData = {
+  id: string;
+  name: string;
+  seed: number;
+  standings: {
+    id: string;
+    userId: string;
+    username?: string;
+    displayName?: string | null;
+    points: number;
+    played: number;
+    wins: number;
+    draws: number;
+    losses: number;
+    goalsFor: number;
+    goalsAgainst: number;
+    goalDifference: number;
+  }[];
 };
 
 type TournamentDetail = {
   id: string;
   name: string;
+  slug: string;
   type: string;
   status: string;
+  city?: string | null;
   prizePool: number;
   entryFee: number;
   maxPlayers: number;
   description?: string | null;
+  platform?: string | null;
+  visibility: string;
+  settings?: Record<string, unknown> | null;
+  bracket?: unknown;
   startAt?: string | null;
+  endAt?: string | null;
   createdAt: string;
-  organizer: { id: string; username: string; displayName?: string | null };
+  organizer: { id: string; username: string; displayName?: string | null; avatarUrl?: string | null };
 };
 
 type TournamentDetailClientProps = {
   tournament: TournamentDetail;
-  participants?: Participant[];
-  bracket?: { rounds: { id: string; round: number; position: number; player1Id: string | null; player2Id: string | null; winnerId: string | null; score1: number | null; score2: number | null; status: string }[][] } | null;
-  matches?: TournamentMatch[];
-  isOrganizer?: boolean;
-  isParticipant?: boolean;
-  onRegister?: () => void;
-  onJoin?: () => void;
-  onEdit?: () => void;
-  onCancel?: () => void;
-  onGenerateBracket?: () => void;
-  onAdvanceMatch?: (matchId: string) => void;
-  className?: string;
+  participants: Participant[];
+  matches: TournamentMatch[];
+  groups: GroupData[];
+  typeLabel: string;
+  statusLabel: string;
 };
 
 const typeLabels: Record<string, string> = {
-  KNOCKOUT: "Single Elim",
-  DOUBLE_ELIM: "Double Elim",
+  KNOCKOUT: "Knockout",
   ROUND_ROBIN: "Round Robin",
-  GROUP_STAGE: "Group Stage",
+  GROUPS: "Group + Knockout",
 };
 
-function UsersIcon() {
+function ShieldIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function TrophyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+      <path d="M6 9H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M18 9h2a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
+      <path d="M6 4h12v5a6 6 0 0 1-12 0V4z" /><path d="M12 15v3" /><path d="M8 21h8" />
     </svg>
   );
 }
@@ -93,31 +115,19 @@ function CalendarIcon() {
   );
 }
 
-function ShieldIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
-}
-
 export function TournamentDetailClient({
   tournament,
-  participants = [],
-  bracket,
-  matches = [],
-  isOrganizer = false,
-  isParticipant = false,
-  onRegister,
-  onJoin,
-  onEdit,
-  onCancel,
-  onGenerateBracket,
-  onAdvanceMatch,
-  className = "",
+  participants,
+  matches,
+  groups,
+  typeLabel,
+  statusLabel,
 }: TournamentDetailClientProps) {
-  const [activeTab, setActiveTab] = useState<string>("bracket");
-  const canRegister = tournament.status === "REGISTRATION" && !isParticipant;
+  const [activeTab, setActiveTab] = useState<string>("matchday");
+  const [registering, setRegistering] = useState(false);
+
+  const canRegister = tournament.status === "REGISTRATION";
+  const isOrganizer = false;
 
   const statusColor =
     tournament.status === "LIVE"
@@ -130,34 +140,37 @@ export function TournamentDetailClient({
 
   const organizerName = tournament.organizer.displayName || tournament.organizer.username;
 
-  const showGroups = tournament.type === "GROUP_STAGE" || tournament.type === "ROUND_ROBIN";
+  const bracketRounds = (() => {
+    if (!tournament.bracket) return [];
+    const raw = Array.isArray(tournament.bracket) ? tournament.bracket : [];
+    if (raw.length === 0) return [];
+    const maxRound = Math.max(...raw.map((m: any) => m.round));
+    const rounds: any[][] = [];
+    for (let r = 1; r <= maxRound; r++) {
+      rounds.push(raw.filter((m: any) => m.round === r));
+    }
+    return rounds;
+  })();
 
-  const bracketRounds = bracket?.rounds ?? [];
+  const hasBracket = bracketRounds.length > 0;
 
-  const animatedBracketData = bracketRounds.length > 0
+  const animatedBracketData = hasBracket
     ? {
         rounds: bracketRounds.map((round) =>
-          round.map((m) => {
-            const p1 = participants.find((p) => p.userId === m.player1Id);
-            const p2 = participants.find((p) => p.userId === m.player2Id);
-            const winner = m.winnerId
-              ? participants.find((p) => p.userId === m.winnerId)
-              : null;
+          round.map((m: any) => {
+            const p1 = participants.find((p) => p.userId === m.homeUserId || p.userId === m.player1Id);
+            const p2 = participants.find((p) => p.userId === m.awayUserId || p.userId === m.player2Id);
+            const winnerId = m.winnerId || m.winner_id;
+            const winner = winnerId ? participants.find((p) => p.userId === winnerId) : null;
             return {
               id: m.id,
               round: m.round,
-              position: m.position,
-              player1: p1
-                ? { id: p1.userId, name: p1.displayName || p1.username, seed: p1.seed }
-                : null,
-              player2: p2
-                ? { id: p2.userId, name: p2.displayName || p2.username, seed: p2.seed }
-                : null,
-              winner: winner
-                ? { id: winner.userId, name: winner.displayName || winner.username, seed: winner.seed }
-                : null,
-              score1: m.score1,
-              score2: m.score2,
+              position: m.matchIndex ?? m.position ?? 0,
+              player1: p1 ? { id: p1.userId, name: p1.displayName || p1.username, seed: p1.seed } : null,
+              player2: p2 ? { id: p2.userId, name: p2.displayName || p2.username, seed: p2.seed } : null,
+              winner: winner ? { id: winner.userId, name: winner.displayName || winner.username, seed: winner.seed } : null,
+              score1: m.score1 != null ? Number(m.score1) : null,
+              score2: m.score2 != null ? Number(m.score2) : null,
               status: m.status === "COMPLETED" ? "COMPLETED" as const : m.status === "LIVE" ? "LIVE" as const : "PENDING" as const,
             };
           })
@@ -168,15 +181,31 @@ export function TournamentDetailClient({
     : null;
 
   const tabs = [
+    { id: "matchday", label: "Matchday" },
     ...(animatedBracketData ? [{ id: "bracket", label: "Bracket" }] : []),
-    ...(showGroups ? [{ id: "groups", label: "Groups" }] : []),
-    { id: "matches", label: "Matches" },
+    ...(groups.length > 0 ? [{ id: "groups", label: "Standings" }] : []),
+    { id: "matches", label: "All Matches" },
     { id: "participants", label: `Players (${participants.length})` },
   ];
 
+  async function handleRegister() {
+    setRegistering(true);
+    try {
+      const res = await fetch(`/api/tournaments/${tournament.id}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } finally {
+      setRegistering(false);
+    }
+  }
+
   return (
-    <div className={`space-y-6 ${className}`}>
-      {/* Back link */}
+    <div className="space-y-6">
       <Link
         href="/tournaments"
         className="inline-flex items-center gap-1 text-[10px] font-black tracking-[0.2em] uppercase text-muted-soft hover:text-ink transition-colors"
@@ -187,7 +216,6 @@ export function TournamentDetailClient({
         Tournaments
       </Link>
 
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -207,14 +235,13 @@ export function TournamentDetailClient({
                 : "radial-gradient(600px 300px at 30% 20%, rgba(255,184,0,0.04), transparent 70%)",
           }}
         />
-
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2">
             <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${statusColor}`}>
-              {tournament.status}
+              {statusLabel}
             </span>
             <span className="text-[9px] font-bold tracking-wider text-muted-faint uppercase">
-              {typeLabels[tournament.type] || tournament.type}
+              {typeLabel}
             </span>
           </div>
 
@@ -243,10 +270,12 @@ export function TournamentDetailClient({
           )}
 
           <div className="flex flex-wrap items-center gap-3 mt-5">
-            <span className="inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-accent/5 border border-accent/15 text-accent">
-              <TrophyIcon />
-              ${(tournament.prizePool / 100).toFixed(2)} prize
-            </span>
+            {tournament.prizePool > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-accent/5 border border-accent/15 text-accent">
+                <TrophyIcon />
+                ${(tournament.prizePool / 100).toFixed(2)} prize
+              </span>
+            )}
             {tournament.entryFee > 0 && (
               <span className="inline-flex items-center rounded-[6px] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-gold/5 border border-gold/15 text-gold">
                 ${(tournament.entryFee / 100).toFixed(2)} entry
@@ -256,76 +285,29 @@ export function TournamentDetailClient({
               <span className="inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-cyan/5 border border-cyan/15 text-cyan">
                 <CalendarIcon />
                 {new Date(tournament.startAt).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
+                  month: "short", day: "numeric", year: "numeric",
                 })}
+              </span>
+            )}
+            {tournament.settings && (
+              <span className="inline-flex items-center rounded-[6px] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-emerald/5 border border-emerald/15 text-emerald">
+                {String((tournament.settings as any).halfLengthMinutes ?? "-")} min / {(tournament.settings as any).gameSpeed ?? "Normal"}
               </span>
             )}
           </div>
 
-          {/* Register / Join */}
-          {canRegister && onRegister && (
+          {canRegister && (
             <button
-              onClick={onRegister}
-              className="mt-5 w-full sm:w-auto h-12 px-8 rounded-[16px] cta-primary font-bold text-sm tracking-[0.18em] uppercase text-[#0D0D0F]"
+              onClick={handleRegister}
+              disabled={registering}
+              className="mt-5 w-full sm:w-auto h-12 px-8 rounded-[16px] cta-primary font-bold text-sm tracking-[0.18em] uppercase text-[#0D0D0F] disabled:opacity-50"
             >
-              {tournament.entryFee > 0
-                ? `Register — $${(tournament.entryFee / 100).toFixed(2)}`
-                : "Register — Free"}
+              {registering ? "Registering..." : tournament.entryFee > 0 ? `Register — $${(tournament.entryFee / 100).toFixed(2)}` : "Register — Free"}
             </button>
-          )}
-
-          {!isParticipant && !canRegister && tournament.status === "REGISTRATION" && (
-            <p className="mt-3 text-[11px] text-muted-faint">Registration is full</p>
-          )}
-
-          {isParticipant && (
-            <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="h-3.5 w-3.5">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
-              Registered
-            </p>
           )}
         </div>
       </motion.div>
 
-      {/* Admin Controls */}
-      {isOrganizer && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-wrap gap-2"
-        >
-          {onEdit && (
-            <button
-              onClick={onEdit}
-              className="h-9 px-4 rounded-[10px] text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all"
-            >
-              Edit
-            </button>
-          )}
-          {onGenerateBracket && (
-            <button
-              onClick={onGenerateBracket}
-              className="h-9 px-4 rounded-[10px] text-[10px] font-bold uppercase tracking-wider bg-cyan/10 text-cyan border border-cyan/20 hover:bg-cyan/20 transition-all"
-            >
-              Generate Bracket
-            </button>
-          )}
-          {onCancel && (
-            <button
-              onClick={onCancel}
-              className="h-9 px-4 rounded-[10px] text-[10px] font-bold uppercase tracking-wider bg-negative/10 text-negative border border-negative/20 hover:bg-negative/20 transition-all"
-            >
-              Cancel Tournament
-            </button>
-          )}
-        </motion.div>
-      )}
-
-      {/* Tabs */}
       {tabs.length > 1 && (
         <div className="flex gap-1 p-1 rounded-[14px] overflow-x-auto bc-no-scrollbar" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.04)" }}>
           {tabs.map((t) => (
@@ -345,7 +327,24 @@ export function TournamentDetailClient({
       )}
 
       <AnimatePresence mode="wait">
-        {/* Bracket */}
+        {activeTab === "matchday" && (
+          <motion.div
+            key="matchday"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <MatchdayHub
+              tournament={tournament}
+              participants={participants}
+              groups={groups}
+              matches={matches}
+              isOrganizer={isOrganizer}
+            />
+          </motion.div>
+        )}
+
         {activeTab === "bracket" && animatedBracketData && (
           <motion.div
             key="bracket"
@@ -360,8 +359,7 @@ export function TournamentDetailClient({
           </motion.div>
         )}
 
-        {/* Groups (placeholder for now) */}
-        {activeTab === "groups" && (
+        {activeTab === "groups" && groups.length > 0 && (
           <motion.div
             key="groups"
             initial={{ opacity: 0, y: 12 }}
@@ -369,28 +367,64 @@ export function TournamentDetailClient({
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
           >
-            <div className="glass rounded-[24px] p-6 text-center">
-              <p className="text-sm text-muted-soft mb-4">Group Stage</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {["Group A", "Group B", "Group C", "Group D"].slice(0, Math.ceil(participants.length / 4)).map((group) => (
-                  <div key={group} className="frosted-card-sm p-4 rounded-[16px]">
-                    <p className="text-[10px] font-black tracking-[0.2em] uppercase text-accent mb-3">{group}</p>
-                    <div className="space-y-1.5">
-                      {participants.slice(0, 4).map((p) => (
-                        <div key={p.id} className="flex items-center gap-2 text-[12px] text-ink">
-                          <span className="text-muted-faint font-mono text-[10px] w-4">{p.seed}</span>
-                          <span className="truncate">{p.displayName || p.username}</span>
-                        </div>
-                      ))}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {groups.map((group) => {
+                const sorted = [...group.standings].sort((a, b) => {
+                  if (b.points !== a.points) return b.points - a.points;
+                  const gdA = a.goalsFor - a.goalsAgainst;
+                  const gdB = b.goalsFor - b.goalsAgainst;
+                  if (gdB !== gdA) return gdB - gdA;
+                  return b.goalsFor - a.goalsFor;
+                });
+                return (
+                  <div key={group.id} className="frosted-card-sm rounded-[16px] overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-border">
+                      <h3 className="text-[10px] font-black tracking-[0.2em] uppercase text-accent">{group.name}</h3>
                     </div>
+                    <table className="w-full text-[11px]">
+                      <thead>
+                        <tr className="border-b border-border text-[9px] font-bold uppercase tracking-wider text-muted-faint">
+                          <th className="px-3 py-2 text-left">#</th>
+                          <th className="px-3 py-2 text-left">Player</th>
+                          <th className="px-3 py-2 text-center">P</th>
+                          <th className="px-3 py-2 text-center">W</th>
+                          <th className="px-3 py-2 text-center">D</th>
+                          <th className="px-3 py-2 text-center">L</th>
+                          <th className="px-3 py-2 text-center">GF</th>
+                          <th className="px-3 py-2 text-center">GA</th>
+                          <th className="px-3 py-2 text-center">GD</th>
+                          <th className="px-3 py-2 text-center">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sorted.map((s, i) => {
+                          const qualified = i < 2;
+                          return (
+                            <tr key={s.userId} className={`${i % 2 === 0 ? "bg-white/[0.02]" : ""} ${qualified ? "border-l-2 border-accent" : ""} hover:bg-white/[0.03]`}>
+                              <td className={`px-3 py-2 font-mono tabular-nums ${qualified ? "text-accent" : "text-muted-faint"}`}>{i + 1}</td>
+                              <td className="px-3 py-2 font-medium text-ink truncate max-w-[120px]">{s.displayName ?? s.username ?? "Player"}</td>
+                              <td className="px-3 py-2 text-center font-mono tabular-nums text-muted-soft">{s.played}</td>
+                              <td className="px-3 py-2 text-center font-mono tabular-nums text-accent">{s.wins}</td>
+                              <td className="px-3 py-2 text-center font-mono tabular-nums text-gold">{s.draws}</td>
+                              <td className="px-3 py-2 text-center font-mono tabular-nums text-negative">{s.losses}</td>
+                              <td className="px-3 py-2 text-center font-mono tabular-nums text-ink">{s.goalsFor}</td>
+                              <td className="px-3 py-2 text-center font-mono tabular-nums text-muted-soft">{s.goalsAgainst}</td>
+                              <td className={`px-3 py-2 text-center font-mono tabular-nums ${s.goalDifference > 0 ? "text-accent" : s.goalDifference < 0 ? "text-negative" : "text-muted-soft"}`}>
+                                {s.goalDifference > 0 ? "+" : ""}{s.goalDifference}
+                              </td>
+                              <td className="px-3 py-2 text-center font-mono tabular-nums font-bold text-ink">{s.points}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </motion.div>
         )}
 
-        {/* Matches Schedule */}
         {activeTab === "matches" && (
           <motion.div
             key="matches"
@@ -414,49 +448,39 @@ export function TournamentDetailClient({
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
-                    className={`frosted-card-sm p-4 rounded-[16px] transition-all ${
-                      isLive ? "border-accent/20" : ""
-                    }`}
+                    className={`frosted-card-sm p-4 rounded-[16px] transition-all ${isLive ? "border-accent/20" : ""}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 flex-1 text-right">
-                        <p className={`text-sm font-bold truncate ${m.winnerId === m.player1?.id ? "text-accent" : "text-ink"}`}>
+                        <p className={`text-sm font-bold truncate ${m.winner?.id === m.player1?.id ? "text-accent" : "text-ink"}`}>
                           {m.player1?.displayName || m.player1?.username || "TBD"}
                         </p>
+                        {(() => {
+                          const p = participants.find((p) => p.userId === m.player1?.id);
+                          return p?.assignedTeam ? <p className="text-[9px] text-muted-faint truncate">{p.assignedTeam}</p> : null;
+                        })()}
                       </div>
                       <div className="shrink-0 flex flex-col items-center min-w-[60px]">
-                        {isComplete && m.score1 !== null && m.score2 !== null ? (
-                          <span className="font-mono text-lg font-bold tabular-nums text-ink">
-                            {m.score1}–{m.score2}
-                          </span>
+                        {isComplete && m.score1 !== null ? (
+                          <span className="font-mono text-lg font-bold tabular-nums text-ink">{m.score1}–{m.score2}</span>
                         ) : isLive ? (
                           <span className="flex items-center gap-1 text-[9px] font-bold uppercase text-accent">
-                            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-                            Live
+                            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />Live
                           </span>
                         ) : (
                           <span className="text-[9px] text-muted-faint uppercase tracking-wider">vs</span>
                         )}
-                        {m.scheduledAt && !isComplete && (
-                          <span className="text-[8px] text-muted-faint mt-0.5">
-                            {new Date(m.scheduledAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                          </span>
-                        )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className={`text-sm font-bold truncate ${m.winnerId === m.player2?.id ? "text-accent" : "text-ink"}`}>
+                        <p className={`text-sm font-bold truncate ${m.winner?.id === m.player2?.id ? "text-accent" : "text-ink"}`}>
                           {m.player2?.displayName || m.player2?.username || "TBD"}
                         </p>
+                        {(() => {
+                          const p = participants.find((p) => p.userId === m.player2?.id);
+                          return p?.assignedTeam ? <p className="text-[9px] text-muted-faint truncate">{p.assignedTeam}</p> : null;
+                        })()}
                       </div>
                     </div>
-                    {m.status === "READY" && isOrganizer && onAdvanceMatch && (
-                      <button
-                        onClick={() => onAdvanceMatch(m.id)}
-                        className="mt-2 w-full text-center py-1.5 rounded-[8px] text-[9px] font-bold uppercase tracking-wider bg-accent/10 text-accent hover:bg-accent/20 transition-all"
-                      >
-                        Advance Match
-                      </button>
-                    )}
                   </motion.div>
                 );
               })
@@ -464,7 +488,6 @@ export function TournamentDetailClient({
           </motion.div>
         )}
 
-        {/* Participants */}
         {activeTab === "participants" && (
           <motion.div
             key="participants"
@@ -500,7 +523,9 @@ export function TournamentDetailClient({
                     {(p.displayName || p.username)[0].toUpperCase()}
                   </div>
                   <span className="text-sm font-bold text-ink truncate">{p.displayName || p.username}</span>
-                  <span className="text-[9px] text-muted-soft lowercase">@{p.username}</span>
+                  {p.assignedTeam && (
+                    <span className="text-[9px] text-muted-soft bg-white/[0.03] px-2 py-0.5 rounded-[4px]">{p.assignedTeam}</span>
+                  )}
                   <span className="ml-auto text-[8px] font-black uppercase tracking-wider text-muted-faint">{p.status}</span>
                 </motion.div>
               ))
