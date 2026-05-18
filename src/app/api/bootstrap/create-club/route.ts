@@ -21,8 +21,8 @@ export async function GET() {
     }
 
     await db.execute({
-      sql: `INSERT INTO clubs (id, name, slug, tag, description, city, country, manager_id, created_by_user_id, is_public, recruitment_status, created_at, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,1,'OPEN',?,?)`,
+      sql: `INSERT INTO clubs (id, name, slug, tag, description, city, country, manager_id, created_by_user_id, is_public, created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`,
       args: [clubId, name, slug, tag, "Zimbabwe's premier esports organization — home of champions.", "Harare", "Zimbabwe", userId, userId, now(), now()],
     });
 
