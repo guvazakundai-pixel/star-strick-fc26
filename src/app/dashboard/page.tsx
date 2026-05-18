@@ -6,11 +6,14 @@ import { PlayerHubClient } from "@/components/PlayerHubClient";
 export const dynamic = "force-dynamic";
 
 export default async function PlayerDashboard() {
-  try {
-    const session = await getSession();
+  const session = await getSession();
   if (!session) redirect("/login?next=/dashboard");
 
   const userId = session.userId;
+
+  async function safeQuery<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+    try { return await fn(); } catch (e) { console.error("[Dashboard] Query failed:", e); return fallback; }
+  }
 
   const [
     user,
@@ -22,146 +25,177 @@ export default async function PlayerDashboard() {
     friends,
     upcomingFixtures,
   ] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        displayName: true,
-        platform: true,
-        country: true,
-        avatarUrl: true,
-        bio: true,
-        playerStats: true,
-        playerRanking: true,
-        club: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            tag: true,
-            logoUrl: true,
-            members: {
-              where: { userId },
-              select: { role: true },
-            },
-          },
-        },
-      },
-    }),
-
-    prisma.tournamentParticipant.findMany({
-      where: { userId, status: { not: "WITHDRAWN" } },
-      include: {
-        tournament: {
-          select: { id: true, name: true, status: true, type: true, slug: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    }),
-
-    prisma.leagueParticipant.findMany({
-      where: { userId },
-      include: {
-        league: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            type: true,
-            slug: true,
-            standings: {
-              where: { userId },
-              select: {
-                points: true,
-                played: true,
-                wins: true,
-                draws: true,
-                losses: true,
+    safeQuery(() =>
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          platform: true,
+          country: true,
+          avatarUrl: true,
+          bio: true,
+          playerStats: true,
+          playerRanking: true,
+          club: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              tag: true,
+              logoUrl: true,
+              members: {
+                where: { userId },
+                select: { role: true },
               },
             },
           },
         },
-      },
-      orderBy: { joinedAt: "desc" },
-      take: 10,
-    }),
+      })
+    , null),
 
-    prisma.userActivity.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: { id: true, type: true, message: true, createdAt: true },
-    }),
-
-    prisma.notificationV2.findMany({
-      where: { userId, isArchived: false },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: { id: true, title: true, message: true, isRead: true, createdAt: true },
-    }),
-
-    prisma.playerAchievement.findMany({
-      where: { userId },
-      orderBy: { unlockedAt: "desc" },
-      take: 6,
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        icon: true,
-        category: true,
-        rarity: true,
-        unlockedAt: true,
-      },
-    }),
-
-    prisma.friend.findMany({
-      where: {
-        OR: [
-          { senderId: userId, status: "ACCEPTED" },
-          { receiverId: userId, status: "ACCEPTED" },
-        ],
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatarUrl: true,
-            playerRanking: { select: { rankPosition: true } },
+    safeQuery(() =>
+      prisma.tournamentParticipant.findMany({
+        where: { userId, status: { not: "WITHDRAWN" } },
+        include: {
+          tournament: {
+            select: { id: true, name: true, status: true, type: true, slug: true },
           },
         },
-        receiver: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatarUrl: true,
-            playerRanking: { select: { rankPosition: true } },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      })
+    , []),
+
+    safeQuery(() =>
+      prisma.leagueParticipant.findMany({
+        where: { userId },
+        include: {
+          league: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              type: true,
+              slug: true,
+              standings: {
+                where: { userId },
+                select: {
+                  points: true,
+                  played: true,
+                  wins: true,
+                  draws: true,
+                  losses: true,
+                },
+              },
+            },
           },
         },
-      },
-    }),
+        orderBy: { joinedAt: "desc" },
+        take: 10,
+      })
+    , []),
 
-    prisma.leagueFixture.findMany({
-      where: {
-        status: "PENDING",
-        OR: [{ homeUserId: userId }, { awayUserId: userId }],
-      },
-      include: {
-        league: { select: { name: true } },
-        homeUser: { select: { username: true } },
-        awayUser: { select: { username: true } },
-      },
-      orderBy: { matchday: "asc" },
-      take: 10,
-    }),
+    safeQuery(() =>
+      prisma.userActivity.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { id: true, type: true, message: true, createdAt: true },
+      })
+    , []),
+
+    safeQuery(() =>
+      prisma.notificationV2.findMany({
+        where: { userId, isArchived: false },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: { id: true, title: true, message: true, isRead: true, createdAt: true },
+      })
+    , []),
+
+    safeQuery(() =>
+      prisma.playerAchievement.findMany({
+        where: { userId },
+        orderBy: { unlockedAt: "desc" },
+        take: 6,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          icon: true,
+          category: true,
+          rarity: true,
+          unlockedAt: true,
+        },
+      })
+    , []),
+
+    safeQuery(() =>
+      prisma.friend.findMany({
+        where: {
+          OR: [
+            { senderId: userId, status: "ACCEPTED" },
+            { receiverId: userId, status: "ACCEPTED" },
+          ],
+        },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+              playerRanking: { select: { rankPosition: true } },
+            },
+          },
+          receiver: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+              playerRanking: { select: { rankPosition: true } },
+            },
+          },
+        },
+      })
+    , []),
+
+    safeQuery(() =>
+      prisma.leagueFixture.findMany({
+        where: {
+          status: "PENDING",
+          OR: [{ homeUserId: userId }, { awayUserId: userId }],
+        },
+        include: {
+          league: { select: { name: true } },
+          homeUser: { select: { username: true } },
+          awayUser: { select: { username: true } },
+        },
+        orderBy: { matchday: "asc" },
+        take: 10,
+      })
+    , []),
   ]);
 
-  if (!user) redirect("/login?next=/dashboard");
+  if (!user) {
+    return (
+      <div className="broadcast-theme min-h-screen bc-grain">
+        <div className="mx-auto max-w-4xl px-4 py-6">
+          <div className="text-center py-20 px-6">
+            <div className="h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: "rgba(255,77,77,0.06)", border: "1px solid rgba(255,77,77,0.12)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-9 w-9 text-negative/70"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+            </div>
+            <h2 className="bc-headline text-2xl text-ink mb-2">Failed to load dashboard</h2>
+            <p className="text-sm text-muted-soft max-w-md mx-auto mb-6">We couldn&apos;t load your player data. Try again.</p>
+            <a href="/dashboard" className="btn-primary inline-flex items-center justify-center h-11 px-6 rounded-[14px] text-sm font-bold">Try Again</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const club = user.club
     ? {
@@ -280,34 +314,4 @@ export default async function PlayerDashboard() {
       />
     </div>
   );
-  } catch (error) {
-    console.error("[Dashboard] Prisma query failed:", error);
-    return (
-      <div className="broadcast-theme min-h-screen bc-grain">
-        <div className="mx-auto max-w-4xl px-4 py-6">
-          <div className="text-center py-20 px-6">
-            <div
-              className="h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6"
-              style={{
-                background: "rgba(255,77,77,0.06)",
-                border: "1px solid rgba(255,77,77,0.12)",
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-9 w-9 text-negative/70">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 8v4M12 16h.01" />
-              </svg>
-            </div>
-            <h2 className="bc-headline text-2xl text-ink mb-2">Failed to load dashboard</h2>
-            <p className="text-sm text-muted-soft max-w-md mx-auto mb-6">
-              We couldn&apos;t load your player data. The database might still be initializing. Please try again.
-            </p>
-            <a href="/dashboard" className="btn-primary inline-flex items-center justify-center h-11 px-6 rounded-[14px] text-sm font-bold">
-              Try Again
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
 }
