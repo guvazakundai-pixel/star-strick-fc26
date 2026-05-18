@@ -7,6 +7,10 @@ type Row = Record<string, unknown>;
 export async function GET(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN max_players INTEGER DEFAULT 20", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN rounds INTEGER DEFAULT 2", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN home_away INTEGER DEFAULT 1", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN format TEXT", args: [] }); } catch {}
 
   try {
     const leagues = await db.execute({

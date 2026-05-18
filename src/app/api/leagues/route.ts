@@ -11,6 +11,10 @@ function slugify(text: string): string {
 }
 
 export async function GET(req: NextRequest) {
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN max_players INTEGER DEFAULT 20", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN rounds INTEGER DEFAULT 2", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN home_away INTEGER DEFAULT 1", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN format TEXT", args: [] }); } catch {}
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
@@ -61,6 +65,11 @@ export async function POST(req: NextRequest) {
   if (!name || name.trim().length < 2) {
     return NextResponse.json({ error: "Name must be at least 2 characters" }, { status: 400 });
   }
+
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN max_players INTEGER DEFAULT 20", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN rounds INTEGER DEFAULT 2", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN home_away INTEGER DEFAULT 1", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE leagues ADD COLUMN format TEXT", args: [] }); } catch {}
 
   try {
     let slug = slugify(name);
