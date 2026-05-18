@@ -273,6 +273,11 @@ export function LeagueDetailClient({
               </button>
             )}
             {isAdmin && onEdit && <button onClick={onEdit} className="h-11 px-4 rounded-[14px] text-[10px] font-bold uppercase tracking-wider transition-all" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--muted-soft)" }}>Edit League</button>}
+            {isAdmin && (
+              <Link href={`/leagues/${league.id}/admin`} className="h-11 px-4 rounded-[14px] text-[10px] font-bold uppercase tracking-wider transition-all inline-flex items-center" style={{ background: "rgba(0,255,133,0.06)", border: "1px solid rgba(0,255,133,0.12)", color: "var(--accent)" }}>
+                Admin Panel
+              </Link>
+            )}
           </div>
         </div>
       </motion.div>
