@@ -560,6 +560,15 @@ export function PlayerHubClient({
               >
                 View Club Page
               </Link>
+              {["OWNER", "CO_OWNER", "GM", "CAPTAIN"].includes(club.membershipRole) && (
+                <Link
+                  href={`/club/${club.slug}/manage`}
+                  className="btn-primary mt-2 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-[12px] text-[10px] font-bold uppercase tracking-wider text-black"
+                  style={{ background: "var(--accent)" }}
+                >
+                  Manage Club
+                </Link>
+              )}
             </motion.div>
 
             <Section title="Club Activity">
@@ -694,7 +703,15 @@ export function PlayerHubClient({
       </TabContent>
 
       {/* ── Friends Panel ── */}
-      <FriendsPanel currentUserId={user.id} />
+      <FriendsPanel
+        friends={[]}
+        requests={[]}
+        currentUserId={user.id}
+        onSearch={async () => []}
+        onSendRequest={async () => {}}
+        onRespond={async () => {}}
+        onRemove={async () => {}}
+      />
 
       {/* ── Footer Links ── */}
       <div className="flex items-center justify-center gap-4 pt-4">
