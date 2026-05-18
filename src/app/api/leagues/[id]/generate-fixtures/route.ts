@@ -9,6 +9,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
+  try { await db.execute({ sql: "ALTER TABLE league_seasons ADD COLUMN created_at TEXT", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE league_seasons ADD COLUMN started_at TEXT", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE league_seasons ADD COLUMN ended_at TEXT", args: [] }); } catch {}
+  try { await db.execute({ sql: "ALTER TABLE league_seasons ADD COLUMN season_number INTEGER DEFAULT 1", args: [] }); } catch {}
 
   try {
     const league = await db.execute({ sql: "SELECT * FROM leagues WHERE id=?", args: [id] });
