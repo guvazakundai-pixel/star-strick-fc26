@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { db } from "@/lib/db";
 import { calculateXPAndPoints } from "@/lib/xp-engine";
+import { checkAndAward } from "@/lib/achievements";
 import { recomputePlayerRankings } from "@/lib/ranking";
 import { audit } from "@/lib/audit";
 import {
@@ -348,6 +349,23 @@ async function applyMatchResults(
 
   await recomputePlayerRankings();
 
+  await Promise.all([
+    checkAndAward(winnerId, {
+      newSkillRating: xp.winnerNewRating,
+      opponentSkillRating: loserRating,
+      goalsScoredThisMatch: winnerScore,
+      goalsConcededThisMatch: loserScore,
+      isWin: true,
+    }),
+    checkAndAward(loserId, {
+      newSkillRating: xp.loserNewRating,
+      opponentSkillRating: winnerRating,
+      goalsScoredThisMatch: loserScore,
+      goalsConcededThisMatch: winnerScore,
+      isWin: false,
+    }),
+  ]);
+
   return xp;
 }
 
@@ -389,6 +407,11 @@ async function applyDraw(matchId: string, player1Id: string, player2Id: string) 
   await prisma.pointsLog.create({ data: { userId: player2Id, pointsChange: drawPoints, reason: "MATCH_DRAW", matchId } });
 
   await recomputePlayerRankings();
+
+  await Promise.all([
+    checkAndAward(player1Id, { isWin: false }),
+    checkAndAward(player2Id, { isWin: false }),
+  ]);
 
   return { draw: true, elo };
 }

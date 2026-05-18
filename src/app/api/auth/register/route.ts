@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { setSessionCookie } from "@/lib/session";
 import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
+import { ACHIEVEMENTS } from "@/lib/achievements";
 
 const PLATFORMS = ["CROSSPLAY", "PS5", "XBOX", "PC"] as const;
 
@@ -56,10 +57,35 @@ export async function POST(req: Request) {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await db.execute({
-    sql: "INSERT INTO users (id, username, email, password_hash, display_name, platform, phone, whatsapp, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PLAYER', ?, ?)",
-    args: [id, username, email, passwordHash, displayName, platform, phone || null, whatsapp || null, now, now],
-  });
+  const totalRow = await db.execute("SELECT count(*) as c FROM player_rankings");
+  const startingRank = Number(totalRow.rows[0]?.c ?? 0) + 1;
+
+  const statsId = crypto.randomUUID();
+  const rankingId = crypto.randomUUID();
+  const achievementId = crypto.randomUUID();
+  const welcome = ACHIEVEMENTS.WELCOME;
+
+  await db.batch(
+    [
+      {
+        sql: "INSERT INTO users (id, username, email, password_hash, display_name, platform, phone, whatsapp, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PLAYER', ?, ?)",
+        args: [id, username, email, passwordHash, displayName, platform, phone || null, whatsapp || null, now, now],
+      },
+      {
+        sql: "INSERT INTO player_stats (id, user_id, matches_played, wins, losses, draws, goals_scored, goals_conceded, skill_rating, points, form_score, win_streak, mvp_count, form_history, updated_at) VALUES (?, ?, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, '', ?)",
+        args: [statsId, id, now],
+      },
+      {
+        sql: "INSERT INTO player_rankings (id, user_id, rank_position, rank_change, points, final_score, updated_at) VALUES (?, ?, ?, 0, 0, 0, ?)",
+        args: [rankingId, id, startingRank, now],
+      },
+      {
+        sql: "INSERT INTO player_achievements (id, user_id, title, description, icon, category, rarity, unlocked_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        args: [achievementId, id, welcome.title, welcome.description, welcome.icon, welcome.category, welcome.rarity, now, now],
+      },
+    ],
+    "write",
+  );
 
   await setSessionCookie({ userId: id, username, role: "PLAYER" });
 

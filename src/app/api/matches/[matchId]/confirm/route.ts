@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/route-auth";
 import { eloUpdate, recomputePlayerRankings, recomputeClubRankings } from "@/lib/ranking";
+import { checkAndAward } from "@/lib/achievements";
 
 const ConfirmSchema = z.object({
   score1: z.number().int().min(0).optional(),
@@ -71,6 +72,27 @@ export async function POST(
   await updatePlayerStats(match.player1Id, match.player2Id, score1, score2, winnerId, match.clubId);
   await recomputePlayerRankings();
   await recomputeClubRankings();
+
+  const [s1, s2] = await Promise.all([
+    prisma.playerStats.findUnique({ where: { userId: match.player1Id }, select: { skillRating: true } }),
+    prisma.playerStats.findUnique({ where: { userId: match.player2Id }, select: { skillRating: true } }),
+  ]);
+  await Promise.all([
+    checkAndAward(match.player1Id, {
+      newSkillRating: s1?.skillRating ?? 1000,
+      opponentSkillRating: s2?.skillRating ?? 1000,
+      goalsScoredThisMatch: score1,
+      goalsConcededThisMatch: score2,
+      isWin: winnerId === match.player1Id,
+    }),
+    checkAndAward(match.player2Id, {
+      newSkillRating: s2?.skillRating ?? 1000,
+      opponentSkillRating: s1?.skillRating ?? 1000,
+      goalsScoredThisMatch: score2,
+      goalsConcededThisMatch: score1,
+      isWin: winnerId === match.player2Id,
+    }),
+  ]);
 
   await prisma.auditLog.create({
     data: {
