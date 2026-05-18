@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   });
   if (existing.rows.length > 0) {
     return NextResponse.json(
-      { error: "Username or email already taken" },
+      { error: "An account with that username or email already exists. Try signing in instead." },
       { status: 409 }
     );
   }
@@ -55,10 +55,6 @@ export async function POST(req: Request) {
   const passwordHash = await hashPassword(password);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-
-  try {
-    await db.execute({ sql: "ALTER TABLE users ADD COLUMN whatsapp TEXT", args: [] });
-  } catch {}
 
   await db.execute({
     sql: "INSERT INTO users (id, username, email, password_hash, display_name, platform, phone, whatsapp, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PLAYER', ?, ?)",

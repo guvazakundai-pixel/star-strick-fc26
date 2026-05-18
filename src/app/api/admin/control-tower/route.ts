@@ -18,7 +18,7 @@ const MODEL_GROUPS: Record<string, string[]> = {
 type ModelCounts = Record<string, number>;
 
 export async function GET() {
-  const auth = await requireRole("ADMIN");
+  const auth = await requireRole("ADMIN", "MANAGER");
   if (!auth.ok) return auth.response;
 
   const counts: ModelCounts = {};
