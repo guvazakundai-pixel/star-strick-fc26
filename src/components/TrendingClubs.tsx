@@ -169,8 +169,6 @@ export function TrendingClubs({
               </Link>
             </motion.div>
           )}
-          autoPlay
-          interval={5000}
           gap={16}
         />
       </div>

@@ -7,7 +7,7 @@ export function Carousel({
   items,
   renderItem,
   className = "",
-  autoPlay = true,
+  autoPlay = false,
   interval = 5000,
   showDots = true,
   showArrows = true,

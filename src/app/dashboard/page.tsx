@@ -36,21 +36,6 @@ export default async function PlayerDashboard() {
           country: true,
           avatarUrl: true,
           bio: true,
-          playerStats: true,
-          playerRanking: true,
-          club: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              tag: true,
-              logoUrl: true,
-              members: {
-                where: { userId },
-                select: { role: true },
-              },
-            },
-          },
         },
       })
     , null),
@@ -180,6 +165,21 @@ export default async function PlayerDashboard() {
     , []),
   ]);
 
+  const clubData = await safeQuery(() =>
+    prisma.club.findFirst({
+      where: { clubMembers: { some: { userId } } },
+      select: { id: true, name: true, slug: true, tag: true, logoUrl: true },
+    })
+  , null);
+
+  const playerStatsData = await safeQuery(() =>
+    prisma.playerStats.findUnique({ where: { userId } })
+  , null);
+
+  const playerRankingData = await safeQuery(() =>
+    prisma.playerRanking.findUnique({ where: { userId } })
+  , null);
+
   if (!user) {
     return (
       <div className="broadcast-theme min-h-screen bc-grain">
@@ -197,38 +197,38 @@ export default async function PlayerDashboard() {
     );
   }
 
-  const club = user.club
+  const club = clubData
     ? {
-        id: user.club.id,
-        name: user.club.name,
-        slug: user.club.slug,
-        tag: user.club.tag ?? null,
-        logoUrl: user.club.logoUrl,
-        membershipRole: user.club.members[0]?.role ?? "MEMBER",
+        id: clubData.id,
+        name: clubData.name,
+        slug: clubData.slug,
+        tag: clubData.tag ?? null,
+        logoUrl: clubData.logoUrl,
+        membershipRole: "MEMBER",
       }
     : null;
 
-  const stats = user.playerStats
+  const stats = playerStatsData
     ? {
-        points: user.playerStats.points,
-        matchesPlayed: user.playerStats.matchesPlayed,
-        wins: user.playerStats.wins,
-        losses: user.playerStats.losses,
-        draws: user.playerStats.draws,
-        goalsScored: user.playerStats.goalsScored,
-        goalsConceded: user.playerStats.goalsConceded,
-        skillRating: user.playerStats.skillRating,
-        winStreak: user.playerStats.winStreak,
-        formScore: user.playerStats.formScore,
-        formHistory: user.playerStats.formHistory,
+        points: playerStatsData.points,
+        matchesPlayed: playerStatsData.matchesPlayed,
+        wins: playerStatsData.wins,
+        losses: playerStatsData.losses,
+        draws: playerStatsData.draws,
+        goalsScored: playerStatsData.goalsScored,
+        goalsConceded: playerStatsData.goalsConceded,
+        skillRating: playerStatsData.skillRating,
+        winStreak: playerStatsData.winStreak,
+        formScore: playerStatsData.formScore,
+        formHistory: playerStatsData.formHistory,
       }
     : null;
 
-  const ranking = user.playerRanking
+  const ranking = playerRankingData
     ? {
-        rankPosition: user.playerRanking.rankPosition,
-        points: user.playerRanking.points,
-        prevPosition: user.playerRanking.prevPosition,
+        rankPosition: playerRankingData.rankPosition,
+        points: playerRankingData.points,
+        prevPosition: playerRankingData.prevPosition,
       }
     : null;
 

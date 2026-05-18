@@ -193,8 +193,6 @@ export function LiveTournamentsCarousel({
               </Link>
             </motion.div>
           )}
-          autoPlay
-          interval={4000}
           gap={16}
         />
       </div>
