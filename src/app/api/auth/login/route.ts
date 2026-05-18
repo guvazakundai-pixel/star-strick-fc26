@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const { identifier, password } = parsed.data;
 
   const result = await db.execute({
-    sql: "SELECT id, username, email, password_hash, role, display_name, platform, is_banned FROM users WHERE username = ? OR email = ? LIMIT 1",
+    sql: "SELECT id, username, email, password_hash, role, display_name, platform, is_banned FROM users WHERE LOWER(username) = LOWER(?) OR email = ? LIMIT 1",
     args: [identifier, identifier.toLowerCase()],
   });
 
