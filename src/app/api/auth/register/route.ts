@@ -7,6 +7,7 @@ import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { sendEmail, renderWelcomeEmail, renderVerificationEmail } from "@/lib/email";
 import { getDivisionForSkillRating } from "@/lib/divisions";
 import { sanitizeInput } from "@/lib/sanitize";
+import { recomputePlayerRankings } from "@/lib/ranking";
 
 const ZIMBABWEAN_CLUBS = [
   "Caps United", "Dynamos", "Highlanders", "ZPC Kariba",
@@ -166,6 +167,12 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("[Register] Achievement creation failed (non-critical):", e);
+  }
+
+  try {
+    await recomputePlayerRankings();
+  } catch (e) {
+    console.error("[Register] Ranking recomputation failed (non-critical):", e);
   }
 
   if (referrerId) {
