@@ -7,24 +7,11 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  PLAYERS,
-} from "@/lib/players";
-import type { Player, Division } from "@/lib/players";
-import { CLUBS, clubByPlayerId } from "@/lib/clubs";
-import type { Club } from "@/lib/clubs";
+import type { Player, Division, FormResult } from "@/lib/players";
 import { useAuthModal } from "@/lib/auth-context";
 import { PlayerDetailModal } from "@/components/PlayerDetailModal";
 import { ChallengeModal } from "@/components/match/ChallengeModal";
-import {
-  mostImproved,
-  biggestFallers,
-  playerOfTheWeek,
-  cityRivalries,
-  formSparkline,
-  eloTierTitle,
-  eloTierEmoji,
-} from "@/lib/stats";
+import { formSparkline } from "@/lib/stats";
 import type { SparklineBar } from "@/lib/stats";
 
 function parseFormHistory(history: string): FormResult[] {
@@ -246,6 +233,7 @@ export function RankingsClient({ livePlayers }: { livePlayers?: LivePlayer[] }) 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [challengeTarget, setChallengeTarget] = useState<{ id: string; name: string } | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [swipedId, setSwipedId] = useState<string | null>(null);
   const { openAuth } = useAuthModal();
 
   useEffect(() => {
@@ -256,38 +244,36 @@ export function RankingsClient({ livePlayers }: { livePlayers?: LivePlayer[] }) 
 
   const sortedPlayers = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const source = hasLiveData
-      ? livePlayers!.map((p) => ({
-          id: p.id,
-          rank: p.rank,
-          prev: p.prev,
-          name: p.displayName || p.username,
-          gamertag: p.username,
-          city: p.city || "Harare",
-          division: "Pro" as Division,
-          points: p.points,
-          wins: p.wins,
-          losses: p.losses,
-          draws: p.draws,
-          goalsFor: p.goalsFor,
-          goalsAgainst: p.goalsAgainst,
-          gpm: p.wins > 0 ? p.goalsFor / Math.max(1, p.wins + p.losses + p.draws) : 0,
-          form: parseFormHistory(p.formHistory),
-          prizeMoney: 0,
-          winStreak: p.winStreak,
-          hardware: { controller: "N/A", monitor: "N/A", console: "N/A" },
-        }))
-      : PLAYERS;
+    if (!hasLiveData) return [];
+
+    const source = livePlayers!.map((p) => ({
+      id: p.id,
+      rank: p.rank,
+      prev: p.prev,
+      name: p.displayName || p.username,
+      gamertag: p.username,
+      city: p.city || "Harare",
+      division: "Pro" as Division,
+      points: p.points,
+      wins: p.wins,
+      losses: p.losses,
+      draws: p.draws,
+      goalsFor: p.goalsFor,
+      goalsAgainst: p.goalsAgainst,
+      gpm: p.wins > 0 ? p.goalsFor / Math.max(1, p.wins + p.losses + p.draws) : 0,
+      form: parseFormHistory(p.formHistory),
+      prizeMoney: 0,
+      winStreak: p.winStreak,
+      hardware: { controller: "N/A", monitor: "N/A", console: "N/A" },
+    }));
 
     let filtered = source.filter((p) => {
       if (city !== "All" && p.city !== city) return false;
       if (q) {
-        const club = hasLiveData ? null : clubByPlayerId(p.id);
         return (
           p.name.toLowerCase().includes(q) ||
           p.gamertag.toLowerCase().includes(q) ||
-          p.city.toLowerCase().includes(q) ||
-          (club?.name.toLowerCase().includes(q) ?? false)
+          p.city.toLowerCase().includes(q)
         );
       }
       return true;
@@ -311,10 +297,7 @@ export function RankingsClient({ livePlayers }: { livePlayers?: LivePlayer[] }) 
     () => sortedPlayers.find((p) => p.id === selectedId) ?? null,
     [selectedId, sortedPlayers]
   );
-  const selectedClub = useMemo(
-    () => selectedPlayer ? clubByPlayerId(selectedPlayer.id) ?? null : null,
-    [selectedPlayer]
-  );
+  const selectedClub = null;
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
@@ -326,11 +309,9 @@ export function RankingsClient({ livePlayers }: { livePlayers?: LivePlayer[] }) 
   const handleChallenge = useCallback((playerId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!loggedIn) { openAuth("signin"); return; }
-    const source = hasLiveData ? livePlayers! : [];
-    const p = hasLiveData
-      ? source.find((pl: LivePlayer) => pl.id === playerId)
-      : PLAYERS.find((pl) => pl.id === playerId);
-    setChallengeTarget(p ? { id: p.id, name: hasLiveData ? (p as LivePlayer).username : (p as Player).gamertag } : { id: playerId, name: playerId });
+    if (!hasLiveData || !livePlayers) return;
+    const p = livePlayers.find((pl) => pl.id === playerId);
+    setChallengeTarget(p ? { id: p.id, name: p.username } : { id: playerId, name: playerId });
   }, [loggedIn, openAuth, hasLiveData, livePlayers]);
 
   const handleSort = useCallback((k: SortKey) => {
@@ -348,8 +329,6 @@ export function RankingsClient({ livePlayers }: { livePlayers?: LivePlayer[] }) 
   return (
     <div className="broadcast-theme min-h-screen bc-grain">
       <Header />
-      <PlayerOfTheWeekBanner />
-      <MovementStrip />
       <FilterBar
         query={query}
         onQuery={setQuery}
@@ -359,7 +338,7 @@ export function RankingsClient({ livePlayers }: { livePlayers?: LivePlayer[] }) 
         sortDir={sortDir}
         onSort={handleSort}
         totalShown={sortedPlayers.length}
-        totalAll={hasLiveData ? livePlayers!.length : PLAYERS.length}
+        totalAll={hasLiveData ? livePlayers!.length : 0}
       />
       <div className="mx-auto max-w-4xl px-3 sm:px-6 pt-4 pb-28">
         {sortedPlayers.length === 0 ? (
@@ -383,7 +362,7 @@ export function RankingsClient({ livePlayers }: { livePlayers?: LivePlayer[] }) 
         <PlayerDetailModal
           player={selectedPlayer}
           onClose={() => setSheetOpen(false)}
-          allPlayers={hasLiveData ? [] : PLAYERS}
+          allPlayers={[]}
         />
       )}
       <ChallengeModal
@@ -583,7 +562,7 @@ function RankingsList({
               index={idx}
               isSelected={p.id === selectedId}
               onSelect={() => onSelect(p.id)}
-              club={clubByPlayerId(p.id) ?? null}
+              club={null}
               loggedIn={loggedIn}
               onChallenge={onChallenge}
               challengeState={challengeState}
@@ -607,7 +586,7 @@ function RankingsList({
                 <SwipeableRankRow
                   player={p}
                   index={0}
-                  club={clubByPlayerId(p.id) ?? null}
+                  club={null}
                   isSelected={p.id === selectedId}
                   onSelect={() => onSelect(p.id)}
                   isSwiped={swipedId === p.id}
@@ -634,7 +613,7 @@ function sortVal(p: Player): number {
   }
 }
 
-function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChallenge, challengeState, cityRank, cityView }: { player: Player; index: number; isSelected: boolean; onSelect: () => void; club: Club | null; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error">; cityRank: number; cityView: boolean }) {
+function Top3Card({ player, index, isSelected, onSelect, club, loggedIn, onChallenge, challengeState, cityRank, cityView }: { player: Player; index: number; isSelected: boolean; onSelect: () => void; club: unknown; loggedIn: boolean; onChallenge: (id: string) => void; challengeState: Record<string, "idle" | "sending" | "sent" | "error">; cityRank: number; cityView: boolean }) {
   const t = getTierTheme(player.rank);
   const stats = computeDerived(player);
   const delta = player.prev - player.rank;
@@ -835,7 +814,7 @@ function SwipeableRankRow({
 }: {
   player: Player;
   index: number;
-  club: Club | null;
+  club: unknown;
   isSelected: boolean;
   onSelect: () => void;
   isSwiped: boolean;
@@ -1088,7 +1067,7 @@ function TacticalBar({ label, value, gradient, icon }: { label: string; value: n
   );
 }
 
-function ChallengeButton({ playerId, loggedIn, onChallenge, state, compact }: { playerId: string; loggedIn: boolean; onChallenge: (id: string) => void; state: "idle" | "sending" | "sent" | "error"; compact?: boolean }) {
+function ChallengeButton({ playerId, loggedIn, onChallenge, state, compact }: { playerId: string; loggedIn: boolean; onChallenge: (id: string, e?: React.MouseEvent) => void; state: "idle" | "sending" | "sent" | "error"; compact?: boolean }) {
   const sizeClass = compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]";
   const iconSize = compact ? "h-2.5 w-2.5" : "h-3 w-3";
 
@@ -1135,71 +1114,8 @@ function FireIcon() {
   );
 }
 
-function PlayerOfTheWeekBanner() {
-  const potw = useMemo(() => playerOfTheWeek(), []);
-  if (!potw) return null;
-  return (
-    <div className="mx-auto max-w-4xl px-3 sm:px-6 pt-4">
-      <div className="relative overflow-hidden rounded-[16px] border border-accent/15 bg-gradient-to-r from-accent/5 via-accent/8 to-transparent px-4 py-3 sm:px-5 sm:py-3.5">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <span className="shrink-0 text-2xl sm:text-3xl">🏆</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-black tracking-[0.22em] uppercase text-accent/70">Player of the Week</p>
-            <p className="cinematic-heading text-lg sm:text-xl text-ink truncate max-w-[300px]">{potw.gamertag}</p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="bc-mono-score text-lg sm:text-xl tabular-nums text-accent font-bold">{potw.points.toLocaleString()}</p>
-            <p className="text-[8px] font-black tracking-[0.2em] uppercase text-muted-faint">PTS</p>
-          </div>
-          <span className="hidden sm:inline-flex items-center gap-1 rounded-[8px] px-2.5 h-7 text-[9px] font-black uppercase tracking-wider bg-accent/10 text-accent border border-accent/20 shrink-0">
-            <span className="text-[11px]">🔥</span> {potw.winStreak}W Streak
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MovementStrip() {
-  const improved = useMemo(() => mostImproved(3), []);
-  const fallers = useMemo(() => biggestFallers(3), []);
-  if (improved.length === 0 && fallers.length === 0) return null;
-  return (
-    <div className="mx-auto max-w-4xl px-3 sm:px-6 pt-3">
-      <div className="flex items-stretch gap-2 overflow-x-auto bc-no-scrollbar">
-        {improved.length > 0 && (
-          <div className="shrink-0 rounded-[12px] border border-accent/15 bg-accent/5 px-3 py-2 min-w-[200px]">
-            <p className="text-[8px] font-black tracking-[0.22em] uppercase text-accent/70 mb-1.5">🔥 Most Improved</p>
-            <div className="space-y-1">
-              {improved.map((m) => (
-                <div key={m.player.id} className="flex items-center gap-2 text-[11px]">
-                  <span className="font-bold text-ink truncate max-w-[100px]">{m.player.gamertag}</span>
-                  <span className="text-accent font-mono tabular-nums shrink-0">▲{m.delta}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {fallers.length > 0 && (
-          <div className="shrink-0 rounded-[12px] border border-negative/15 bg-negative/5 px-3 py-2 min-w-[200px]">
-            <p className="text-[8px] font-black tracking-[0.22em] uppercase text-negative/70 mb-1.5">📉 Biggest Fallers</p>
-            <div className="space-y-1">
-              {fallers.map((m) => (
-                <div key={m.player.id} className="flex items-center gap-2 text-[11px]">
-                  <span className="font-bold text-ink truncate max-w-[100px]">{m.player.gamertag}</span>
-                  <span className="text-negative font-mono tabular-nums shrink-0">▼{m.delta}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FormSparkline({ form }: { form: Player["form"] }) {
-  const bars = useMemo(() => formSparkline(form, 10), [form]);
+function FormSparkline({ form }: { form: string }) {
+  const bars = useMemo(() => formSparkline(form as any, 10), [form]);
   return (
     <div className="flex items-center gap-[2px] h-3">
       {bars.map((b, i) => (
