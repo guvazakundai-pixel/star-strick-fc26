@@ -2,36 +2,31 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useRef, useCallback, useState, useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const PAGE_VARIANTS = {
-  initial: { opacity: 0, y: 8 },
-  enter: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
+  initial: { opacity: 0 },
+  enter: { opacity: 1 },
+  exit: { opacity: 0 },
 };
 
 const PAGE_TRANSITION = {
   type: "tween" as const,
   ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-  duration: 0.28,
+  duration: 0.15,
 };
 
 export function PageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <>{children}</>;
-  }
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [pathname]);
 
   return (
     <ErrorBoundary scope="page-transition">
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={pathname}
           variants={PAGE_VARIANTS}
@@ -145,16 +140,6 @@ export function SlideInRight({ children, delay = 0, className = "" }: { children
 }
 
 export function NumberTicker({ value, className = "" }: { value: number; className?: string }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <span className={`tabular-nums ${className}`}>{(value ?? 0).toLocaleString()}</span>;
-  }
-
   return (
     <motion.span
       className={`tabular-nums ${className}`}
