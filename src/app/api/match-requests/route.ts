@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/route-auth";
+import { sendNotification } from "@/lib/match-engine/notifications";
 
 const CreateSchema = z.object({
   receiverId: z.string().min(1),
@@ -115,9 +117,20 @@ export async function POST(req: Request) {
   const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString();
 
   await db.execute({
-    sql: "INSERT INTO match_requests (id, sender_id, receiver_id, club_id, status, status_raw, message, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'PENDING', 'PENDING', ?, ?, ?, ?)",
+    sql: "INSERT INTO match_requests (id, sender_id, receiver_id, club_id, status, status_raw, message, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'PENDING', 'PENDING_ACCEPTANCE', ?, ?, ?, ?)",
     args: [id, auth.session.userId, receiverId, clubId ?? null, message ?? null, expiresAt, now, now],
   });
+
+  try {
+    const sender = await prisma.user.findUnique({ where: { id: auth.session.userId }, select: { username: true } });
+    await sendNotification({
+      userId: receiverId,
+      type: "CHALLENGE",
+      title: "New Challenge!",
+      message: `${sender?.username ?? "Someone"} challenged you to a match.`,
+      link: `/match-requests`,
+    });
+  } catch {}
 
   return NextResponse.json({
     request: {

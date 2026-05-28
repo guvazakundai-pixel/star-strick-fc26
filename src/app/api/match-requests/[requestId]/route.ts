@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/route-auth";
+import { sendNotification } from "@/lib/match-engine/notifications";
 
 const PatchSchema = z.object({
   action: z.enum(["accept", "decline"]),
@@ -72,14 +73,22 @@ export async function PATCH(
     });
 
     try {
-      await prisma.notificationV2.create({
-        data: {
-          userId: request.senderId,
-          type: "MATCH",
-          title: "Challenge Accepted!",
-          message: `${updated.receiver.displayName || updated.receiver.username} accepted your challenge. Match is now active!`,
-          link: `/matches/${matchReport.id}`,
-        },
+      await sendNotification({
+        userId: request.senderId,
+        type: "CHALLENGE",
+        title: "Challenge Accepted!",
+        message: `${updated.receiver.displayName || updated.receiver.username} accepted your challenge. Match is now active!`,
+        link: `/matches/${matchReport.id}`,
+      });
+    } catch {}
+
+    try {
+      await sendNotification({
+        userId: request.receiverId,
+        type: "CHALLENGE",
+        title: "Match Created",
+        message: `You accepted the challenge from ${updated.sender.displayName || updated.sender.username}. Good luck!`,
+        link: `/matches/${matchReport.id}`,
       });
     } catch {}
 
@@ -105,6 +114,16 @@ export async function PATCH(
         club: { select: clubSelect },
       },
     });
+
+    try {
+      await sendNotification({
+        userId: request.senderId,
+        type: "CHALLENGE",
+        title: "Challenge Declined",
+        message: `${updated.receiver.displayName || updated.receiver.username} declined your challenge.`,
+        link: "/matches",
+      });
+    } catch {}
 
     await prisma.auditLog.create({
       data: {

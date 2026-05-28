@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/route-auth";
+import { sendNotification } from "@/lib/match-engine/notifications";
 
 const playerSelect = { id: true, username: true, displayName: true, avatarUrl: true } as const;
 const clubSelect = { id: true, name: true, tag: true } as const;
@@ -35,6 +36,18 @@ export async function POST(
       club: { select: clubSelect },
     },
   });
+
+  if (request.receiverId) {
+    try {
+      const sender = await prisma.user.findUnique({ where: { id: auth.session.userId }, select: { username: true } });
+      await sendNotification({
+        userId: request.receiverId,
+        type: "CHALLENGE",
+        title: "Challenge Cancelled",
+        message: `${sender?.username ?? "Someone"} cancelled their challenge.`,
+      });
+    } catch {}
+  }
 
   await prisma.auditLog.create({
     data: {

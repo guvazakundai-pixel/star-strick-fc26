@@ -100,6 +100,10 @@ export async function POST(
     return NextResponse.json({ error: "You cannot accept your own challenge" }, { status: 400 });
   }
 
+  if (tokenData.opponentId && tokenData.opponentId !== userId) {
+    return NextResponse.json({ error: "This challenge was sent to a specific opponent" }, { status: 403 });
+  }
+
   try {
     const result = await acceptChallenge(token, userId);
     return NextResponse.json(result);
