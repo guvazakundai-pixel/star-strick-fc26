@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { setSessionCookie } from "@/lib/session";
 import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
@@ -143,10 +144,24 @@ export async function POST(req: Request) {
     args: [statsId, id, now],
   });
 
-  // Insert ranking (critical)
-  await db.execute({
-    sql: "INSERT INTO player_rankings (id, user_id, rank_position, prev_position, rank_change, points, final_score, updated_at) VALUES (?, ?, ?, NULL, 0, 0, 0, ?)",
-    args: [rankingId, id, startingRank, now],
+  // Insert ranking (critical) — use upsert to prevent duplicates
+  await prisma.playerRanking.upsert({
+    where: { userId: id },
+    create: {
+      id: rankingId,
+      userId: id,
+      rankPosition: startingRank,
+      prevPosition: null,
+      rankChange: 0,
+      points: 0,
+      finalScore: 0,
+    },
+    update: {
+      rankPosition: startingRank,
+      rankChange: 0,
+      points: 0,
+      finalScore: 0,
+    },
   });
 
   // Insert fantasy team (non-critical — don't fail registration if this errors)
