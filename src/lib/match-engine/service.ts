@@ -58,7 +58,7 @@ export async function createChallenge(params: CreateChallengeParams): Promise<{ 
   const matchRequest = await prisma.matchRequest.create({
     data: {
       senderId: params.challengerId,
-      receiverId: params.opponentId || "",
+      receiverId: params.opponentId || null,
       status: "PENDING",
       statusRaw: MatchState.PENDING_ACCEPTANCE,
       expiresAt: new Date(Date.now() + 30 * 60 * 1000),

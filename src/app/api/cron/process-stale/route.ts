@@ -50,18 +50,53 @@ export async function POST(req: Request) {
 
     for (const fixture of leagueFixtures.rows as Row[]) {
       try {
+        const homePlayerId = String(fixture.home_user_id);
+        const awayPlayerId = String(fixture.away_user_id);
+        const seasonId = String(fixture.season_id);
+        const leagueId = String(fixture.league_id);
+
         await db.execute({
           sql: `UPDATE league_fixtures SET status = 'COMPLETED', home_score = 0, away_score = 3, completed_at = ? WHERE id = ?`,
           args: [now.toISOString(), fixture.id],
         });
 
+        const awayExisting = await db.execute({
+          sql: "SELECT id, points, played, wins, draws, losses, goals_for, goals_against, goal_difference, form FROM league_standings WHERE league_id = ? AND season_id = ? AND user_id = ?",
+          args: [leagueId, seasonId, awayPlayerId],
+        });
+        const awayRow = awayExisting.rows[0] as Row | undefined;
+        const awayPlayed = Number(awayRow?.played ?? 0) + 1;
+        const awayWins = Number(awayRow?.wins ?? 0) + 1;
+        const awayPoints = Number(awayRow?.points ?? 0) + 3;
+        const awayGF = Number(awayRow?.goals_for ?? 0) + 3;
+        const awayGA = Number(awayRow?.goals_against ?? 0);
+        const awayGD = awayGF - awayGA;
+        const awayForm = (String(awayRow?.form ?? "") + "W").slice(-5);
+        const awayId = awayRow?.id ?? crypto.randomUUID();
+
         await db.execute({
           sql: `INSERT OR REPLACE INTO league_standings (id, league_id, season_id, user_id, points, played, wins, draws, losses, goals_for, goals_against, goal_difference, form, updated_at)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          args: [
-            crypto.randomUUID(), fixture.league_id, fixture.season_id, fixture.home_user_id,
-            0, 0, 0, 0, 0, 0, 0, 0, "L", now.toISOString(),
-          ],
+          args: [awayId, leagueId, seasonId, awayPlayerId, awayPoints, awayPlayed, awayWins, Number(awayRow?.draws ?? 0), Number(awayRow?.losses ?? 0), awayGF, awayGA, awayGD, awayForm, now.toISOString()],
+        });
+
+        const homeExisting = await db.execute({
+          sql: "SELECT id, points, played, wins, draws, losses, goals_for, goals_against, goal_difference, form FROM league_standings WHERE league_id = ? AND season_id = ? AND user_id = ?",
+          args: [leagueId, seasonId, homePlayerId],
+        });
+        const homeRow = homeExisting.rows[0] as Row | undefined;
+        const homePlayed = Number(homeRow?.played ?? 0) + 1;
+        const homeLosses = Number(homeRow?.losses ?? 0) + 1;
+        const homeGF = Number(homeRow?.goals_for ?? 0);
+        const homeGA = Number(homeRow?.goals_against ?? 0) + 3;
+        const homeGD = homeGF - homeGA;
+        const homeForm = (String(homeRow?.form ?? "") + "L").slice(-5);
+        const homeId = homeRow?.id ?? crypto.randomUUID();
+
+        await db.execute({
+          sql: `INSERT OR REPLACE INTO league_standings (id, league_id, season_id, user_id, points, played, wins, draws, losses, goals_for, goals_against, goal_difference, form, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          args: [homeId, leagueId, seasonId, homePlayerId, Number(homeRow?.points ?? 0), homePlayed, Number(homeRow?.wins ?? 0), Number(homeRow?.draws ?? 0), homeLosses, homeGF, homeGA, homeGD, homeForm, now.toISOString()],
         });
 
         results.push(`Auto-forfeited league fixture ${fixture.id} (away wins 3-0)`);

@@ -38,7 +38,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Only the receiver can accept or decline" }, { status: 403 });
   }
 
-  if (request.status !== "PENDING") {
+  if (request.status !== "PENDING" && request.statusRaw !== "PENDING_ACCEPTANCE") {
     return NextResponse.json({ error: "Request is no longer pending" }, { status: 400 });
   }
 

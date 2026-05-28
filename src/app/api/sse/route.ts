@@ -17,15 +17,17 @@ export async function GET(req: NextRequest) {
       let lastLiveMatchesHash = "";
       let lastCheck = new Date().toISOString();
 
-      try {
-        const latest = await db.execute({
-          sql: "SELECT id FROM notifications_v2 WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
-          args: userId ? [userId] : [],
-        });
-        if (latest.rows.length > 0) {
-          seenNotificationIds.add((latest.rows[0] as any).id as string);
-        }
-      } catch {}
+      if (userId) {
+        try {
+          const latest = await db.execute({
+            sql: "SELECT id FROM notifications_v2 WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+            args: [userId],
+          });
+          for (const row of latest.rows as any[]) {
+            seenNotificationIds.add(row.id as string);
+          }
+        } catch {}
+      }
 
       controller.enqueue(
         encoder.encode(`event: connected\ndata: ${JSON.stringify({ status: "connected", userId })}\n\n`)
@@ -58,6 +60,11 @@ export async function GET(req: NextRequest) {
                   })}\n\n`)
                 );
               }
+            }
+
+            if (seenNotificationIds.size > 500) {
+              const arr = Array.from(seenNotificationIds);
+              for (let i = 0; i < arr.length - 200; i++) seenNotificationIds.delete(arr[i]);
             }
           }
 
@@ -92,7 +99,7 @@ export async function GET(req: NextRequest) {
 
           lastCheck = new Date().toISOString();
         } catch {}
-      }, 3000);
+      }, 5000);
 
       const keepalive = setInterval(() => {
         try {

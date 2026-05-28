@@ -17,11 +17,13 @@ export async function GET(req: NextRequest) {
     else if (sort === "skillRating") orderClause = `ps.skill_rating ${order === "desc" ? "DESC" : "ASC"}`;
 
     let whereClause = "";
-    const args: any[] = [];
+    const args: unknown[] = [];
+    const conditions: string[] = ["(u.is_fake IS NULL OR u.is_fake = 0)"];
     if (search) {
-      whereClause = "WHERE (u.username LIKE ? OR u.display_name LIKE ?)";
+      conditions.push("(u.username LIKE ? OR u.display_name LIKE ?)");
       args.push(`%${search}%`, `%${search}%`);
     }
+    whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const countResult = await db.execute({
       sql: `SELECT count(*) as c FROM player_rankings pr JOIN users u ON u.id = pr.user_id ${whereClause}`,

@@ -294,26 +294,20 @@ async function applyDraw(
 
   const elo = calculateElo(p1Skill, p2Skill, 0, 0);
 
-  await prisma.playerStats.update({
+  await prisma.playerStats.upsert({
     where: { userId: player1Id },
-    data: {
-      draws: { increment: 1 },
-      matchesPlayed: { increment: 1 },
-      skillRating: elo.newRatingA,
-    },
+    create: { userId: player1Id, draws: 1, matchesPlayed: 1, skillRating: elo.newRatingA },
+    update: { draws: { increment: 1 }, matchesPlayed: { increment: 1 }, skillRating: elo.newRatingA },
   });
   await db.execute({
     sql: `UPDATE player_stats SET form_history = substr(('D' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,
     args: [player1Id],
   });
 
-  await prisma.playerStats.update({
+  await prisma.playerStats.upsert({
     where: { userId: player2Id },
-    data: {
-      draws: { increment: 1 },
-      matchesPlayed: { increment: 1 },
-      skillRating: elo.newRatingB,
-    },
+    create: { userId: player2Id, draws: 1, matchesPlayed: 1, skillRating: elo.newRatingB },
+    update: { draws: { increment: 1 }, matchesPlayed: { increment: 1 }, skillRating: elo.newRatingB },
   });
   await db.execute({
     sql: `UPDATE player_stats SET form_history = substr(('D' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,

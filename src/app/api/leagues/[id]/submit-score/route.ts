@@ -7,14 +7,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  try { await db.execute({ sql: "ALTER TABLE league_seasons ADD COLUMN created_at TEXT", args: [] }); } catch {}
-  try { await db.execute({ sql: "ALTER TABLE league_seasons ADD COLUMN started_at TEXT", args: [] }); } catch {}
-  try { await db.execute({ sql: "ALTER TABLE league_seasons ADD COLUMN ended_at TEXT", args: [] }); } catch {}
-  try { await db.execute({ sql: "ALTER TABLE league_seasons ADD COLUMN season_number INTEGER DEFAULT 1", args: [] }); } catch {}
   const { fixtureId, homeScore, awayScore } = await req.json();
 
-  if (homeScore === undefined || awayScore === undefined || homeScore < 0 || awayScore < 0) {
-    return NextResponse.json({ error: "Invalid scores" }, { status: 400 });
+  if (homeScore === undefined || awayScore === undefined || homeScore < 0 || awayScore < 0 || !Number.isInteger(homeScore) || !Number.isInteger(awayScore)) {
+    return NextResponse.json({ error: "Invalid scores — must be non-negative integers" }, { status: 400 });
   }
 
   try {
@@ -25,6 +21,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (fixtureRows.rows.length === 0) return NextResponse.json({ error: "Fixture not found" }, { status: 404 });
     const fixture = fixtureRows.rows[0] as any;
     if (fixture.status === "COMPLETED") return NextResponse.json({ error: "Already completed" }, { status: 409 });
+
+    if (fixture.home_user_id !== auth.session.userId && fixture.away_user_id !== auth.session.userId) {
+      return NextResponse.json({ error: "Only match participants can submit scores" }, { status: 403 });
+    }
 
     const season = await db.execute({
       sql: "SELECT id FROM league_seasons WHERE league_id=? AND status='ACTIVE' ORDER BY season_number DESC LIMIT 1",

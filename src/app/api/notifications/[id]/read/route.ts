@@ -10,7 +10,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   await prisma.notificationV2.updateMany({
     where: { id, userId: auth.session.userId },
-    data: { isRead: true },
+    data: { isRead: true, readAt: new Date() },
   });
 
   return NextResponse.json({ ok: true });

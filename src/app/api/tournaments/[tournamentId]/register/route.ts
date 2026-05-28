@@ -77,19 +77,95 @@ export async function POST(req: Request, { params }: { params: Promise<{ tournam
     }));
     const playerIds = allPlayers.map((p) => p.userId);
 
-    const bracketMatches = generateKnockoutBracket(tournamentId, playerIds, true);
+    const tournType = String(tourn.type || "KNOCKOUT");
 
-    for (const match of bracketMatches) {
+    if (tournType === "KNOCKOUT") {
+      const bracketMatches = generateKnockoutBracket(tournamentId, playerIds, true);
+
+      for (const match of bracketMatches) {
+        await db.execute({
+          sql: "INSERT INTO tournament_matches (id, tournament_id, round, match_index, player1_id, player2_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?)",
+          args: [crypto.randomUUID(), tournamentId, match.round, match.matchIndex, match.homeUserId, match.awayUserId, now],
+        });
+      }
+
       await db.execute({
-        sql: "INSERT INTO tournament_matches (id, tournament_id, round, match_index, player1_id, player2_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?)",
-        args: [crypto.randomUUID(), tournamentId, match.round, match.matchIndex, match.homeUserId, match.awayUserId, now],
+        sql: "UPDATE tournaments SET status = 'LIVE', bracket = ?, updated_at = ? WHERE id = ?",
+        args: [JSON.stringify(bracketMatches), now, tournamentId],
+      });
+    } else if (tournType === "ROUND_ROBIN") {
+      const n = playerIds.length;
+      const totalRounds = n % 2 === 0 ? n - 1 : n;
+      let matchIndex = 0;
+      for (let round = 0; round < totalRounds; round++) {
+        for (let i = 0; i < Math.floor(n / 2); i++) {
+          const home = round % 2 === 0 ? playerIds[i] : playerIds[n - 1 - i];
+          const away = round % 2 === 0 ? playerIds[n - 1 - i] : playerIds[i];
+          if (home && away) {
+            await db.execute({
+              sql: "INSERT INTO tournament_matches (id, tournament_id, round, match_index, player1_id, player2_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?)",
+              args: [crypto.randomUUID(), tournamentId, round + 1, matchIndex++, home, away, now],
+            });
+          }
+        }
+      }
+
+      await db.execute({
+        sql: "UPDATE tournaments SET status = 'LIVE', bracket = ?, updated_at = ? WHERE id = ?",
+        args: [JSON.stringify({ type: "ROUND_ROBIN", players: playerIds }), now, tournamentId],
+      });
+    } else if (tournType === "GROUPS") {
+      const groupSize = Math.ceil(playerIds.length / Math.ceil(Math.sqrt(playerIds.length)));
+      const groups: string[][] = [];
+      for (let i = 0; i < playerIds.length; i += groupSize) {
+        groups.push(playerIds.slice(i, i + groupSize));
+      }
+
+      for (let g = 0; g < groups.length; g++) {
+        const groupId = crypto.randomUUID();
+        const groupLetter = String.fromCharCode(65 + g);
+        await db.execute({
+          sql: "INSERT INTO tournament_groups (id, tournament_id, name, seed) VALUES (?, ?, ?, ?)",
+          args: [groupId, tournamentId, `Group ${groupLetter}`, g],
+        });
+
+        const groupPlayers = groups[g];
+        for (const userId of groupPlayers) {
+          await db.execute({
+            sql: "INSERT INTO tournament_group_standings (id, group_id, user_id, points, played, wins, draws, losses, goals_for, goals_against, goal_difference) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0)",
+            args: [crypto.randomUUID(), groupId, userId],
+          });
+        }
+
+        for (let i = 0; i < groupPlayers.length; i++) {
+          for (let j = i + 1; j < groupPlayers.length; j++) {
+            await db.execute({
+              sql: "INSERT INTO tournament_matches (id, tournament_id, round, match_index, player1_id, player2_id, status, group_id, created_at) VALUES (?, ?, 1, ?, ?, ?, 'PENDING', ?, ?)",
+              args: [crypto.randomUUID(), tournamentId, matchIndex++, groupPlayers[i], groupPlayers[j], groupId, now],
+            });
+          }
+        }
+      }
+
+      await db.execute({
+        sql: "UPDATE tournaments SET status = 'LIVE', bracket = ?, updated_at = ? WHERE id = ?",
+        args: [JSON.stringify({ type: "GROUPS", groups: groups.length }), now, tournamentId],
+      });
+    } else {
+      const bracketMatches = generateKnockoutBracket(tournamentId, playerIds, true);
+
+      for (const match of bracketMatches) {
+        await db.execute({
+          sql: "INSERT INTO tournament_matches (id, tournament_id, round, match_index, player1_id, player2_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?)",
+          args: [crypto.randomUUID(), tournamentId, match.round, match.matchIndex, match.homeUserId, match.awayUserId, now],
+        });
+      }
+
+      await db.execute({
+        sql: "UPDATE tournaments SET status = 'LIVE', bracket = ?, updated_at = ? WHERE id = ?",
+        args: [JSON.stringify(bracketMatches), now, tournamentId],
       });
     }
-
-    await db.execute({
-      sql: "UPDATE tournaments SET status = 'LIVE', bracket = ?, updated_at = ? WHERE id = ?",
-      args: [JSON.stringify(bracketMatches), now, tournamentId],
-    });
 
     await db.execute({
       sql: "UPDATE tournament_participants SET status = 'ACTIVE' WHERE tournament_id = ?",

@@ -142,17 +142,15 @@ export function calculateStandings(fixtures: FixtureData[]): StandingEntry[] {
     if (b.points !== a.points) return b.points - a.points;
     if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
     if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-    const h2h = resolveHeadToHead(entries, fixtures);
-    if (h2h) return h2h;
+    const h2h = resolveHeadToHead(a, b, fixtures);
+    if (h2h !== null && h2h !== 0) return h2h;
     return b.wins - a.wins;
   });
 
   return entries;
 }
 
-function resolveHeadToHead(entries: StandingEntry[], fixtures: FixtureData[]): number | null {
-  if (entries.length < 2) return null;
-  const [a, b] = entries;
+function resolveHeadToHead(a: StandingEntry, b: StandingEntry, fixtures: FixtureData[]): number | null {
   let aPts = 0;
   let bPts = 0;
   for (const f of fixtures) {

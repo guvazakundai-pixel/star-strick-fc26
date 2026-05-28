@@ -15,6 +15,17 @@ export async function requireAuth(): Promise<AuthResult> {
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
+  const user = await db.execute({
+    sql: "SELECT is_banned, is_shadow_banned FROM users WHERE id = ?",
+    args: [session.userId],
+  });
+  const row = user.rows[0] as Record<string, unknown> | undefined;
+  if (row && (row.is_banned === 1 || row.is_banned === true)) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Account suspended" }, { status: 403 }),
+    };
+  }
   return { ok: true, session };
 }
 

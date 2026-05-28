@@ -18,17 +18,19 @@ export type AuditAction =
   | "MATCH_REQUEST_CANCEL";
 
 export async function audit(
-  adminId: string,
+  adminId: string | null,
   action: AuditAction,
   target: string,
   details?: Record<string, unknown>,
 ): Promise<void> {
-  await prisma.auditLog.create({
-    data: {
-      adminId,
-      action,
-      target,
-      details: details ?? undefined,
-    },
-  });
+  try {
+    await prisma.auditLog.create({
+      data: {
+        adminId,
+        action,
+        target,
+        details: details ?? undefined,
+      },
+    });
+  } catch {}
 }

@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/route-auth";
 import { notifyChallengeAccepted, notifyPaymentConfirmed, notifyWagerResult } from "@/lib/whatsapp";
 
+const WAGER_FEE_PERCENT = 5;
+
 const UpdateSchema = z.object({
   action: z.enum(["accept", "reject", "cancel", "resolve"]),
   winnerId: z.string().optional(),
@@ -126,5 +128,3 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
-
-const WAGER_FEE_PERCENT = 5;
