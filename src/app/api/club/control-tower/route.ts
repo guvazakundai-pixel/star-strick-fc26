@@ -232,14 +232,16 @@ export async function POST(req: NextRequest) {
 
       // ── Temporary Admin ──
       case "admin-login": {
-        if (data.password === "12345678") {
-          const token = uuid();
+        if (auth.session.role !== "ADMIN") {
+          return NextResponse.json({ error: "Insufficient privileges" }, { status: 403 });
+        }
+        const token = uuid();
+        try {
           await q("INSERT INTO temp_admin_sessions (id, user_id, expires_at, created_at) VALUES (?,?,?,?)",
             [token, auth.session.userId, new Date(Date.now() + 3600000).toISOString(), now()]
           );
-          return NextResponse.json({ success: true, token, expiresIn: 3600 });
-        }
-        return NextResponse.json({ error: "Invalid password" }, { status: 403 });
+        } catch {}
+        return NextResponse.json({ success: true, token, expiresIn: 3600 });
       }
 
       // ── Club Government (voting) ──

@@ -50,9 +50,20 @@ export async function PATCH(
   }
 
   if (action === "accept") {
+    const matchReport = await prisma.matchReport.create({
+      data: {
+        player1Id: request.senderId,
+        player2Id: request.receiverId,
+        clubId: request.clubId,
+        status: "ACTIVE",
+        statusRaw: "ACTIVE",
+        submittedById: request.senderId,
+      },
+    });
+
     const updated = await prisma.matchRequest.update({
       where: { id: requestId },
-      data: { status: "ACCEPTED", statusRaw: "ACCEPTED" },
+      data: { status: "ACCEPTED", statusRaw: "ACTIVE" },
       include: {
         sender: { select: playerSelect },
         receiver: { select: playerSelect },
@@ -60,16 +71,28 @@ export async function PATCH(
       },
     });
 
+    try {
+      await prisma.notificationV2.create({
+        data: {
+          userId: request.senderId,
+          type: "MATCH",
+          title: "Challenge Accepted!",
+          message: `${updated.receiver.displayName || updated.receiver.username} accepted your challenge. Match is now active!`,
+          link: `/matches/${matchReport.id}`,
+        },
+      });
+    } catch {}
+
     await prisma.auditLog.create({
       data: {
         adminId: auth.session.userId,
         action: "MATCH_REQUEST_ACCEPT",
         target: `MATCH_REQUEST:${requestId}`,
-        details: { senderId: request.senderId },
+        details: { senderId: request.senderId, matchId: matchReport.id },
       },
     });
 
-    return NextResponse.json({ request: updated });
+    return NextResponse.json({ request: updated, matchId: matchReport.id });
   }
 
   if (action === "decline") {
