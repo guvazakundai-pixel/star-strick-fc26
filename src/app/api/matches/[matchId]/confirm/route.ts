@@ -21,7 +21,7 @@ export async function POST(
   const match = await prisma.matchReport.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
 
-  if (match.status !== "PENDING") {
+  if (match.status !== "PENDING" && match.status !== "ACTIVE") {
     return NextResponse.json({ error: "Match is not pending confirmation" }, { status: 400 });
   }
 

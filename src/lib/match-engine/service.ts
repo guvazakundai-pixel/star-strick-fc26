@@ -180,7 +180,7 @@ export async function verifyScore(params: VerifyScoreParams): Promise<{ match: a
   });
   if (!match) throw new Error("Match not found");
 
-  assertTransition(match.statusRaw as MatchState, MatchState.PENDING_VERIFICATION);
+  assertTransition(match.statusRaw as MatchState, params.confirm ? MatchState.COMPLETED : MatchState.DISPUTED);
 
   if (params.confirm) {
     await prisma.matchReport.update({

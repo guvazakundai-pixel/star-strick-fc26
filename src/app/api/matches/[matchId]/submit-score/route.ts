@@ -20,11 +20,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { score1, score2, screenshotUrl } = body;
-
-  if (typeof score1 !== "number" || typeof score2 !== "number" || score1 < 0 || score2 < 0) {
-    return NextResponse.json({ error: "Invalid scores" }, { status: 400 });
-  }
+  let score1: number;
+  let score2: number;
+  const screenshotUrl: string | undefined = body.screenshotUrl || (body.screenshots && body.screenshots[0]);
 
   const match = await prisma.matchReport.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
@@ -35,6 +33,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
 
   if (match.player1Id !== auth.session.userId && match.player2Id !== auth.session.userId) {
     return NextResponse.json({ error: "Not your match" }, { status: 403 });
+  }
+
+  if (typeof body.score1 === "number" && typeof body.score2 === "number") {
+    score1 = body.score1;
+    score2 = body.score2;
+  } else if (typeof body.score === "number" && typeof body.opponentScore === "number") {
+    if (auth.session.userId === match.player1Id) {
+      score1 = body.score;
+      score2 = body.opponentScore;
+    } else {
+      score1 = body.opponentScore;
+      score2 = body.score;
+    }
+  } else {
+    return NextResponse.json({ error: "Invalid scores. Provide {score1, score2} or {score, opponentScore}" }, { status: 400 });
+  }
+
+  if (score1 < 0 || score2 < 0) {
+    return NextResponse.json({ error: "Scores cannot be negative" }, { status: 400 });
   }
 
   const role = auth.session.userId === match.player1Id ? "challenger" : "opponent";
@@ -52,6 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
     score1,
     score2,
     screenshotUrl,
+    rageQuit: body.rageQuit || false,
     submittedAt: new Date().toISOString(),
     playerId: auth.session.userId,
   };
