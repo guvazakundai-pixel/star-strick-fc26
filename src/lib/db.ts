@@ -23,9 +23,12 @@ function getDb() {
 }
 
 export const db = new Proxy({} as Client, {
-  get(_target, prop, receiver) {
+  get(_target, prop, _receiver) {
     const client = getDb();
-    const value = Reflect.get(client, prop, receiver);
+    const value = client[prop as keyof Client];
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
     return value;
   },
 });
