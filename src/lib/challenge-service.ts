@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { db } from "@/lib/db";
 import { calculateXPAndPoints, calculateElo } from "@/lib/xp-engine";
 import { recomputePlayerRankings } from "@/lib/ranking";
@@ -341,30 +340,52 @@ async function autoVerifyChallenge(
 
     const xp = calculateXPAndPoints(wRating, lRating, winnerScore, loserScore, winnerId, loserId!, wStreak, wPoints, lPoints, wMatches, lMatches);
 
-    await prisma.playerStats.upsert({
-      where: { userId: winnerId },
-      create: { userId: winnerId, wins: 1, matchesPlayed: 1, goalsScored: winnerScore, goalsConceded: loserScore, skillRating: xp.winnerNewRating, points: xp.winnerPointsGain, winStreak: 1, formScore: 10, formHistory: "W" },
-      update: { wins: { increment: 1 }, matchesPlayed: { increment: 1 }, goalsScored: { increment: winnerScore }, goalsConceded: { increment: loserScore }, skillRating: xp.winnerNewRating, points: { increment: xp.winnerPointsGain }, winStreak: { increment: 1 }, formScore: { increment: 10 } },
-    });
+    // Winner stats — raw SQL upsert
+    const wExisting = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [winnerId] });
+    if (wExisting.rows.length > 0) {
+      await db.execute({
+        sql: `UPDATE player_stats SET wins = wins + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = win_streak + 1, form_score = form_score + 10 WHERE user_id = ?`,
+        args: [winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, winnerId],
+      });
+    } else {
+      await db.execute({
+        sql: `INSERT INTO player_stats (id, user_id, wins, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 1, 10, 'W', ?)`,
+        args: [crypto.randomUUID(), winnerId, winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, now],
+      });
+    }
 
     await db.execute({
       sql: `UPDATE player_stats SET form_history = substr(('W' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,
       args: [winnerId],
     });
 
-    await prisma.playerStats.upsert({
-      where: { userId: loserId! },
-      create: { userId: loserId!, losses: 1, matchesPlayed: 1, goalsScored: loserScore, goalsConceded: winnerScore, skillRating: xp.loserNewRating, points: Math.round(xp.loserPointsGain), winStreak: 0, formScore: -5, formHistory: "L" },
-      update: { losses: { increment: 1 }, matchesPlayed: { increment: 1 }, goalsScored: { increment: loserScore }, goalsConceded: { increment: winnerScore }, skillRating: xp.loserNewRating, points: { increment: Math.round(xp.loserPointsGain) }, winStreak: { set: 0 }, formScore: { increment: -5 } },
-    });
+    // Loser stats — raw SQL upsert
+    const lExisting = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [loserId!] });
+    if (lExisting.rows.length > 0) {
+      await db.execute({
+        sql: `UPDATE player_stats SET losses = losses + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = 0, form_score = form_score - 5 WHERE user_id = ?`,
+        args: [loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), loserId!],
+      });
+    } else {
+      await db.execute({
+        sql: `INSERT INTO player_stats (id, user_id, losses, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 0, -5, 'L', ?)`,
+        args: [crypto.randomUUID(), loserId!, loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), now],
+      });
+    }
 
     await db.execute({
       sql: `UPDATE player_stats SET form_history = substr(('L' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,
       args: [loserId],
     });
 
-    await prisma.pointsLog.create({ data: { userId: winnerId, pointsChange: xp.winnerPointsGain, reason: "CHALLENGE_WIN", reasonText: xp.description } });
-    await prisma.pointsLog.create({ data: { userId: loserId!, pointsChange: Math.round(xp.loserXPLoss), reason: "CHALLENGE_LOSS", reasonText: xp.description } });
+    await db.execute({
+      sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, created_at) VALUES (?, ?, ?, 'CHALLENGE_WIN', ?, ?)`,
+      args: [crypto.randomUUID(), winnerId, xp.winnerPointsGain, xp.description, now],
+    });
+    await db.execute({
+      sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, created_at) VALUES (?, ?, ?, 'CHALLENGE_LOSS', ?, ?)`,
+      args: [crypto.randomUUID(), loserId!, Math.round(xp.loserXPLoss), xp.description, now],
+    });
 
     await recomputePlayerRankings();
 
@@ -391,12 +412,25 @@ async function autoVerifyChallenge(
     matchReportId = reportId;
 
     const drawPoints = 25;
-    await prisma.playerStats.update({ where: { userId: challengerId }, data: { draws: { increment: 1 }, matchesPlayed: { increment: 1 }, points: { increment: drawPoints } } });
-    await prisma.playerStats.update({ where: { userId: opponentId }, data: { draws: { increment: 1 }, matchesPlayed: { increment: 1 }, points: { increment: drawPoints } } });
+    // Raw SQL updates for draw — both players
+    for (const pid of [challengerId, opponentId]) {
+      const ex = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [pid] });
+      if (ex.rows.length > 0) {
+        await db.execute({
+          sql: `UPDATE player_stats SET draws = draws + 1, matches_played = matches_played + 1, points = points + ? WHERE user_id = ?`,
+          args: [drawPoints, pid],
+        });
+      } else {
+        await db.execute({
+          sql: `INSERT INTO player_stats (id, user_id, draws, matches_played, points, form_history, updated_at) VALUES (?, ?, 1, 1, ?, 'D', ?)`,
+          args: [crypto.randomUUID(), pid, drawPoints, now],
+        });
+      }
+    }
     await db.execute({ sql: `UPDATE player_stats SET form_history = substr(('D' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`, args: [challengerId] });
     await db.execute({ sql: `UPDATE player_stats SET form_history = substr(('D' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`, args: [opponentId] });
-    await prisma.pointsLog.create({ data: { userId: challengerId, pointsChange: drawPoints, reason: "CHALLENGE_DRAW" } });
-    await prisma.pointsLog.create({ data: { userId: opponentId, pointsChange: drawPoints, reason: "CHALLENGE_DRAW" } });
+    await db.execute({ sql: `INSERT INTO points_log (id, user_id, points_change, reason, created_at) VALUES (?, ?, ?, 'CHALLENGE_DRAW', ?)`, args: [crypto.randomUUID(), challengerId, drawPoints, now] });
+    await db.execute({ sql: `INSERT INTO points_log (id, user_id, points_change, reason, created_at) VALUES (?, ?, ?, 'CHALLENGE_DRAW', ?)`, args: [crypto.randomUUID(), opponentId, drawPoints, now] });
     await recomputePlayerRankings();
 
     try {
@@ -560,22 +594,38 @@ export async function adminResolveDispute(adminId: string, code: string, action:
 
     const xp = calculateXPAndPoints(wRating, lRating, winnerScore, loserScore, winnerId, loserId, wStreak, wPoints, lPoints, wMatches, lMatches);
 
-    await prisma.playerStats.upsert({
-      where: { userId: winnerId },
-      create: { userId: winnerId, wins: 1, matchesPlayed: 1, goalsScored: winnerScore, goalsConceded: loserScore, skillRating: xp.winnerNewRating, points: xp.winnerPointsGain, winStreak: 1, formScore: 10, formHistory: "W" },
-      update: { wins: { increment: 1 }, matchesPlayed: { increment: 1 }, goalsScored: { increment: winnerScore }, goalsConceded: { increment: loserScore }, skillRating: xp.winnerNewRating, points: { increment: xp.winnerPointsGain }, winStreak: { increment: 1 }, formScore: { increment: 10 } },
-    });
+    // Winner stats — raw SQL upsert
+    const wEx = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [winnerId] });
+    if (wEx.rows.length > 0) {
+      await db.execute({
+        sql: `UPDATE player_stats SET wins = wins + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = win_streak + 1, form_score = form_score + 10 WHERE user_id = ?`,
+        args: [winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, winnerId],
+      });
+    } else {
+      await db.execute({
+        sql: `INSERT INTO player_stats (id, user_id, wins, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 1, 10, 'W', ?)`,
+        args: [crypto.randomUUID(), winnerId, winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, now],
+      });
+    }
     await db.execute({ sql: `UPDATE player_stats SET form_history = substr(('W' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`, args: [winnerId] });
 
-    await prisma.playerStats.upsert({
-      where: { userId: loserId },
-      create: { userId: loserId, losses: 1, matchesPlayed: 1, goalsScored: loserScore, goalsConceded: winnerScore, skillRating: xp.loserNewRating, points: Math.round(xp.loserPointsGain), formScore: -5, formHistory: "L" },
-      update: { losses: { increment: 1 }, matchesPlayed: { increment: 1 }, goalsScored: { increment: loserScore }, goalsConceded: { increment: winnerScore }, skillRating: xp.loserNewRating, points: { increment: Math.round(xp.loserPointsGain) }, winStreak: { set: 0 }, formScore: { increment: -5 } },
-    });
+    // Loser stats — raw SQL upsert
+    const lEx = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [loserId] });
+    if (lEx.rows.length > 0) {
+      await db.execute({
+        sql: `UPDATE player_stats SET losses = losses + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = 0, form_score = form_score - 5 WHERE user_id = ?`,
+        args: [loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), loserId],
+      });
+    } else {
+      await db.execute({
+        sql: `INSERT INTO player_stats (id, user_id, losses, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 0, -5, 'L', ?)`,
+        args: [crypto.randomUUID(), loserId, loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), now],
+      });
+    }
     await db.execute({ sql: `UPDATE player_stats SET form_history = substr(('L' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`, args: [loserId] });
 
-    await prisma.pointsLog.create({ data: { userId: winnerId, pointsChange: xp.winnerPointsGain, reason: "CHALLENGE_WIN", reasonText: xp.description } });
-    await prisma.pointsLog.create({ data: { userId: loserId, pointsChange: Math.round(xp.loserXPLoss), reason: "CHALLENGE_LOSS", reasonText: xp.description } });
+    await db.execute({ sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, created_at) VALUES (?, ?, ?, 'CHALLENGE_WIN', ?, ?)`, args: [crypto.randomUUID(), winnerId, xp.winnerPointsGain, xp.description, now] });
+    await db.execute({ sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, created_at) VALUES (?, ?, ?, 'CHALLENGE_LOSS', ?, ?)`, args: [crypto.randomUUID(), loserId, Math.round(xp.loserXPLoss), xp.description, now] });
 
     await recomputePlayerRankings();
   }
