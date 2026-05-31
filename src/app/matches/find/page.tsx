@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAuthModal } from "@/lib/auth-context";
 import { useSession } from "@/lib/session-client";
-import { ChallengeModal } from "@/components/match/ChallengeModal";
+import { ChallengeModal } from "@/components/SimpleChallengeModal";
 
 type PlayerItem = {
   id: string;

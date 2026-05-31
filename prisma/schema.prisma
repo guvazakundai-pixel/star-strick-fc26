@@ -71,6 +71,8 @@ model User {
   following       Follow[]             @relation("Following")
   disputeReports  Dispute[]            @relation("DisputeReporter")
   reports         Report[]             @relation("ReportReporter")
+  challengesInitiated Challenge[]      @relation("ChallengeChallenger")
+  challengesReceived Challenge[]      @relation("ChallengeOpponent")
   auditLogs       AuditLog[]
   loginAttempts   LoginAttempt[]
   pointsLogs      PointsLog[]          @relation("PointsLogUser")
@@ -627,6 +629,55 @@ model ChallengeToken {
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("challenge_tokens")
+}
+
+model Challenge {
+  id            String    @id @default(uuid())
+  challengeCode String    @unique @map("challenge_code")
+  challengerId  String    @map("challenger_id")
+  opponentId    String    @map("opponent_id")
+  status        String    @default("pending") // pending, accepted, completed, disputed, cancelled, expired
+  seasonId      String?   @map("season_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  acceptedAt    DateTime?  @map("accepted_at")
+  resolvedAt    DateTime?  @map("resolved_at")
+
+  challenger    User              @relation("ChallengeChallenger", fields: [challengerId], references: [id])
+  opponent      User              @relation("ChallengeOpponent", fields: [opponentId], references: [id])
+  matchResults  ChallengeResult[]
+  auditLogs     ChallengeAuditLog[]
+
+  @@index([challengerId, status])
+  @@index([opponentId, status])
+  @@map("challenges")
+}
+
+model ChallengeResult {
+  id           String   @id @default(uuid())
+  challengeId  String   @map("challenge_id")
+  playerId     String   @map("player_id")
+  goalsFor     Int      @map("goals_for")
+  goalsAgainst Int      @map("goals_against")
+  submittedAt  DateTime @default(now()) @map("submitted_at")
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, playerId])
+  @@map("challenge_results")
+}
+
+model ChallengeAuditLog {
+  id          String   @id @default(uuid())
+  challengeId String  @map("challenge_id")
+  action      String
+  performedBy String  @map("performed_by")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId])
+  @@map("challenge_audit_log")
 }
 
 model SystemHealth {

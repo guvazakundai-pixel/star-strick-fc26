@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { MatchCenter } from "@/components/MatchCenter";
 import { MatchHistoryClient } from "@/components/match/MatchHistoryClient";
-import { ChallengeModal } from "@/components/match/ChallengeModal";
+import { ChallengeModal } from "@/components/SimpleChallengeModal";
 
 type MatchPlayer = { id: string; username: string; displayName: string | null };
 

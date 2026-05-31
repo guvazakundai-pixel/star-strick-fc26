@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSession } from "@/lib/session-client";
 import { useAuthModal } from "@/lib/auth-context";
-import { ChallengeModal } from "@/components/match/ChallengeModal";
+import { ChallengeModal } from "@/components/SimpleChallengeModal";
+import { JoinChallengeForm } from "@/components/JoinChallengeForm";
 import { useRealtime } from "@/lib/realtime-updates";
 
 type MatchPlayer = {
@@ -272,6 +273,15 @@ export function MatchCenter({
             </div>
           </div>
         </button>
+      </motion.div>
+
+      {/* Join by Code */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.075 }}
+      >
+        <JoinChallengeForm />
       </motion.div>
 
       {/* Challenge a Player */}

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { DivisionProgressBar } from "@/components/DivisionProgress";
 import { useUser, useAuthModal } from "@/lib/auth-context";
-import { ChallengeModal } from "@/components/match/ChallengeModal";
+import { ChallengeModal } from "@/components/SimpleChallengeModal";
 
 type ProfileData = {
   user: {

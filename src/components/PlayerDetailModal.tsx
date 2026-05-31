@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PLAYERS, cityTag } from "@/lib/players";
 import type { Player } from "@/lib/players";
 import { clubByPlayerId, type Club } from "@/lib/clubs";
-import { ChallengeModal } from "@/components/match/ChallengeModal";
+import { ChallengeModal } from "@/components/SimpleChallengeModal";
 
 export type ModalMode = "detail" | "select" | "compare";
 

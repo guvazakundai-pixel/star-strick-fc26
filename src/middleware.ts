@@ -27,8 +27,10 @@ const PUBLIC_PATHS = [
   "/api/auth/reset-password",
   "/api/stats/player-count",
   "/api/rankings",
+  "/api/challenges",
   "/join",
   "/invite",
+  "/challenges",
 ];
 
 function isPublicPath(pathname: string): boolean {

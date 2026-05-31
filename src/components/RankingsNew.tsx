@@ -10,7 +10,7 @@ import {
 import type { Player, Division, FormResult } from "@/lib/players";
 import { useAuthModal } from "@/lib/auth-context";
 import { PlayerDetailModal } from "@/components/PlayerDetailModal";
-import { ChallengeModal } from "@/components/match/ChallengeModal";
+import { ChallengeModal } from "@/components/SimpleChallengeModal";
 import { formSparkline } from "@/lib/stats";
 import type { SparklineBar } from "@/lib/stats";
 
@@ -1068,14 +1068,14 @@ function TacticalBar({ label, value, gradient, icon }: { label: string; value: n
 }
 
 function ChallengeButton({ playerId, loggedIn, onChallenge, state, compact }: { playerId: string; loggedIn: boolean; onChallenge: (id: string, e?: React.MouseEvent) => void; state: "idle" | "sending" | "sent" | "error"; compact?: boolean }) {
-  const sizeClass = compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]";
+  const sizeClass = compact ? "px-2.5 py-1.5 text-[8px]" : "px-3.5 py-2 text-[10px]";
   const iconSize = compact ? "h-2.5 w-2.5" : "h-3 w-3";
 
   if (state === "sent") {
     return (
       <span className={`inline-flex items-center justify-center gap-1.5 rounded-[8px] font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/20 ${sizeClass}`}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={iconSize}><path d="M20 6L9 17l-5-5" /></svg>
-        Sent
+        Sent!
       </span>
     );
   }
@@ -1101,7 +1101,7 @@ function ChallengeButton({ playerId, loggedIn, onChallenge, state, compact }: { 
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className={iconSize}>
         <path d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
-      {state === "sending" ? "..." : loggedIn ? "Challenge" : "Sign in to Challenge"}
+      ⚔ {state === "sending" ? "..." : loggedIn ? "Challenge" : "Sign in"}
     </button>
   );
 }

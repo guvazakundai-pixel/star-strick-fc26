@@ -127,6 +127,36 @@ export function renderPasswordResetEmail(params: {
 </html>`;
 }
 
+export function renderChallengeEmail(params: {
+  challengerName: string;
+  challengeCode: string;
+  acceptUrl: string;
+}): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0D0D0F;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">
+  <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#111214;border-radius:24px;border:1px solid rgba(255,255,255,0.06)">
+    <tr><td style="padding:40px 32px 32px;text-align:center">
+      <h1 style="color:#00ff85;font-size:28px;font-weight:900;letter-spacing:-0.5px;margin:0 0 8px;text-transform:uppercase">ZimFC Pro</h1>
+      <p style="color:#8E909A;font-size:14px;margin:0 0 32px">You've Been Challenged!</p>
+    </td></tr>
+    <tr><td style="padding:0 32px">
+      <p style="color:#EDEDED;font-size:16px;margin:0 0 16px"><strong style="color:#00ff85">${params.challengerName}</strong> has challenged you on ZimFC Pro.</p>
+      <p style="color:#B0B2BA;font-size:14px;margin:0 0 24px;line-height:1.6">Challenge Code: <strong style="color:#22d3ee;font-size:18px;letter-spacing:2px">${params.challengeCode}</strong></p>
+    </td></tr>
+    <tr><td style="padding:0 32px 32px;text-align:center">
+      <a href="${params.acceptUrl}" style="display:inline-block;padding:14px 32px;background:#00ff85;color:#000;text-decoration:none;font-weight:700;font-size:14px;border-radius:12px;text-transform:uppercase;letter-spacing:1px">Accept Challenge &rarr;</a>
+      <p style="color:#6B6D78;font-size:12px;margin:16px 0 0">You have 48 hours to respond. After that the challenge expires.</p>
+    </td></tr>
+  </table>
+</td></tr></table>
+</body>
+</html>`;
+}
+
 export function renderWelcomeEmail(params: {
   username: string;
   displayName: string;
