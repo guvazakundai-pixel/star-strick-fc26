@@ -15,6 +15,17 @@ function createLibsqlClient() {
   return createClient({ url });
 }
 
-export const db = globalForLibsql.libsql ?? createLibsqlClient();
+function getDb() {
+  if (!globalForLibsql.libsql) {
+    globalForLibsql.libsql = createLibsqlClient();
+  }
+  return globalForLibsql.libsql;
+}
 
-if (process.env.NODE_ENV !== "production") globalForLibsql.libsql = db;
+export const db = new Proxy({} as Client, {
+  get(_target, prop, receiver) {
+    const client = getDb();
+    const value = Reflect.get(client, prop, receiver);
+    return value;
+  },
+});
