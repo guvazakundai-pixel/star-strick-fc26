@@ -151,13 +151,13 @@ export async function POST(req: Request) {
   });
   if (existingRanking.rows.length > 0) {
     await db.execute({
-      sql: "UPDATE player_rankings SET rank_position = ?, rank_change = 0, points = 0, final_score = 0 WHERE user_id = ?",
-      args: [startingRank, id],
+      sql: "UPDATE player_rankings SET rank_position = ?, rank_change = 0, points = 0, final_score = 0, updated_at = ? WHERE user_id = ?",
+      args: [startingRank, now, id],
     });
   } else {
     await db.execute({
-      sql: "INSERT INTO player_rankings (id, user_id, rank_position, prev_position, rank_change, points, final_score) VALUES (?, ?, ?, NULL, 0, 0, 0)",
-      args: [rankingId, id, startingRank],
+      sql: "INSERT INTO player_rankings (id, user_id, rank_position, prev_position, rank_change, points, final_score, updated_at) VALUES (?, ?, ?, NULL, 0, 0, 0, ?)",
+      args: [rankingId, id, startingRank, now],
     });
   }
 
