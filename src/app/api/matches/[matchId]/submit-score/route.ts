@@ -65,6 +65,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
   const currentConfirmations = ((match.confirmations as Record<string, unknown>) || {}) as Record<string, any>;
   const key = auth.session.userId === match.player1Id ? "player1" : "player2";
 
+  if (currentConfirmations[key]) {
+    return NextResponse.json({ error: "You have already submitted your score" }, { status: 400 });
+  }
+
   currentConfirmations[key] = {
     score1,
     score2,
@@ -152,11 +156,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      status: "SCORE_SUBMITTED",
-      message: "Score submitted — waiting for opponent to confirm",
-    });
+      return NextResponse.json({
+        success: true,
+        status: "SCORE_SUBMITTED",
+        message: "Score submitted — waiting for opponent to also submit their score",
+      });
   }
 }
 

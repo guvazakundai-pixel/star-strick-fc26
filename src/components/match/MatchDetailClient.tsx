@@ -97,9 +97,14 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
   const isPlayer1 = session && match?.player1.id === session.userId;
   const isPlayer2 = session && match?.player2.id === session.userId;
   const isParticipant = isPlayer1 || isPlayer2;
-  const isSubmitting = match?.statusRaw === "ACTIVE" && isParticipant;
-  const isVerifying = match?.statusRaw === "SCORE_SUBMITTED" && isParticipant && match.submittedById !== session?.userId;
-  const isWaiting = match?.statusRaw === "SCORE_SUBMITTED" && isParticipant && match.submittedById === session?.userId;
+
+  const confirmations = (match?.confirmations as Record<string, any>) ?? {};
+  const myKey = isPlayer1 ? "player1" : "player2";
+  const iHaveSubmitted = isParticipant && !!confirmations[myKey];
+
+  const isSubmitting = (match?.statusRaw === "ACTIVE" || (match?.statusRaw === "SCORE_SUBMITTED" && !iHaveSubmitted)) && isParticipant;
+  const isVerifying = match?.statusRaw === "PENDING_VERIFICATION" && isParticipant && match.submittedById !== session?.userId;
+  const isWaiting = (match?.statusRaw === "SCORE_SUBMITTED" && isParticipant && iHaveSubmitted) || (match?.statusRaw === "PENDING_VERIFICATION" && isParticipant && match.submittedById === session?.userId);
   const isTerminal = match && ["COMPLETED", "CONFIRMED", "APPROVED", "CANCELLED", "EXPIRED", "AUTO_FORFEIT"].includes(match.statusRaw);
 
   const handleSubmitScore = useCallback(async () => {
@@ -118,7 +123,11 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed to submit"); return; }
-      setAntiCheat(data.antiCheat);
+      if (data.antiCheat) setAntiCheat(data.antiCheat);
+      if (data.xpResult) setXpResult(data.xpResult);
+      if (data.status === "DISPUTED") {
+        setError("Scores don't match — a dispute has been opened for admin review.");
+      }
       fetchMatch();
     } catch {
       setError("Submission failed. Try again.");
@@ -321,6 +330,14 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
               <p className="text-[11px] text-muted-soft mt-1">Enter the final result of your match</p>
             </div>
 
+            {match?.statusRaw === "SCORE_SUBMITTED" && match.submittedById && match.submittedById !== session?.userId && (
+              <div className="rounded-[12px] bg-gold/8 border border-gold/20 px-3 py-2 text-center">
+                <p className="text-[10px] font-bold text-gold">
+                  Your opponent has already submitted their score. Enter yours below.
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center justify-center gap-4">
               <div className="text-center">
                 <p className="text-[9px] font-bold tracking-wider uppercase text-muted-soft mb-2">
@@ -374,7 +391,7 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
               ))}
             </div>
             <p className="text-sm font-semibold text-ink">Score Submitted</p>
-            <p className="text-[11px] text-muted-soft">Waiting for opponent to verify the result</p>
+            <p className="text-[11px] text-muted-soft">Waiting for your opponent to submit their score</p>
           </motion.div>
         )}
 

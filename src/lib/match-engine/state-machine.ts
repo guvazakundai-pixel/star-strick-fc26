@@ -7,6 +7,7 @@ const TRANSITIONS: MatchStateTransition[] = [
   { from: MatchState.ACTIVE, to: MatchState.SCORE_SUBMITTED, requiredRole: "either" },
   { from: MatchState.ACTIVE, to: MatchState.AUTO_FORFEIT, requiredRole: "admin" },
   { from: MatchState.ACTIVE, to: MatchState.CANCELLED, requiredRole: "either" },
+  { from: MatchState.SCORE_SUBMITTED, to: MatchState.SCORE_SUBMITTED, requiredRole: "either" },
   { from: MatchState.SCORE_SUBMITTED, to: MatchState.PENDING_VERIFICATION, requiredRole: "opponent" },
   { from: MatchState.SCORE_SUBMITTED, to: MatchState.DISPUTED, requiredRole: "opponent" },
   { from: MatchState.SCORE_SUBMITTED, to: MatchState.AUTO_FORFEIT, requiredRole: "admin" },
