@@ -144,25 +144,22 @@ export async function POST(req: Request) {
     args: [statsId, id, now],
   });
 
-  // Insert ranking (critical) — use upsert to prevent duplicates
-  await prisma.playerRanking.upsert({
-    where: { userId: id },
-    create: {
-      id: rankingId,
-      userId: id,
-      rankPosition: startingRank,
-      prevPosition: null,
-      rankChange: 0,
-      points: 0,
-      finalScore: 0,
-    },
-    update: {
-      rankPosition: startingRank,
-      rankChange: 0,
-      points: 0,
-      finalScore: 0,
-    },
+  // Insert ranking (critical) — raw SQL to avoid prisma URL issues in production
+  const existingRanking = await db.execute({
+    sql: "SELECT id FROM player_rankings WHERE user_id = ?",
+    args: [id],
   });
+  if (existingRanking.rows.length > 0) {
+    await db.execute({
+      sql: "UPDATE player_rankings SET rank_position = ?, rank_change = 0, points = 0, final_score = 0 WHERE user_id = ?",
+      args: [startingRank, id],
+    });
+  } else {
+    await db.execute({
+      sql: "INSERT INTO player_rankings (id, user_id, rank_position, prev_position, rank_change, points, final_score) VALUES (?, ?, ?, NULL, 0, 0, 0)",
+      args: [rankingId, id, startingRank],
+    });
+  }
 
   // Insert fantasy team (non-critical — don't fail registration if this errors)
   try {
