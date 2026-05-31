@@ -2,7 +2,7 @@ import { createClient, type Client } from "@libsql/client";
 
 const globalForLibsql = globalThis as unknown as { libsql?: Client };
 
-function createLibsqlClient() {
+function createLibsqlClient(): Client {
   const useTurso = process.env.TURSO_DATABASE_URL && process.env.USE_TURSO === "true";
   if (useTurso) {
     return createClient({
@@ -15,20 +15,8 @@ function createLibsqlClient() {
   return createClient({ url });
 }
 
-function getDb() {
-  if (!globalForLibsql.libsql) {
-    globalForLibsql.libsql = createLibsqlClient();
-  }
-  return globalForLibsql.libsql;
+if (!globalForLibsql.libsql) {
+  globalForLibsql.libsql = createLibsqlClient();
 }
 
-export const db = new Proxy({} as Client, {
-  get(_target, prop, _receiver) {
-    const client = getDb();
-    const value = client[prop as keyof Client];
-    if (typeof value === "function") {
-      return value.bind(client);
-    }
-    return value;
-  },
-});
+export const db: Client = globalForLibsql.libsql;

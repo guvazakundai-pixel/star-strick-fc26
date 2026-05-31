@@ -8,7 +8,7 @@ if (!process.env.DATABASE_URL) {
   process.env.DATABASE_URL = "file:./prisma/dev.db";
 }
 
-function createPrismaClient() {
+function createPrismaClient(): PrismaClient {
   const useTurso = process.env.TURSO_DATABASE_URL && process.env.USE_TURSO === "true";
 
   if (useTurso) {
@@ -28,20 +28,8 @@ function createPrismaClient() {
   });
 }
 
-export function getPrisma() {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = createPrismaClient();
-  }
-  return globalForPrisma.prisma;
+if (!globalForPrisma.prisma) {
+  globalForPrisma.prisma = createPrismaClient();
 }
 
-export const prisma = new Proxy({} as PrismaClient, {
-  get(_target, prop, _receiver) {
-    const client = getPrisma();
-    const value = client[prop as keyof PrismaClient];
-    if (typeof value === "function") {
-      return value.bind(client);
-    }
-    return value;
-  },
-});
+export const prisma: PrismaClient = globalForPrisma.prisma;
