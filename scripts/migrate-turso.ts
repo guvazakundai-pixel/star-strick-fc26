@@ -49,6 +49,12 @@ const MIGRATIONS: { table: string; sql: string; verify: string }[] = [
     sql: "ALTER TABLE points_log ADD COLUMN reason_text TEXT",
     verify: "reason_text",
   },
+  // challenges — expires_at for 48hr challenge expiry
+  {
+    table: "challenges",
+    sql: "ALTER TABLE challenges ADD COLUMN expires_at TEXT",
+    verify: "expires_at",
+  },
 ];
 
 async function columnExists(table: string, column: string): Promise<boolean> {
