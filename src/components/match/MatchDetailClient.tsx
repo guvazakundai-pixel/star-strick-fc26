@@ -330,13 +330,20 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
               <p className="text-[11px] text-muted-soft mt-1">Enter the final result of your match</p>
             </div>
 
-            {match?.statusRaw === "SCORE_SUBMITTED" && match.submittedById && match.submittedById !== session?.userId && (
-              <div className="rounded-[12px] bg-gold/8 border border-gold/20 px-3 py-2 text-center">
-                <p className="text-[10px] font-bold text-gold">
-                  Your opponent has already submitted their score. Enter yours below.
-                </p>
-              </div>
-            )}
+            {match?.statusRaw === "SCORE_SUBMITTED" && match.submittedById && match.submittedById !== session?.userId && (() => {
+              const oppKey = isPlayer1 ? "player2" : "player1";
+              const oppSub = confirmations[oppKey];
+              const oppP1 = oppSub?.score1;
+              const oppP2 = oppSub?.score2;
+              return (
+                <div className="rounded-[12px] bg-gold/8 border border-gold/20 px-3 py-2 text-center">
+                  <p className="text-[10px] font-bold text-gold">
+                    Your opponent reported: {oppP1 !== undefined ? `${oppP1} - ${oppP2}` : "score pending"}
+                  </p>
+                  <p className="text-[9px] text-gold/70 mt-0.5">Enter your score below. If both match, result is confirmed automatically.</p>
+                </div>
+              );
+            })()}
 
             <div className="flex items-center justify-center gap-4">
               <div className="text-center">
@@ -392,6 +399,16 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
             </div>
             <p className="text-sm font-semibold text-ink">Score Submitted</p>
             <p className="text-[11px] text-muted-soft">Waiting for your opponent to submit their score</p>
+            {iHaveSubmitted && (() => {
+              const mySub = confirmations[myKey];
+              const myScoreVal = isPlayer1 ? mySub?.score1 : mySub?.score2;
+              const oppScoreVal = isPlayer1 ? mySub?.score2 : mySub?.score1;
+              return mySub ? (
+                <div className="rounded-[12px] bg-accent/5 border border-accent/15 px-3 py-2 mt-1">
+                  <p className="text-[10px] text-muted-soft">You submitted: <span className="font-bold text-accent">{myScoreVal} - {oppScoreVal}</span></p>
+                </div>
+              ) : null;
+            })()}
           </motion.div>
         )}
 
