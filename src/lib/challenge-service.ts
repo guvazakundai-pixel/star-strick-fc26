@@ -6,6 +6,7 @@ import { checkAndAward } from "@/lib/achievements";
 import { audit } from "@/lib/audit";
 import { sendEmail, renderChallengeEmail } from "@/lib/email";
 import { notifyUser } from "@/server/socket";
+import { logMatchResult, logChallengeCreated, logRankChange, logActivity } from "@/lib/activity";
 import crypto from "crypto";
 
 const CHALLENGE_EXPIRY_HOURS = 48;
@@ -108,6 +109,8 @@ export async function createChallenge(challengerId: string, opponentId: string) 
   } catch (e) {
     console.error("[challenge] Notification insert failed:", e);
   }
+
+  await logChallengeCreated(challengerId, opponentId, challengerName, opponentName ?? (opponent.rows[0] as any)?.username ?? "Someone", code);
 
   return { id, code, status: "pending" };
 }
@@ -371,6 +374,10 @@ async function autoVerifyChallenge(
       notifyUser(winnerId, { type: "MATCH", title: "Victory!", message: xp.description, link: `/challenges/${challenge.challenge_code}` });
       notifyUser(loserId!, { type: "MATCH", title: "Defeat", message: xp.description, link: `/challenges/${challenge.challenge_code}` });
     } catch {}
+
+    const cName = challenge.challenger_username || "Challenger";
+    const oName = challenge.opponent_username || "Opponent";
+    await logMatchResult(winnerId, loserId, winnerId === challengerId ? cName : oName, winnerId === challengerId ? oName : cName, `${challengerGoals}-${opponentGoals}`, challenge.challenge_code as string);
   } else {
     const reportId = crypto.randomUUID();
     await db.execute({
@@ -393,6 +400,11 @@ async function autoVerifyChallenge(
       notifyUser(challengerId, { type: "MATCH", title: "Draw!", message: "Match ended in a draw. +25 points each.", link: `/challenges/${challenge.challenge_code}` });
       notifyUser(opponentId, { type: "MATCH", title: "Draw!", message: "Match ended in a draw. +25 points each.", link: `/challenges/${challenge.challenge_code}` });
     } catch {}
+
+    const cName2 = challenge.challenger_username || "Challenger";
+    const oName2 = challenge.opponent_username || "Opponent";
+    await logActivity("MATCH_DRAW", challengerId, `Drew with ${oName2} ${challengerGoals}-${opponentGoals}`, { opponentId, score: `${challengerGoals}-${opponentGoals}`, challengeCode: challenge.challenge_code as string });
+    await logActivity("MATCH_DRAW", opponentId, `Drew with ${cName2} ${challengerGoals}-${opponentGoals}`, { opponentId: challengerId, score: `${challengerGoals}-${opponentGoals}`, challengeCode: challenge.challenge_code as string });
   }
 
   await audit("0", "CHALLENGE_COMPLETE", challenge.id as string, {

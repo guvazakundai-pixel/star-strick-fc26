@@ -7,6 +7,7 @@ import { assertTransition } from "@/lib/match-engine/state-machine";
 import { calculateXPAndPoints } from "@/lib/xp-engine";
 import { checkAndAward } from "@/lib/achievements";
 import { recomputePlayerRankings } from "@/lib/ranking";
+import { logMatchResult, logActivity } from "@/lib/activity";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params;
@@ -111,8 +112,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
         const winnerScore = Math.max(p1Score, p2Score);
         const loserScore = Math.min(p1Score, p2Score);
         await applyMatchResults(matchId, winnerId, loserId, winnerScore, loserScore);
+        try {
+          const p1Name = match.player1?.displayName || match.player1?.username || "Player 1";
+          const p2Name = match.player2?.displayName || match.player2?.username || "Player 2";
+          await logMatchResult(winnerId, loserId, winnerId === match.player1Id ? p1Name : p2Name, winnerId === match.player1Id ? p2Name : p1Name, `${p1Score}-${p2Score}`);
+        } catch {}
       } else {
         await applyDraw(matchId, match.player1Id, match.player2Id, p1Score, p2Score);
+        try {
+          await logActivity("MATCH_DRAW", match.player1Id, `Drew with opponent ${p1Score}-${p2Score}`, { matchId });
+          await logActivity("MATCH_DRAW", match.player2Id, `Drew with opponent ${p1Score}-${p2Score}`, { matchId });
+        } catch {}
       }
 
       return NextResponse.json({ success: true, status: "COMPLETED", verified: true });
