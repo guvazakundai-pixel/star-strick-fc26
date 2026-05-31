@@ -1,4 +1,4 @@
-import { prisma } from "./prisma";
+import { db } from "./db";
 import { emitRankingUpdate } from "@/server/socket";
 
 export type PlayerStatsInput = {
@@ -97,19 +97,25 @@ export function clubFinalScore(c: ClubStrengthInput): {
 }
 
 export async function recomputePlayerRankings(): Promise<{ updated: number }> {
-  const stats = await prisma.playerStats.findMany({
-    select: {
-      userId: true,
-      wins: true,
-      losses: true,
-      draws: true,
-      goalsScored: true,
-      goalsConceded: true,
-      skillRating: true,
-      formScore: true,
-      points: true,
-    },
+  const statsResult = await db.execute({
+    sql: `SELECT user_id, wins, losses, draws, goals_scored, goals_conceded, skill_rating, form_score, points
+          FROM player_stats`,
+    args: [],
   });
+
+  const stats = statsResult.rows.map((r: any) => ({
+    userId: r.user_id,
+    wins: Number(r.wins ?? 0),
+    losses: Number(r.losses ?? 0),
+    draws: Number(r.draws ?? 0),
+    goalsScored: Number(r.goals_scored ?? 0),
+    goalsConceded: Number(r.goals_conceded ?? 0),
+    skillRating: Number(r.skill_rating ?? 1000),
+    formScore: Number(r.form_score ?? 0),
+    points: Number(r.points ?? 0),
+  }));
+
+  if (stats.length === 0) return { updated: 0 };
 
   const scored = stats
     .map((s) => ({
@@ -127,39 +133,36 @@ export async function recomputePlayerRankings(): Promise<{ updated: number }> {
     }))
     .sort((a, b) => b.finalScore - a.finalScore);
 
-  const previous = await prisma.playerRanking.findMany({
-    select: { userId: true, rankPosition: true },
+  const prevResult = await db.execute({
+    sql: "SELECT user_id, rank_position FROM player_rankings",
+    args: [],
   });
-  const prevMap = new Map(previous.map((p) => [p.userId, p.rankPosition]));
+  const prevMap = new Map(prevResult.rows.map((r: any) => [r.user_id, Number(r.rank_position)]));
 
-  await prisma.$transaction(async (tx) => {
-    for (let i = 0; i < scored.length; i++) {
-      const s = scored[i];
-      const newRank = i + 1;
-      const prev = prevMap.get(s.userId) ?? null;
-      const rankChange = prev != null ? prev - newRank : 0;
-      await tx.playerRanking.upsert({
-        where: { userId: s.userId },
-        create: {
-          userId: s.userId,
-          rankPosition: newRank,
-          prevPosition: prev,
-          rankChange,
-          points: s.points,
-          finalScore: s.finalScore,
-        },
-        update: {
-          rankPosition: newRank,
-          prevPosition: prev,
-          rankChange,
-          points: s.points,
-          finalScore: s.finalScore,
-        },
+  const now = new Date().toISOString();
+  for (let i = 0; i < scored.length; i++) {
+    const s = scored[i];
+    const newRank = i + 1;
+    const prev = prevMap.get(s.userId) ?? null;
+    const rankChange = prev != null ? prev - newRank : 0;
+
+    const existing = await db.execute({
+      sql: "SELECT id FROM player_rankings WHERE user_id = ?",
+      args: [s.userId],
+    });
+    if (existing.rows.length > 0) {
+      await db.execute({
+        sql: `UPDATE player_rankings SET rank_position = ?, prev_position = ?, rank_change = ?, points = ?, final_score = ?, updated_at = ? WHERE user_id = ?`,
+        args: [newRank, prev, rankChange, s.points, s.finalScore, now, s.userId],
+      });
+    } else {
+      await db.execute({
+        sql: `INSERT INTO player_rankings (id, user_id, rank_position, prev_position, rank_change, points, final_score, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [crypto.randomUUID(), s.userId, newRank, prev, rankChange, s.points, s.finalScore, now],
       });
     }
-  });
+  }
 
-  // Emit real-time ranking update
   try {
     emitRankingUpdate({ updated: scored.length, timestamp: new Date().toISOString() });
   } catch {}
