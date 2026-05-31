@@ -28,8 +28,20 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
-if (!globalForPrisma.prisma) {
-  globalForPrisma.prisma = createPrismaClient();
+export function getPrisma(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
 }
 
-export const prisma: PrismaClient = globalForPrisma.prisma;
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrisma();
+    const value = (client as any)[prop];
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
