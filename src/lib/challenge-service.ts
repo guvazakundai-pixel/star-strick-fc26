@@ -55,9 +55,11 @@ export async function createChallenge(challengerId: string, opponentId: string) 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
+  const expiresAt = new Date(Date.now() + CHALLENGE_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
+
   await db.execute({
-    sql: `INSERT INTO challenges (id, challenge_code, challenger_id, opponent_id, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)`,
-    args: [id, code, challengerId, opponentId, now],
+    sql: `INSERT INTO challenges (id, challenge_code, challenger_id, opponent_id, status, created_at, expires_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)`,
+    args: [id, code, challengerId, opponentId, now, expiresAt],
   });
 
   await audit(challengerId, "CHALLENGE_CREATE", id, { code, opponentId });
@@ -72,6 +74,7 @@ export async function createChallenge(challengerId: string, opponentId: string) 
   });
 
   const challengerName = (challenger.rows[0] as any)?.username ?? "Someone";
+  const opponentName = (opponent.rows[0] as any)?.username ?? "Someone";
   const opponentEmail = (opponent.rows[0] as any)?.email;
 
   if (opponentEmail) {
@@ -582,10 +585,14 @@ export async function adminResolveDispute(adminId: string, code: string, action:
 }
 
 export async function expireChallenges() {
-  const cutoff = new Date(Date.now() - CHALLENGE_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
+  const now = new Date().toISOString();
   const result = await db.execute({
-    sql: `UPDATE challenges SET status = 'expired', resolved_at = ? WHERE status = 'pending' AND created_at < ?`,
-    args: [new Date().toISOString(), cutoff],
+    sql: `UPDATE challenges SET status = 'expired', resolved_at = ? WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at < ?`,
+    args: [now, now],
   });
-  return { expired: result.rowsAffected ?? 0 };
+  const fallback = await db.execute({
+    sql: `UPDATE challenges SET status = 'expired', resolved_at = ? WHERE status = 'pending' AND (expires_at IS NULL OR expires_at = '') AND datetime(created_at) < datetime(?, '-48 hours')`,
+    args: [now, now],
+  });
+  return { expired: (result.rowsAffected ?? 0) + (fallback.rowsAffected ?? 0) };
 }

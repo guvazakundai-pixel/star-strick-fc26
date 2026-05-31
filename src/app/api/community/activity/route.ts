@@ -9,7 +9,7 @@ export async function GET() {
       db.execute({
         sql: `SELECT ua.id, ua.type, ua.message, ua.created_at,
                      u.username, u.display_name, u.avatar_url
-              FROM user_activity ua
+              FROM user_activities ua
               JOIN users u ON u.id = ua.user_id
               ORDER BY ua.created_at DESC
               LIMIT 10`,
@@ -18,7 +18,7 @@ export async function GET() {
       db.execute({
         sql: `SELECT ca.id, ca.type, ca.message, ca.created_at,
                      u.username, u.display_name, u.avatar_url
-              FROM club_activity ca
+              FROM club_activities ca
               JOIN users u ON u.id = ca.user_id
               ORDER BY ca.created_at DESC
               LIMIT 10`,

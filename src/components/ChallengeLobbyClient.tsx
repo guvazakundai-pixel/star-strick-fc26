@@ -129,8 +129,9 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
   const bothSubmitted = challenge.results?.length === 2;
 
   const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
-    pending: { label: "Waiting for Opponent", color: "#ffb800", icon: "⏳" },
+    pending: { label: "Waiting for Opponent to Accept", color: "#ffb800", icon: "⏳" },
     accepted: { label: "Match In Progress", color: "#00ff85", icon: "⚔" },
+    awaiting_confirmation: { label: "Awaiting Confirmation", color: "#22d3ee", icon: "📋" },
     completed: { label: "Match Complete", color: "#00ff85", icon: "✓" },
     disputed: { label: "Under Review", color: "#ff4d4d", icon: "⚠" },
     cancelled: { label: "Cancelled", color: "#8E909A", icon: "✕" },

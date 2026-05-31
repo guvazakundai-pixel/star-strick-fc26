@@ -636,11 +636,12 @@ model Challenge {
   challengeCode String    @unique @map("challenge_code")
   challengerId  String    @map("challenger_id")
   opponentId    String    @map("opponent_id")
-  status        String    @default("pending") // pending, accepted, completed, disputed, cancelled, expired
+  status        String    @default("pending") // pending, accepted, awaiting_confirmation, completed, disputed, cancelled, expired
   seasonId      String?   @map("season_id")
   createdAt     DateTime  @default(now()) @map("created_at")
   acceptedAt    DateTime?  @map("accepted_at")
   resolvedAt    DateTime?  @map("resolved_at")
+  expiresAt     DateTime?  @map("expires_at")
 
   challenger    User              @relation("ChallengeChallenger", fields: [challengerId], references: [id])
   opponent      User              @relation("ChallengeOpponent", fields: [opponentId], references: [id])
