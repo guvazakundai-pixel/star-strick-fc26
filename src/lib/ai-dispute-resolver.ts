@@ -71,37 +71,37 @@ async function getPlayerProfile(userId: string): Promise<PlayerProfile> {
 
   // Count disputes this user has filed
   const disputesRes = await db.execute({
-    sql: `SELECT COUNT(*) as c FROM match_results
+    sql: `SELECT COUNT(*) as cnt FROM match_results
           WHERE (submitted_by = ? OR counter_submitted_by = ?)
           AND dispute_reason IS NOT NULL`,
     args: [userId, userId],
   });
-  const disputesFiled = Number((disputesRes.rows[0] as any)?.c ?? 0);
+  const disputesFiled = Number((disputesRes.rows[0] as any)?.cnt ?? 0);
 
   // Count disputes where their submission was NOT the final one (they "lost" the dispute)
   const disputesLost = await db.execute({
-    sql: `SELECT COUNT(*) as c FROM match_results mr
-          JOIN challenges c ON c.id = mr.challenge_id
-          WHERE c.status = 'RESOLVED'
+    sql: `SELECT COUNT(*) as cnt FROM match_results mr
+          JOIN challenges ch ON ch.id = mr.challenge_id
+          WHERE ch.status = 'RESOLVED'
           AND (
-            (mr.submitted_by = ? AND mr.final_challenger_score IS NOT NULL AND mr.final_challenger_score != mr.challenger_score)
+            (mr.submitted_by = ? AND mr.final_challenger_score IS NOT NULL AND mr.final_challenger_score <> mr.challenger_score)
             OR
-            (mr.counter_submitted_by = ? AND mr.final_challenger_score IS NOT NULL AND mr.final_challenger_score != mr.counter_challenger_score)
+            (mr.counter_submitted_by = ? AND mr.final_challenger_score IS NOT NULL AND mr.final_challenger_score <> mr.counter_challenger_score)
           )`,
     args: [userId, userId],
   });
 
-  const disputesLostCount = Number((disputesLost.rows[0] as any)?.c ?? 0);
+  const disputesLostCount = Number((disputesLost.rows[0] as any)?.cnt ?? 0);
 
   // Report accuracy: matches where they submitted and it matched opponent / got verified
   const accurateRes = await db.execute({
-    sql: `SELECT COUNT(*) as c FROM match_results mr
-          JOIN challenges c ON c.id = mr.challenge_id
-          WHERE mr.submitted_by = ? AND c.status IN ('VERIFIED', 'RESOLVED')
+    sql: `SELECT COUNT(*) as cnt FROM match_results mr
+          JOIN challenges ch ON ch.id = mr.challenge_id
+          WHERE mr.submitted_by = ? AND ch.status IN ('VERIFIED', 'RESOLVED')
           AND NOT EXISTS (SELECT 1 FROM match_results mr2 WHERE mr2.challenge_id = mr.challenge_id AND mr2.counter_submitted_by IS NOT NULL)`,
     args: [userId],
   });
-  const accurateReports = Number((accurateRes.rows[0] as any)?.c ?? 0);
+  const accurateReports = Number((accurateRes.rows[0] as any)?.cnt ?? 0);
 
   const reportAccuracy = totalMatches > 0
     ? Math.round((accurateReports / Math.max(totalMatches, 1)) * 100)
