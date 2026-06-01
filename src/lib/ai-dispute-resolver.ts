@@ -444,6 +444,13 @@ export async function applyAiVerdict(
   const now = new Date().toISOString();
   const { challengerScore, opponentScore } = verdict.finalScore;
 
+  // Get the original submitter's ID for the match report FK
+  const mrRow = await db.execute({
+    sql: "SELECT submitted_by FROM match_results WHERE challenge_id = ?",
+    args: [challengeId],
+  });
+  const submittedById = (mrRow.rows[0] as any)?.submitted_by || challengerId;
+
   // Update match_result with AI decision
   await db.execute({
     sql: `UPDATE match_results SET
@@ -470,14 +477,14 @@ export async function applyAiVerdict(
   if (winnerId && loserId) {
     await db.execute({
       sql: `INSERT INTO match_reports (id, player1_id, player2_id, winner_id, score1, score2, status, status_raw, submitted_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'RESOLVED', 'RESOLVED', 'ai-referee', ?)`,
-      args: [reportId, challengerId, opponentId, winnerId, cScore, oScore, now],
+            VALUES (?, ?, ?, ?, ?, ?, 'RESOLVED', 'RESOLVED', ?, ?)`,
+      args: [reportId, challengerId, opponentId, winnerId, cScore, oScore, submittedById, now],
     });
   } else {
     await db.execute({
       sql: `INSERT INTO match_reports (id, player1_id, player2_id, score1, score2, status, status_raw, submitted_by, created_at)
-            VALUES (?, ?, ?, ?, ?, 'RESOLVED', 'RESOLVED', 'ai-referee', ?)`,
-      args: [reportId, challengerId, opponentId, cScore, oScore, now],
+            VALUES (?, ?, ?, ?, ?, 'RESOLVED', 'RESOLVED', ?, ?)`,
+      args: [reportId, challengerId, opponentId, cScore, oScore, submittedById, now],
     });
   }
 
