@@ -522,7 +522,8 @@ export async function rejectResult(challengeCode: string, rejectorId: string, re
     // AI couldn't resolve — log reasoning and escalate
     console.log(`[AI Referee] Escalated challenge ${challengeCode}: ${aiVerdict.reasoning.join(" | ")}`);
   } catch (e) {
-    console.error("[AI Referee] Resolution error:", e);
+    console.error("[AI Referee] Resolution error:", e instanceof Error ? e.message : String(e));
+    console.error("[AI Referee] Stack:", e instanceof Error ? e.stack : "no stack");
     // Fall through — leave as DISPUTED for manual admin review
   }
 
@@ -680,7 +681,8 @@ export async function adjustResult(
 
     console.log(`[AI Referee] Escalated adjust on ${challengeCode}: ${aiVerdict.reasoning.join(" | ")}`);
   } catch (e) {
-    console.error("[AI Referee] Resolution error on adjust:", e);
+    console.error("[AI Referee] Resolution error on adjust:", e instanceof Error ? e.message : String(e));
+    console.error("[AI Referee] Stack:", e instanceof Error ? e.stack : "no stack");
   }
 
   // Notify both players (original flow for escalated cases)

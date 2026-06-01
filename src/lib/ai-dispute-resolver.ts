@@ -10,6 +10,7 @@
  */
 
 import { db } from "@/lib/db";
+import crypto from "crypto";
 
 // ─── Types ───────────────────────────────────────────────────
 
