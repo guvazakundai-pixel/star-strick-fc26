@@ -3,6 +3,7 @@ import { calculateXPAndPoints, calculateElo } from "@/lib/xp-engine";
 import { recomputePlayerRankings } from "@/lib/ranking";
 import { checkAndAward } from "@/lib/achievements";
 import { audit } from "@/lib/audit";
+import { resolveDispute, applyAiVerdict } from "@/lib/ai-dispute-resolver";
 import { sendEmail, renderChallengeEmail } from "@/lib/email";
 import { notifyUser } from "@/server/socket";
 import { logMatchResult, logChallengeCreated, logActivity } from "@/lib/activity";
@@ -443,7 +444,89 @@ export async function rejectResult(challengeCode: string, rejectorId: string, re
 
   await audit(rejectorId, "RESULT_REJECT", challenge.id as string, { reason });
 
-  // Notify both players
+  // ── AI Auto-Resolution ──
+  try {
+    const aiVerdict = await resolveDispute(
+      challenge.id as string,
+      challengeCode,
+      challenge.challenger_id as string,
+      challenge.opponent_id as string,
+      {
+        submittedBy: matchResult.submitted_by as string,
+        challengerScore: Number(matchResult.challenger_score),
+        opponentScore: Number(matchResult.opponent_score),
+        screenshotUrl: matchResult.screenshot_url as string | null,
+        notes: matchResult.notes as string | null,
+        submittedAt: matchResult.submitted_at as string,
+      },
+      null, // no counter-submission for reject
+      reason,
+      "reject",
+    );
+
+    if (aiVerdict.autoApplied) {
+      const result = await applyAiVerdict(
+        challenge.id as string,
+        challengeCode,
+        aiVerdict,
+        challenge.challenger_id as string,
+        challenge.opponent_id as string,
+      );
+
+      if (result.aiResolved) {
+        // Apply stats + rankings since AI resolved
+        const cScore = aiVerdict.finalScore.challengerScore;
+        const oScore = aiVerdict.finalScore.opponentScore;
+        const winner = cScore > oScore ? challenge.challenger_id : oScore > cScore ? challenge.opponent_id : null;
+        const loser = winner === challenge.challenger_id ? challenge.opponent_id : winner === challenge.opponent_id ? challenge.challenger_id : null;
+
+        if (winner && loser) {
+          await applyVerifiedResult(winner as string, loser as string, Math.max(cScore, oScore), Math.min(cScore, oScore), challenge.id as string);
+        } else {
+          await applyDrawResult(challenge.challenger_id as string, challenge.opponent_id as string, challenge.id as string);
+        }
+
+        // Notify both players of AI decision
+        try {
+          notifyUser(rejectorId as string, {
+            type: "MATCH",
+            title: "AI Referee Resolved",
+            message: `Dispute auto-resolved: ${aiVerdict.reasoning.slice(-1)[0]}. Final: ${cScore}-${oScore}`,
+            link: `/challenges/${challengeCode}`,
+          });
+          notifyUser(matchResult.submitted_by as string, {
+            type: "MATCH",
+            title: "AI Referee Resolved",
+            message: `Dispute auto-resolved: ${aiVerdict.reasoning.slice(-1)[0]}. Final: ${cScore}-${oScore}`,
+            link: `/challenges/${challengeCode}`,
+          });
+        } catch {}
+
+        await audit("ai-referee", "AI_RESOLVE", challenge.id as string, {
+          decision: aiVerdict.decision,
+          confidence: aiVerdict.confidence,
+          reasoning: aiVerdict.reasoning,
+        });
+
+        return {
+          id: challenge.id,
+          status: "RESOLVED",
+          aiResolved: true,
+          aiDecision: aiVerdict.decision,
+          aiConfidence: aiVerdict.confidence,
+          aiReasoning: aiVerdict.reasoning,
+        };
+      }
+    }
+
+    // AI couldn't resolve — log reasoning and escalate
+    console.log(`[AI Referee] Escalated challenge ${challengeCode}: ${aiVerdict.reasoning.join(" | ")}`);
+  } catch (e) {
+    console.error("[AI Referee] Resolution error:", e);
+    // Fall through — leave as DISPUTED for manual admin review
+  }
+
+  // Notify both players (original flow)
   const otherId = challenge.challenger_id === rejectorId ? challenge.opponent_id : challenge.challenger_id;
   try {
     notifyUser(rejectorId as string, { type: "MATCH", title: "Result Rejected", message: "You disputed the result. An admin will review.", link: `/challenges/${challengeCode}` });
@@ -515,7 +598,92 @@ export async function adjustResult(
     counterScore: `${challengerScore}-${opponentScore}`,
   });
 
-  // Notify both players
+  // ── AI Auto-Resolution ──
+  try {
+    const aiVerdict = await resolveDispute(
+      challenge.id as string,
+      challengeCode,
+      challenge.challenger_id as string,
+      challenge.opponent_id as string,
+      {
+        submittedBy: matchResult.submitted_by as string,
+        challengerScore: Number(matchResult.challenger_score),
+        opponentScore: Number(matchResult.opponent_score),
+        screenshotUrl: matchResult.screenshot_url as string | null,
+        notes: matchResult.notes as string | null,
+        submittedAt: matchResult.submitted_at as string,
+      },
+      {
+        submittedBy: adjusterId,
+        challengerScore,
+        opponentScore,
+        screenshotUrl: screenshotUrl || null,
+        notes: notes || null,
+        submittedAt: now,
+      },
+      null,
+      "adjust",
+    );
+
+    if (aiVerdict.autoApplied) {
+      const result = await applyAiVerdict(
+        challenge.id as string,
+        challengeCode,
+        aiVerdict,
+        challenge.challenger_id as string,
+        challenge.opponent_id as string,
+      );
+
+      if (result.aiResolved) {
+        const cScore = aiVerdict.finalScore.challengerScore;
+        const oScore = aiVerdict.finalScore.opponentScore;
+        const winner = cScore > oScore ? challenge.challenger_id : oScore > cScore ? challenge.opponent_id : null;
+        const loser = winner === challenge.challenger_id ? challenge.opponent_id : winner === challenge.opponent_id ? challenge.challenger_id : null;
+
+        if (winner && loser) {
+          await applyVerifiedResult(winner as string, loser as string, Math.max(cScore, oScore), Math.min(cScore, oScore), challenge.id as string);
+        } else {
+          await applyDrawResult(challenge.challenger_id as string, challenge.opponent_id as string, challenge.id as string);
+        }
+
+        try {
+          notifyUser(adjusterId as string, {
+            type: "MATCH",
+            title: "AI Referee Decision",
+            message: `Dispute auto-resolved: ${aiVerdict.reasoning.slice(-1)[0]}. Final: ${cScore}-${oScore}`,
+            link: `/challenges/${challengeCode}`,
+          });
+          notifyUser(matchResult.submitted_by as string, {
+            type: "MATCH",
+            title: "AI Referee Decision",
+            message: `Dispute auto-resolved: ${aiVerdict.reasoning.slice(-1)[0]}. Final: ${cScore}-${oScore}`,
+            link: `/challenges/${challengeCode}`,
+          });
+        } catch {}
+
+        await audit("ai-referee", "AI_RESOLVE", challenge.id as string, {
+          decision: aiVerdict.decision,
+          confidence: aiVerdict.confidence,
+          reasoning: aiVerdict.reasoning,
+        });
+
+        return {
+          id: challenge.id,
+          status: "RESOLVED",
+          aiResolved: true,
+          aiDecision: aiVerdict.decision,
+          aiConfidence: aiVerdict.confidence,
+          aiReasoning: aiVerdict.reasoning,
+        };
+      }
+    }
+
+    console.log(`[AI Referee] Escalated adjust on ${challengeCode}: ${aiVerdict.reasoning.join(" | ")}`);
+  } catch (e) {
+    console.error("[AI Referee] Resolution error on adjust:", e);
+  }
+
+  // Notify both players (original flow for escalated cases)
   const otherId = challenge.challenger_id === adjusterId ? challenge.opponent_id : challenge.challenger_id;
   try {
     notifyUser(otherId as string, { type: "MATCH", title: "Result Adjusted", message: "Your opponent submitted a different score. Admin review pending.", link: `/challenges/${challengeCode}` });

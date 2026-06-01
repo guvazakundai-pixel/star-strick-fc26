@@ -692,10 +692,26 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
         {/* ════════════════════════════════════════════════════════ */}
         {(status === "VERIFIED" || status === "RESOLVED") && displayScore && (
           <div className="rounded-2xl border border-green-500/20 p-4 mb-6 text-center" style={{ background: "rgba(0,255,133,0.05)" }}>
-            <p className="text-2xl mb-2">🏆</p>
-            <p className="text-sm text-green-400 font-bold">Match Complete</p>
+            {matchResult?.resolved_by === "ai-referee" ? (
+              <>
+                <p className="text-2xl mb-2">🤖</p>
+                <p className="text-sm text-cyan-400 font-bold uppercase tracking-wider">AI Referee Decision</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl mb-2">🏆</p>
+                <p className="text-sm text-green-400 font-bold">Match Complete</p>
+              </>
+            )}
             <p className="text-3xl font-mono font-black text-green-400 mt-2">{displayScore}</p>
-            <p className="text-xs text-gray-500 mt-2">Rankings and stats have been updated</p>
+            <p className="text-xs text-gray-500 mt-2">
+              {matchResult?.resolved_by === "ai-referee"
+                ? "Resolved automatically by AI referee"
+                : "Rankings and stats have been updated"}
+            </p>
+            {matchResult?.resolved_by === "ai-referee" && matchResult?.dispute_reason && (
+              <p className="text-[10px] text-cyan-400/70 mt-1 px-4">{matchResult.dispute_reason}</p>
+            )}
           </div>
         )}
 
