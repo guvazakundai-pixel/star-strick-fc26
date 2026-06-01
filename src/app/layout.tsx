@@ -27,6 +27,10 @@ export const metadata: Metadata = {
   title: { default: SITE_TITLE, template: "%s · ZIM FCPRO" },
   description: SITE_DESC,
   applicationName: "ZIM FCPRO",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
   keywords: [
     "EA FC",
     "FC26",
