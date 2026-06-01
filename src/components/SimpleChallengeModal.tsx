@@ -17,6 +17,9 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ code: string; url: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [platform, setPlatform] = useState("PS5");
+  const [gameMode, setGameMode] = useState("Friendly");
+  const [message, setMessage] = useState("");
 
   const handleCreate = useCallback(async () => {
     if (!opponentId) return;
@@ -31,7 +34,7 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
       const res = await fetch("/api/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opponentId }),
+        body: JSON.stringify({ opponentId, platform, gameMode, message: message || undefined }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed to create challenge"); setCreating(false); return; }
@@ -40,7 +43,7 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
       setError("Connection error. Try again.");
     }
     setCreating(false);
-  }, [opponentId, openAuth]);
+  }, [opponentId, openAuth, platform, gameMode, message]);
 
   const handleCopy = useCallback(async () => {
     if (!result) return;
@@ -107,6 +110,43 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
                     <p className="text-lg font-bold text-ink uppercase">{opponentName}</p>
                   </div>
                 )}
+
+                {/* Platform & Game Mode */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div>
+                    <label className="text-[9px] font-black tracking-[0.15em] uppercase text-muted-faint mb-1 block">Platform</label>
+                    <select
+                      value={platform}
+                      onChange={(e) => setPlatform(e.target.value)}
+                      className="w-full h-10 rounded-xl bg-bg/60 border border-border-faint px-3 text-ink text-xs focus:outline-none focus:border-accent/30"
+                    >
+                      <option value="PS5">PS5</option>
+                      <option value="Xbox">Xbox</option>
+                      <option value="PC">PC</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black tracking-[0.15em] uppercase text-muted-faint mb-1 block">Game Mode</label>
+                    <select
+                      value={gameMode}
+                      onChange={(e) => setGameMode(e.target.value)}
+                      className="w-full h-10 rounded-xl bg-bg/60 border border-border-faint px-3 text-ink text-xs focus:outline-none focus:border-accent/30"
+                    >
+                      <option value="Friendly">Friendly</option>
+                      <option value="Ranked">Ranked</option>
+                      <option value="Quick XP">Quick XP</option>
+                    </select>
+                  </div>
+                </div>
+
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full h-10 rounded-xl bg-bg/60 border border-border-faint px-4 text-ink text-xs mb-4 focus:outline-none focus:border-accent/30"
+                  placeholder="Optional message..."
+                  maxLength={100}
+                />
 
                 {error && <p className="text-negative text-[11px] text-center mb-3">{error}</p>}
 

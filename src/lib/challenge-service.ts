@@ -5,11 +5,13 @@ import { checkAndAward } from "@/lib/achievements";
 import { audit } from "@/lib/audit";
 import { sendEmail, renderChallengeEmail } from "@/lib/email";
 import { notifyUser } from "@/server/socket";
-import { logMatchResult, logChallengeCreated, logRankChange, logActivity } from "@/lib/activity";
+import { logMatchResult, logChallengeCreated, logActivity } from "@/lib/activity";
 import crypto from "crypto";
 
 const CHALLENGE_EXPIRY_HOURS = 48;
 const CHALLENGE_CODE_LENGTH = 6;
+
+// ─── Challenge codes ─────────────────────────────────────────
 
 export async function generateChallengeCode(): Promise<string> {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -25,9 +27,18 @@ export async function generateChallengeCode(): Promise<string> {
   return code;
 }
 
-export async function createChallenge(challengerId: string, opponentId: string) {
+// ─── Create challenge ────────────────────────────────────────
+
+export async function createChallenge(
+  challengerId: string,
+  opponentId: string,
+  platform?: string,
+  gameMode?: string,
+  message?: string,
+) {
   if (challengerId === opponentId) throw new Error("Cannot challenge yourself");
 
+  // Check bans
   const user = await db.execute({
     sql: "SELECT is_banned, is_shadow_banned FROM users WHERE id = ?",
     args: [challengerId],
@@ -36,14 +47,19 @@ export async function createChallenge(challengerId: string, opponentId: string) 
   if (row?.is_banned) throw new Error("Your account is suspended");
   if (row?.is_shadow_banned) throw new Error("Your account is restricted");
 
+  // Check duplicate pending challenge
   const pendingCheck = await db.execute({
-    sql: `SELECT id FROM challenges WHERE challenger_id = ? AND opponent_id = ? AND status = 'pending'`,
+    sql: `SELECT id FROM challenges WHERE challenger_id = ? AND opponent_id = ? AND status = 'PENDING_ACCEPTANCE'`,
     args: [challengerId, opponentId],
   });
   if (pendingCheck.rows.length > 0) throw new Error("You already have a pending challenge with this player");
 
+  // Daily limit
   const recentMatches = await db.execute({
-    sql: `SELECT count(*) as c FROM challenges WHERE (challenger_id = ? OR opponent_id = ?) AND status IN ('pending', 'accepted') AND created_at > datetime('now', '-24 hours')`,
+    sql: `SELECT count(*) as c FROM challenges
+          WHERE (challenger_id = ? OR opponent_id = ?)
+          AND status IN ('PENDING_ACCEPTANCE', 'MATCH_READY', 'AWAITING_VERIFICATION')
+          AND created_at > datetime('now', '-24 hours')`,
     args: [challengerId, challengerId],
   });
   if (Number((recentMatches.rows[0] as Record<string, unknown>)?.c ?? 0) >= 20) {
@@ -53,16 +69,17 @@ export async function createChallenge(challengerId: string, opponentId: string) 
   const code = await generateChallengeCode();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-
   const expiresAt = new Date(Date.now() + CHALLENGE_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
 
   await db.execute({
-    sql: `INSERT INTO challenges (id, challenge_code, challenger_id, opponent_id, status, created_at, expires_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)`,
-    args: [id, code, challengerId, opponentId, now, expiresAt],
+    sql: `INSERT INTO challenges (id, challenge_code, challenger_id, opponent_id, status, platform, game_mode, message, created_at, expires_at)
+          VALUES (?, ?, ?, ?, 'PENDING_ACCEPTANCE', ?, ?, ?, ?, ?)`,
+    args: [id, code, challengerId, opponentId, platform || null, gameMode || null, message || null, now, expiresAt],
   });
 
-  await audit(challengerId, "CHALLENGE_CREATE", id, { code, opponentId });
+  await audit(challengerId, "CHALLENGE_CREATE", id, { code, opponentId, platform, gameMode });
 
+  // Notify opponent
   const challenger = await db.execute({
     sql: "SELECT username, email FROM users WHERE id = ?",
     args: [challengerId],
@@ -76,6 +93,7 @@ export async function createChallenge(challengerId: string, opponentId: string) 
   const opponentName = (opponent.rows[0] as any)?.username ?? "Someone";
   const opponentEmail = (opponent.rows[0] as any)?.email;
 
+  // Email notification
   if (opponentEmail) {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_URL || "https://zimfcpro.co.zw";
@@ -94,6 +112,7 @@ export async function createChallenge(challengerId: string, opponentId: string) 
     }
   }
 
+  // Realtime notification
   try {
     notifyUser(opponentId, {
       type: "CHALLENGE",
@@ -103,19 +122,23 @@ export async function createChallenge(challengerId: string, opponentId: string) 
     });
   } catch {}
 
+  // DB notification
   try {
     await db.execute({
-      sql: `INSERT INTO notifications_v2 (id, user_id, type, title, message, link, created_at) VALUES (?, ?, 'CHALLENGE', 'New Challenge!', ?, ?, ?)`,
+      sql: `INSERT INTO notifications_v2 (id, user_id, type, title, message, link, created_at)
+            VALUES (?, ?, 'CHALLENGE', 'New Challenge!', ?, ?, ?)`,
       args: [crypto.randomUUID(), opponentId, `${challengerName} has challenged you.`, `/challenges/${code}`, now],
     });
   } catch (e) {
     console.error("[challenge] Notification insert failed:", e);
   }
 
-  await logChallengeCreated(challengerId, opponentId, challengerName, opponentName ?? (opponent.rows[0] as any)?.username ?? "Someone", code);
+  await logChallengeCreated(challengerId, opponentId, challengerName, opponentName, code);
 
-  return { id, code, status: "pending" };
+  return { id, code, status: "PENDING_ACCEPTANCE" };
 }
+
+// ─── Accept challenge ────────────────────────────────────────
 
 export async function acceptChallenge(code: string, userId: string) {
   const result = await db.execute({
@@ -124,335 +147,637 @@ export async function acceptChallenge(code: string, userId: string) {
   });
   const challenge = result.rows[0] as Record<string, unknown> | undefined;
   if (!challenge) throw new Error("Challenge not found");
-  if (challenge.status !== "pending") throw new Error("Challenge is no longer pending");
-  if (challenge.opponent_id !== userId && challenge.challenger_id !== userId) {
-    if (challenge.opponent_id !== userId) throw new Error("This challenge is not for you");
-  }
+  if (challenge.status !== "PENDING_ACCEPTANCE") throw new Error("Challenge is no longer pending");
+  if (challenge.opponent_id !== userId) throw new Error("Only the challenged player can accept");
   if (challenge.challenger_id === userId) throw new Error("You cannot accept your own challenge");
 
   const now = new Date().toISOString();
   await db.execute({
-    sql: `UPDATE challenges SET status = 'accepted', accepted_at = ? WHERE id = ?`,
+    sql: `UPDATE challenges SET status = 'MATCH_READY', accepted_at = ? WHERE id = ?`,
     args: [now, challenge.id as string],
   });
 
   await audit(userId, "CHALLENGE_ACCEPT", challenge.id as string, { code });
 
+  // Notify challenger
   try {
     notifyUser(challenge.challenger_id as string, {
       type: "CHALLENGE",
       title: "Challenge Accepted!",
-      message: `Your challenge has been accepted. The battle begins!`,
+      message: `Your challenge was accepted. Play the match and submit your result.`,
       link: `/challenges/${code}`,
     });
   } catch {}
 
   try {
     await db.execute({
-      sql: `INSERT INTO notifications_v2 (id, user_id, type, title, message, link, created_at) VALUES (?, ?, 'CHALLENGE', 'Challenge Accepted!', ?, ?, ?)`,
-      args: [crypto.randomUUID(), challenge.challenger_id, `Your challenge was accepted.`, `/challenges/${code}`, now],
+      sql: `INSERT INTO notifications_v2 (id, user_id, type, title, message, link, created_at)
+            VALUES (?, ?, 'CHALLENGE', 'Challenge Accepted!', ?, ?, ?)`,
+      args: [crypto.randomUUID(), challenge.challenger_id, `Your challenge was accepted. Play now!`, `/challenges/${code}`, now],
     });
   } catch {}
 
-  return { id: challenge.id, code, status: "accepted" };
+  return { id: challenge.id, code, status: "MATCH_READY" };
 }
 
-export async function declineChallenge(code: string, userId: string) {
+// ─── Reject challenge ────────────────────────────────────────
+
+export async function rejectChallenge(code: string, userId: string) {
   const result = await db.execute({
     sql: "SELECT * FROM challenges WHERE challenge_code = ?",
     args: [code],
   });
   const challenge = result.rows[0] as Record<string, unknown> | undefined;
   if (!challenge) throw new Error("Challenge not found");
-  if (challenge.status !== "pending") throw new Error("Challenge is no longer pending");
+  if (challenge.status !== "PENDING_ACCEPTANCE") throw new Error("Challenge is no longer pending");
 
   const isParticipant = challenge.opponent_id === userId || challenge.challenger_id === userId;
   if (!isParticipant) throw new Error("Not your challenge");
 
+  const now = new Date().toISOString();
   await db.execute({
-    sql: `UPDATE challenges SET status = 'cancelled' WHERE id = ?`,
-    args: [challenge.id as string],
+    sql: `UPDATE challenges SET status = 'CANCELLED', resolved_at = ? WHERE id = ?`,
+    args: [now, challenge.id as string],
   });
 
-  await audit(userId, "CHALLENGE_DECLINE", challenge.id as string, { code });
+  await audit(userId, "CHALLENGE_REJECT", challenge.id as string, { code });
 
+  // Notify the other player
   try {
     const otherId = challenge.challenger_id === userId ? challenge.opponent_id : challenge.challenger_id;
     notifyUser(otherId as string, {
       type: "CHALLENGE",
       title: "Challenge Declined",
-      message: `A challenge has been declined.`,
+      message: `Your challenge has been declined.`,
       link: `/rankings`,
     });
   } catch {}
 
-  return { id: challenge.id, status: "cancelled" };
+  return { id: challenge.id, status: "CANCELLED" };
 }
 
-export async function submitChallengeScore(code: string, playerId: string, goalsFor: number, goalsAgainst: number) {
-  if (goalsFor < 0 || goalsFor > 20 || goalsAgainst < 0 || goalsAgainst > 20) {
+// ─── Submit match result ──────────────────────────────────────
+
+export async function submitResult(
+  challengeCode: string,
+  submitterId: string,
+  challengerScore: number,
+  opponentScore: number,
+  screenshotUrl?: string,
+  notes?: string,
+) {
+  if (challengerScore < 0 || challengerScore > 20 || opponentScore < 0 || opponentScore > 20) {
     throw new Error("Scores must be between 0 and 20");
   }
-  if (goalsFor === goalsAgainst && goalsFor === 0) {
-    throw new Error("Both scores cannot be 0 for a valid submission");
+  if (challengerScore === 0 && opponentScore === 0) {
+    throw new Error("Both scores cannot be 0");
   }
 
+  const result = await db.execute({
+    sql: "SELECT * FROM challenges WHERE challenge_code = ?",
+    args: [challengeCode],
+  });
+  const challenge = result.rows[0] as Record<string, unknown> | undefined;
+  if (!challenge) throw new Error("Challenge not found");
+  if (challenge.status !== "MATCH_READY") throw new Error("Challenge is not ready for score submission");
+
+  const isParticipant = challenge.challenger_id === submitterId || challenge.opponent_id === submitterId;
+  if (!isParticipant) throw new Error("You are not a participant in this challenge");
+
+  // Prevent duplicate submission
+  const existingResult = await db.execute({
+    sql: "SELECT id FROM match_results WHERE challenge_id = ?",
+    args: [challenge.id as string],
+  });
+  if (existingResult.rows.length > 0) throw new Error("A result has already been submitted for this challenge");
+
+  const now = new Date().toISOString();
+  const resultId = crypto.randomUUID();
+
+  await db.execute({
+    sql: `INSERT INTO match_results (id, challenge_id, submitted_by, challenger_score, opponent_score, screenshot_url, notes, submitted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [resultId, challenge.id, submitterId, challengerScore, opponentScore, screenshotUrl || null, notes || null, now],
+  });
+
+  await db.execute({
+    sql: `UPDATE challenges SET status = 'AWAITING_VERIFICATION' WHERE id = ?`,
+    args: [challenge.id as string],
+  });
+
+  await audit(submitterId, "RESULT_SUBMIT", challenge.id as string, { challengerScore, opponentScore, screenshotUrl });
+
+  // Notify the opponent (non-submitter)
+  const opponentId = challenge.challenger_id === submitterId ? challenge.opponent_id : challenge.challenger_id;
+  const submitter = await db.execute({
+    sql: "SELECT username FROM users WHERE id = ?",
+    args: [submitterId],
+  });
+  const submitterName = (submitter.rows[0] as any)?.username ?? "Someone";
+
+  try {
+    notifyUser(opponentId as string, {
+      type: "MATCH",
+      title: "Result Submitted",
+      message: `${submitterName} submitted the match result. Verify or dispute it.`,
+      link: `/challenges/${challengeCode}`,
+    });
+  } catch {}
+
+  try {
+    await db.execute({
+      sql: `INSERT INTO notifications_v2 (id, user_id, type, title, message, link, created_at)
+            VALUES (?, ?, 'MATCH', 'Result Submitted', ?, ?, ?)`,
+      args: [crypto.randomUUID(), opponentId, `${submitterName} submitted the result: ${challengerScore}-${opponentScore}. Verify now.`, `/challenges/${challengeCode}`, now],
+    });
+  } catch {}
+
+  return {
+    id: challenge.id,
+    status: "AWAITING_VERIFICATION",
+    result: { challengerScore, opponentScore, submittedBy: submitterId },
+  };
+}
+
+// ─── Verify / accept result ──────────────────────────────────
+
+export async function verifyResult(challengeCode: string, verifierId: string) {
+  const result = await db.execute({
+    sql: "SELECT * FROM challenges WHERE challenge_code = ?",
+    args: [challengeCode],
+  });
+  const challenge = result.rows[0] as Record<string, unknown> | undefined;
+  if (!challenge) throw new Error("Challenge not found");
+  if (challenge.status !== "AWAITING_VERIFICATION") throw new Error("Challenge is not awaiting verification");
+
+  const isParticipant = challenge.challenger_id === verifierId || challenge.opponent_id === verifierId;
+  if (!isParticipant) throw new Error("You are not a participant in this challenge");
+
+  // Fetch the match result
+  const mr = await db.execute({
+    sql: "SELECT * FROM match_results WHERE challenge_id = ?",
+    args: [challenge.id as string],
+  });
+  const matchResult = mr.rows[0] as Record<string, unknown> | undefined;
+  if (!matchResult) throw new Error("No result found");
+
+  // Cannot verify your own submission
+  if (matchResult.submitted_by === verifierId) throw new Error("You cannot verify your own result submission");
+
+  const now = new Date().toISOString();
+
+  // Mark as VERIFIED
+  await db.execute({
+    sql: `UPDATE challenges SET status = 'VERIFIED', resolved_at = ? WHERE id = ?`,
+    args: [now, challenge.id as string],
+  });
+
+  await audit(verifierId, "RESULT_VERIFY", challenge.id as string, {
+    challengerScore: matchResult.challenger_score,
+    opponentScore: matchResult.opponent_score,
+  });
+
+  // Determine winner/loser
+  const challengerId = challenge.challenger_id as string;
+  const opponentId = challenge.opponent_id as string;
+  const cScore = Number(matchResult.challenger_score);
+  const oScore = Number(matchResult.opponent_score);
+
+  let winnerId: string | null = null;
+  let loserId: string | null = null;
+  let winnerScore: number;
+  let loserScore: number;
+
+  if (cScore > oScore) {
+    winnerId = challengerId;
+    loserId = opponentId;
+    winnerScore = cScore;
+    loserScore = oScore;
+  } else if (oScore > cScore) {
+    winnerId = opponentId;
+    loserId = challengerId;
+    winnerScore = oScore;
+    loserScore = cScore;
+  }
+
+  // Create MatchReport record
+  const reportId = crypto.randomUUID();
+  if (winnerId && loserId) {
+    await db.execute({
+      sql: `INSERT INTO match_reports (id, player1_id, player2_id, winner_id, score1, score2, status, status_raw, submitted_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'VERIFIED', 'VERIFIED', ?, ?)`,
+      args: [reportId, challengerId, opponentId, winnerId, cScore, oScore, verifierId, now],
+    });
+
+    // Apply stats + rankings
+    await applyVerifiedResult(winnerId, loserId, winnerScore, loserScore, challenge.id as string);
+
+    // Notifications
+    try {
+      notifyUser(winnerId, { type: "MATCH", title: "Victory!", message: `Match verified. You won ${winnerScore}-${loserScore}!`, link: `/challenges/${challengeCode}` });
+      notifyUser(loserId, { type: "MATCH", title: "Defeat", message: `Match verified. You lost ${loserScore}-${winnerScore}.`, link: `/challenges/${challengeCode}` });
+    } catch {}
+
+    const cName = (await getUsername(challengerId)) || "Challenger";
+    const oName = (await getUsername(opponentId)) || "Opponent";
+    await logMatchResult(winnerId, loserId, winnerId === challengerId ? cName : oName, winnerId === challengerId ? oName : cName, `${cScore}-${oScore}`, challengeCode);
+
+    return { id: challenge.id, status: "VERIFIED", winnerId, reportId, score: `${cScore}-${oScore}` };
+  } else {
+    // Draw
+    await db.execute({
+      sql: `INSERT INTO match_reports (id, player1_id, player2_id, score1, score2, status, status_raw, submitted_by, created_at)
+            VALUES (?, ?, ?, ?, ?, 'VERIFIED', 'VERIFIED', ?, ?)`,
+      args: [reportId, challengerId, opponentId, cScore, oScore, verifierId, now],
+    });
+
+    await applyDrawResult(challengerId, opponentId, challenge.id as string);
+
+    try {
+      notifyUser(challengerId, { type: "MATCH", title: "Draw!", message: "Match verified as a draw.", link: `/challenges/${challengeCode}` });
+      notifyUser(opponentId, { type: "MATCH", title: "Draw!", message: "Match verified as a draw.", link: `/challenges/${challengeCode}` });
+    } catch {}
+
+    return { id: challenge.id, status: "VERIFIED", draw: true, reportId, score: `${cScore}-${oScore}` };
+  }
+}
+
+// ─── Reject result → dispute ─────────────────────────────────
+
+export async function rejectResult(challengeCode: string, rejectorId: string, reason: string) {
+  if (!reason || reason.trim().length === 0) throw new Error("A reason is required to dispute a result");
+
+  const result = await db.execute({
+    sql: "SELECT * FROM challenges WHERE challenge_code = ?",
+    args: [challengeCode],
+  });
+  const challenge = result.rows[0] as Record<string, unknown> | undefined;
+  if (!challenge) throw new Error("Challenge not found");
+  if (challenge.status !== "AWAITING_VERIFICATION") throw new Error("Challenge is not awaiting verification");
+
+  const isParticipant = challenge.challenger_id === rejectorId || challenge.opponent_id === rejectorId;
+  if (!isParticipant) throw new Error("You are not a participant in this challenge");
+
+  // Get the match result
+  const mr = await db.execute({
+    sql: "SELECT * FROM match_results WHERE challenge_id = ?",
+    args: [challenge.id as string],
+  });
+  const matchResult = mr.rows[0] as Record<string, unknown> | undefined;
+  if (!matchResult) throw new Error("No result found");
+  if (matchResult.submitted_by === rejectorId) throw new Error("You cannot dispute your own result submission");
+
+  const now = new Date().toISOString();
+
+  // Update match_result with dispute reason
+  await db.execute({
+    sql: `UPDATE match_results SET dispute_reason = ? WHERE challenge_id = ?`,
+    args: [reason, challenge.id as string],
+  });
+
+  // Mark challenge as DISPUTED
+  await db.execute({
+    sql: `UPDATE challenges SET status = 'DISPUTED', resolved_at = ? WHERE id = ?`,
+    args: [now, challenge.id as string],
+  });
+
+  await audit(rejectorId, "RESULT_REJECT", challenge.id as string, { reason });
+
+  // Notify both players
+  const otherId = challenge.challenger_id === rejectorId ? challenge.opponent_id : challenge.challenger_id;
+  try {
+    notifyUser(rejectorId as string, { type: "MATCH", title: "Result Rejected", message: "You disputed the result. An admin will review.", link: `/challenges/${challengeCode}` });
+    notifyUser(otherId as string, { type: "MATCH", title: "Result Disputed", message: "Your submitted result was disputed. Admin review pending.", link: `/challenges/${challengeCode}` });
+  } catch {}
+
+  try {
+    await db.execute({
+      sql: `INSERT INTO notifications_v2 (id, user_id, type, title, message, link, created_at)
+            VALUES (?, ?, 'MATCH', 'Match Disputed', ?, ?, ?)`,
+      args: [crypto.randomUUID(), otherId, `The match result has been disputed. Reason: ${reason}`, `/challenges/${challengeCode}`, now],
+    });
+  } catch {}
+
+  return { id: challenge.id, status: "DISPUTED" };
+}
+
+// ─── Adjust result → counter-submit ───────────────────────────
+
+export async function adjustResult(
+  challengeCode: string,
+  adjusterId: string,
+  challengerScore: number,
+  opponentScore: number,
+  screenshotUrl?: string,
+  notes?: string,
+) {
+  if (challengerScore < 0 || challengerScore > 20 || opponentScore < 0 || opponentScore > 20) {
+    throw new Error("Scores must be between 0 and 20");
+  }
+
+  const result = await db.execute({
+    sql: "SELECT * FROM challenges WHERE challenge_code = ?",
+    args: [challengeCode],
+  });
+  const challenge = result.rows[0] as Record<string, unknown> | undefined;
+  if (!challenge) throw new Error("Challenge not found");
+  if (challenge.status !== "AWAITING_VERIFICATION") throw new Error("Challenge is not awaiting verification");
+
+  const isParticipant = challenge.challenger_id === adjusterId || challenge.opponent_id === adjusterId;
+  if (!isParticipant) throw new Error("You are not a participant in this challenge");
+
+  const mr = await db.execute({
+    sql: "SELECT * FROM match_results WHERE challenge_id = ?",
+    args: [challenge.id as string],
+  });
+  const matchResult = mr.rows[0] as Record<string, unknown> | undefined;
+  if (!matchResult) throw new Error("No result found");
+  if (matchResult.submitted_by === adjusterId) throw new Error("You cannot adjust your own result submission");
+
+  const now = new Date().toISOString();
+
+  // Store counter-submission
+  await db.execute({
+    sql: `UPDATE match_results SET
+          counter_submitted_by = ?, counter_challenger_score = ?, counter_opponent_score = ?,
+          counter_screenshot_url = ?, counter_notes = ?, counter_submitted_at = ?
+          WHERE challenge_id = ?`,
+    args: [adjusterId, challengerScore, opponentScore, screenshotUrl || null, notes || null, now, challenge.id as string],
+  });
+
+  await db.execute({
+    sql: `UPDATE challenges SET status = 'DISPUTED' WHERE id = ?`,
+    args: [challenge.id as string],
+  });
+
+  await audit(adjusterId, "RESULT_ADJUST", challenge.id as string, {
+    originalScore: `${matchResult.challenger_score}-${matchResult.opponent_score}`,
+    counterScore: `${challengerScore}-${opponentScore}`,
+  });
+
+  // Notify both players
+  const otherId = challenge.challenger_id === adjusterId ? challenge.opponent_id : challenge.challenger_id;
+  try {
+    notifyUser(otherId as string, { type: "MATCH", title: "Result Adjusted", message: "Your opponent submitted a different score. Admin review pending.", link: `/challenges/${challengeCode}` });
+    notifyUser(adjusterId as string, { type: "MATCH", title: "Counter Submitted", message: "Your version has been submitted. An admin will review.", link: `/challenges/${challengeCode}` });
+  } catch {}
+
+  return { id: challenge.id, status: "DISPUTED" };
+}
+
+// ─── Admin dispute resolution ─────────────────────────────────
+
+export async function adminResolveDispute(
+  adminId: string,
+  code: string,
+  action: "approve_original" | "approve_counter" | "enter_score" | "cancel",
+  finalScores?: { challengerScore: number; opponentScore: number },
+) {
   const result = await db.execute({
     sql: "SELECT * FROM challenges WHERE challenge_code = ?",
     args: [code],
   });
   const challenge = result.rows[0] as Record<string, unknown> | undefined;
   if (!challenge) throw new Error("Challenge not found");
-  if (challenge.status !== "accepted") throw new Error("Challenge must be accepted before submitting scores");
-  if (challenge.challenger_id !== playerId && challenge.opponent_id !== playerId) {
-    throw new Error("You are not a participant in this challenge");
-  }
+  if (challenge.status !== "DISPUTED") throw new Error("Challenge is not disputed");
 
-  const existing = await db.execute({
-    sql: "SELECT id FROM challenge_results WHERE challenge_id = ? AND player_id = ?",
-    args: [challenge.id as string, playerId],
-  });
-  if (existing.rows.length > 0) throw new Error("You have already submitted your score");
-
-  const now = new Date().toISOString();
-  await db.execute({
-    sql: `INSERT INTO challenge_results (id, challenge_id, player_id, goals_for, goals_against, submitted_at) VALUES (?, ?, ?, ?, ?, ?)`,
-    args: [crypto.randomUUID(), challenge.id, playerId, goalsFor, goalsAgainst, now],
-  });
-
-  await audit(playerId, "CHALLENGE_SCORE_SUBMIT", challenge.id as string, { goalsFor, goalsAgainst });
-
-  const bothResults = await db.execute({
-    sql: "SELECT * FROM challenge_results WHERE challenge_id = ?",
+  const mr = await db.execute({
+    sql: "SELECT * FROM match_results WHERE challenge_id = ?",
     args: [challenge.id as string],
   });
+  const matchResult = mr.rows[0] as Record<string, unknown> | undefined;
+  if (!matchResult) throw new Error("No match result found");
 
-  const opponentId = challenge.challenger_id === playerId ? challenge.opponent_id : challenge.challenger_id;
+  const now = new Date().toISOString();
 
-  if (bothResults.rows.length === 2) {
-    const p1 = bothResults.rows.find((r: any) => r.player_id === challenge.challenger_id) as Record<string, unknown>;
-    const p2 = bothResults.rows.find((r: any) => r.player_id === challenge.opponent_id) as Record<string, unknown>;
-
-    if (p1 && p2) {
-      const p1Goals = Number(p1.goals_for);
-      const p2Goals = Number(p2.goals_for);
-
-      if (
-        (p1.goals_for === p2.goals_against && p2.goals_for === p1.goals_against)
-      ) {
-        return await autoVerifyChallenge(challenge, p1, p2);
-      } else {
-        await db.execute({
-          sql: `UPDATE challenges SET status = 'disputed', resolved_at = ? WHERE id = ?`,
-          args: [now, challenge.id],
-        });
-
-        await audit("0", "CHALLENGE_DISPUTE", challenge.id as string, {
-          p1Score: `${p1.goals_for}-${p1.goals_against}`,
-          p2Score: `${p2.goals_for}-${p2.goals_against}`,
-        });
-
-        try {
-          notifyUser(challenge.challenger_id as string, {
-            type: "MATCH",
-            title: "Score Mismatch",
-            message: "There is a score disagreement. Under admin review.",
-            link: `/challenges/${code}`,
-          });
-          notifyUser(challenge.opponent_id as string, {
-            type: "MATCH",
-            title: "Score Mismatch",
-            message: "There is a score disagreement. Under admin review.",
-            link: `/challenges/${code}`,
-          });
-        } catch {}
-
-        return { id: challenge.id, status: "disputed", message: "Scores don't match — under admin review" };
-      }
-    }
+  if (action === "cancel") {
+    await db.execute({
+      sql: `UPDATE challenges SET status = 'CANCELLED', resolved_at = ? WHERE id = ?`,
+      args: [now, challenge.id as string],
+    });
+    await db.execute({
+      sql: `UPDATE match_results SET resolved_by = ?, resolved_at = ? WHERE challenge_id = ?`,
+      args: [adminId, now, challenge.id as string],
+    });
+    await audit(adminId, "DISPUTE_CANCEL", challenge.id as string, { code });
+    return { status: "CANCELLED" };
   }
 
-  try {
-    notifyUser(opponentId as string, {
-      type: "MATCH",
-      title: "Score Submitted",
-      message: "Your opponent submitted their score. Submit yours to complete the match.",
-      link: `/challenges/${code}`,
-    });
-  } catch {}
+  let finalChallengerScore: number;
+  let finalOpponentScore: number;
 
-  return { id: challenge.id, status: "accepted", message: "Score submitted. Waiting for opponent." };
-}
+  if (action === "approve_original") {
+    finalChallengerScore = Number(matchResult.challenger_score);
+    finalOpponentScore = Number(matchResult.opponent_score);
+  } else if (action === "approve_counter") {
+    if (matchResult.counter_challenger_score == null || matchResult.counter_opponent_score == null) {
+      throw new Error("No counter submission to approve");
+    }
+    finalChallengerScore = Number(matchResult.counter_challenger_score);
+    finalOpponentScore = Number(matchResult.counter_opponent_score);
+  } else if (action === "enter_score") {
+    if (!finalScores) throw new Error("finalScores required for enter_score action");
+    finalChallengerScore = finalScores.challengerScore;
+    finalOpponentScore = finalScores.opponentScore;
+  } else {
+    throw new Error("Invalid action");
+  }
 
-async function autoVerifyChallenge(
-  challenge: Record<string, unknown>,
-  p1Result: Record<string, unknown>,
-  p2Result: Record<string, unknown>,
-) {
-  const now = new Date().toISOString();
-  const challengerId = challenge.challenger_id as string;
-  const opponentId = challenge.opponent_id as string;
-  const challengerGoals = Number(p1Result.goals_for);
-  const opponentGoals = Number(p2Result.goals_for);
-
+  // Store final scores in match_result
   await db.execute({
-    sql: `UPDATE challenges SET status = 'completed', resolved_at = ? WHERE id = ?`,
-    args: [now, challenge.id],
+    sql: `UPDATE match_results SET final_challenger_score = ?, final_opponent_score = ?, resolved_by = ?, resolved_at = ? WHERE challenge_id = ?`,
+    args: [finalChallengerScore, finalOpponentScore, adminId, now, challenge.id as string],
   });
 
-  const matchId = challenge.id as string;
+  // Resolve challenge
+  await db.execute({
+    sql: `UPDATE challenges SET status = 'RESOLVED', resolved_at = ? WHERE id = ?`,
+    args: [now, challenge.id as string],
+  });
 
-  const winnerId = challengerGoals > opponentGoals ? challengerId : opponentGoals > challengerGoals ? opponentId : null;
-  const loserId = winnerId === challengerId ? opponentId : winnerId === opponentId ? challengerId : null;
+  await audit(adminId, "DISPUTE_RESOLVE", challenge.id as string, {
+    action,
+    finalScore: `${finalChallengerScore}-${finalOpponentScore}`,
+  });
 
-  let matchReportId: string | null = null;
+  // Determine winner/loser and apply stats
+  const challengerId = challenge.challenger_id as string;
+  const opponentId = challenge.opponent_id as string;
+  const cScore = finalChallengerScore;
+  const oScore = finalOpponentScore;
 
-  if (winnerId) {
+  let winnerId: string | null = cScore > oScore ? challengerId : oScore > cScore ? opponentId : null;
+  let loserId: string | null = winnerId === challengerId ? opponentId : winnerId === opponentId ? challengerId : null;
+
+  if (winnerId && loserId) {
     const reportId = crypto.randomUUID();
     await db.execute({
       sql: `INSERT INTO match_reports (id, player1_id, player2_id, winner_id, score1, score2, status, status_raw, submitted_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'COMPLETED', 'COMPLETED', ?, ?)`,
-      args: [reportId, challengerId, opponentId, winnerId, challengerGoals, opponentGoals, challengerId, now],
-    });
-    matchReportId = reportId;
-
-    const winnerScore = Math.max(challengerGoals, opponentGoals);
-    const loserScore = Math.min(challengerGoals, opponentGoals);
-
-    const winnerStats = await db.execute({
-      sql: "SELECT skill_rating, win_streak, points, matches_played FROM player_stats WHERE user_id = ?",
-      args: [winnerId],
-    });
-    const loserStats = await db.execute({
-      sql: "SELECT skill_rating, win_streak, points, matches_played FROM player_stats WHERE user_id = ?",
-      args: [loserId!],
+            VALUES (?, ?, ?, ?, ?, ?, 'RESOLVED', 'RESOLVED', ?, ?)`,
+      args: [reportId, challengerId, opponentId, winnerId, cScore, oScore, adminId, now],
     });
 
-    const wRow = winnerStats.rows[0] as Record<string, unknown>;
-    const lRow = loserStats.rows[0] as Record<string, unknown>;
-    const wRating = Number(wRow?.skill_rating ?? 1000);
-    const lRating = Number(lRow?.skill_rating ?? 1000);
-    const wStreak = Number(wRow?.win_streak ?? 0);
-    const wPoints = Number(wRow?.points ?? 0);
-    const lPoints = Number(lRow?.points ?? 0);
-    const wMatches = Number(wRow?.matches_played ?? 0);
-    const lMatches = Number(lRow?.matches_played ?? 0);
-
-    const xp = calculateXPAndPoints(wRating, lRating, winnerScore, loserScore, winnerId, loserId!, wStreak, wPoints, lPoints, wMatches, lMatches);
-
-    // Winner stats — raw SQL upsert
-    const wExisting = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [winnerId] });
-    if (wExisting.rows.length > 0) {
-      await db.execute({
-        sql: `UPDATE player_stats SET wins = wins + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = win_streak + 1, form_score = form_score + 10 WHERE user_id = ?`,
-        args: [winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, winnerId],
-      });
-    } else {
-      await db.execute({
-        sql: `INSERT INTO player_stats (id, user_id, wins, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 1, 10, 'W', ?)`,
-        args: [crypto.randomUUID(), winnerId, winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, now],
-      });
-    }
-
-    await db.execute({
-      sql: `UPDATE player_stats SET form_history = substr(('W' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,
-      args: [winnerId],
-    });
-
-    // Loser stats — raw SQL upsert
-    const lExisting = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [loserId!] });
-    if (lExisting.rows.length > 0) {
-      await db.execute({
-        sql: `UPDATE player_stats SET losses = losses + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = 0, form_score = form_score - 5 WHERE user_id = ?`,
-        args: [loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), loserId!],
-      });
-    } else {
-      await db.execute({
-        sql: `INSERT INTO player_stats (id, user_id, losses, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 0, -5, 'L', ?)`,
-        args: [crypto.randomUUID(), loserId!, loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), now],
-      });
-    }
-
-    await db.execute({
-      sql: `UPDATE player_stats SET form_history = substr(('L' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,
-      args: [loserId],
-    });
-
-    await db.execute({
-      sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, created_at) VALUES (?, ?, ?, 'CHALLENGE_WIN', ?, ?)`,
-      args: [crypto.randomUUID(), winnerId, xp.winnerPointsGain, xp.description, now],
-    });
-    await db.execute({
-      sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, created_at) VALUES (?, ?, ?, 'CHALLENGE_LOSS', ?, ?)`,
-      args: [crypto.randomUUID(), loserId!, Math.round(xp.loserXPLoss), xp.description, now],
-    });
-
-    await recomputePlayerRankings();
+    const winScore = Math.max(cScore, oScore);
+    const loseScore = Math.min(cScore, oScore);
+    await applyVerifiedResult(winnerId, loserId, winScore, loseScore, challenge.id as string);
 
     try {
-      checkAndAward(winnerId, { isWin: true });
-      checkAndAward(loserId!, { isWin: false });
+      notifyUser(winnerId, { type: "MATCH", title: "Dispute Resolved", message: `Admin resolved: you won ${winScore}-${loseScore}!`, link: `/challenges/${code}` });
+      notifyUser(loserId, { type: "MATCH", title: "Dispute Resolved", message: `Admin resolved: you lost ${loseScore}-${winScore}.`, link: `/challenges/${code}` });
     } catch {}
-
-    try {
-      notifyUser(winnerId, { type: "MATCH", title: "Victory!", message: xp.description, link: `/challenges/${challenge.challenge_code}` });
-      notifyUser(loserId!, { type: "MATCH", title: "Defeat", message: xp.description, link: `/challenges/${challenge.challenge_code}` });
-    } catch {}
-
-    const cName = challenge.challenger_username || "Challenger";
-    const oName = challenge.opponent_username || "Opponent";
-    await logMatchResult(winnerId, loserId, winnerId === challengerId ? cName : oName, winnerId === challengerId ? oName : cName, `${challengerGoals}-${opponentGoals}`, challenge.challenge_code as string);
   } else {
+    // Draw
     const reportId = crypto.randomUUID();
     await db.execute({
       sql: `INSERT INTO match_reports (id, player1_id, player2_id, score1, score2, status, status_raw, submitted_by, created_at)
-            VALUES (?, ?, ?, ?, ?, 'COMPLETED', 'COMPLETED', ?, ?)`,
-      args: [reportId, challengerId, opponentId, challengerGoals, opponentGoals, challengerId, now],
+            VALUES (?, ?, ?, ?, ?, 'RESOLVED', 'RESOLVED', ?, ?)`,
+      args: [reportId, challengerId, opponentId, cScore, oScore, adminId, now],
     });
-    matchReportId = reportId;
-
-    const drawPoints = 25;
-    // Raw SQL updates for draw — both players
-    for (const pid of [challengerId, opponentId]) {
-      const ex = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [pid] });
-      if (ex.rows.length > 0) {
-        await db.execute({
-          sql: `UPDATE player_stats SET draws = draws + 1, matches_played = matches_played + 1, points = points + ? WHERE user_id = ?`,
-          args: [drawPoints, pid],
-        });
-      } else {
-        await db.execute({
-          sql: `INSERT INTO player_stats (id, user_id, draws, matches_played, points, form_history, updated_at) VALUES (?, ?, 1, 1, ?, 'D', ?)`,
-          args: [crypto.randomUUID(), pid, drawPoints, now],
-        });
-      }
-    }
-    await db.execute({ sql: `UPDATE player_stats SET form_history = substr(('D' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`, args: [challengerId] });
-    await db.execute({ sql: `UPDATE player_stats SET form_history = substr(('D' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`, args: [opponentId] });
-    await db.execute({ sql: `INSERT INTO points_log (id, user_id, points_change, reason, created_at) VALUES (?, ?, ?, 'CHALLENGE_DRAW', ?)`, args: [crypto.randomUUID(), challengerId, drawPoints, now] });
-    await db.execute({ sql: `INSERT INTO points_log (id, user_id, points_change, reason, created_at) VALUES (?, ?, ?, 'CHALLENGE_DRAW', ?)`, args: [crypto.randomUUID(), opponentId, drawPoints, now] });
-    await recomputePlayerRankings();
+    await applyDrawResult(challengerId, opponentId, challenge.id as string);
 
     try {
-      notifyUser(challengerId, { type: "MATCH", title: "Draw!", message: "Match ended in a draw. +25 points each.", link: `/challenges/${challenge.challenge_code}` });
-      notifyUser(opponentId, { type: "MATCH", title: "Draw!", message: "Match ended in a draw. +25 points each.", link: `/challenges/${challenge.challenge_code}` });
+      notifyUser(challengerId, { type: "MATCH", title: "Dispute Resolved", message: `Admin resolved the match as a draw.`, link: `/challenges/${code}` });
+      notifyUser(opponentId, { type: "MATCH", title: "Dispute Resolved", message: `Admin resolved the match as a draw.`, link: `/challenges/${code}` });
     } catch {}
-
-    const cName2 = challenge.challenger_username || "Challenger";
-    const oName2 = challenge.opponent_username || "Opponent";
-    await logActivity("MATCH_DRAW", challengerId, `Drew with ${oName2} ${challengerGoals}-${opponentGoals}`, { opponentId, score: `${challengerGoals}-${opponentGoals}`, challengeCode: challenge.challenge_code as string });
-    await logActivity("MATCH_DRAW", opponentId, `Drew with ${cName2} ${challengerGoals}-${opponentGoals}`, { opponentId: challengerId, score: `${challengerGoals}-${opponentGoals}`, challengeCode: challenge.challenge_code as string });
   }
 
-  await audit("0", "CHALLENGE_COMPLETE", challenge.id as string, {
-    winnerId,
-    challengerGoals,
-    opponentGoals,
-    matchReportId,
+  return { status: "RESOLVED", winnerId, finalScore: `${cScore}-${oScore}` };
+}
+
+// ─── Helper: apply verified match result (stats + rankings) ──
+
+async function applyVerifiedResult(
+  winnerId: string,
+  loserId: string,
+  winnerScore: number,
+  loserScore: number,
+  challengeId: string,
+) {
+  const now = new Date().toISOString();
+
+  // Fetch current stats
+  const wStats = await db.execute({
+    sql: "SELECT skill_rating, win_streak, points, matches_played FROM player_stats WHERE user_id = ?",
+    args: [winnerId],
+  });
+  const lStats = await db.execute({
+    sql: "SELECT skill_rating, win_streak, points, matches_played FROM player_stats WHERE user_id = ?",
+    args: [loserId],
   });
 
-  return { id: challenge.id, status: "completed", winnerId, matchReportId };
+  const wRow = wStats.rows[0] as Record<string, unknown>;
+  const lRow = lStats.rows[0] as Record<string, unknown>;
+  const wRating = Number(wRow?.skill_rating ?? 1000);
+  const lRating = Number(lRow?.skill_rating ?? 1000);
+  const wStreak = Number(wRow?.win_streak ?? 0);
+  const wPoints = Number(wRow?.points ?? 0);
+  const lPoints = Number(lRow?.points ?? 0);
+  const wMatches = Number(wRow?.matches_played ?? 0);
+  const lMatches = Number(lRow?.matches_played ?? 0);
+
+  const xp = calculateXPAndPoints(wRating, lRating, winnerScore, loserScore, winnerId, loserId, wStreak, wPoints, lPoints, wMatches, lMatches);
+
+  // Winner stats — upsert
+  const wExisting = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [winnerId] });
+  if (wExisting.rows.length > 0) {
+    await db.execute({
+      sql: `UPDATE player_stats SET wins = wins + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = win_streak + 1, form_score = form_score + 10 WHERE user_id = ?`,
+      args: [winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, winnerId],
+    });
+  } else {
+    await db.execute({
+      sql: `INSERT INTO player_stats (id, user_id, wins, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 1, 10, 'W', ?)`,
+      args: [crypto.randomUUID(), winnerId, winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, now],
+    });
+  }
+  await db.execute({
+    sql: `UPDATE player_stats SET form_history = substr(('W' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,
+    args: [winnerId],
+  });
+
+  // Loser stats — upsert
+  const lExisting = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [loserId] });
+  if (lExisting.rows.length > 0) {
+    await db.execute({
+      sql: `UPDATE player_stats SET losses = losses + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = 0, form_score = form_score - 5 WHERE user_id = ?`,
+      args: [loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), loserId],
+    });
+  } else {
+    await db.execute({
+      sql: `INSERT INTO player_stats (id, user_id, losses, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 0, -5, 'L', ?)`,
+      args: [crypto.randomUUID(), loserId, loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), now],
+    });
+  }
+  await db.execute({
+    sql: `UPDATE player_stats SET form_history = substr(('L' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,
+    args: [loserId],
+  });
+
+  // Points logs
+  await db.execute({
+    sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, match_id, created_at) VALUES (?, ?, ?, 'CHALLENGE_WIN', ?, ?, ?)`,
+    args: [crypto.randomUUID(), winnerId, xp.winnerPointsGain, xp.description, challengeId, now],
+  });
+  await db.execute({
+    sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, match_id, created_at) VALUES (?, ?, ?, 'CHALLENGE_LOSS', ?, ?, ?)`,
+    args: [crypto.randomUUID(), loserId, Math.round(xp.loserXPLoss), xp.description, challengeId, now],
+  });
+
+  // Recompute rankings
+  await recomputePlayerRankings();
+
+  // Check achievements
+  try {
+    await checkAndAward(winnerId, { isWin: true });
+    await checkAndAward(loserId, { isWin: false });
+  } catch {}
 }
+
+// ─── Helper: apply draw result ────────────────────────────────
+
+async function applyDrawResult(player1Id: string, player2Id: string, challengeId: string) {
+  const now = new Date().toISOString();
+  const drawPoints = 25;
+
+  for (const pid of [player1Id, player2Id]) {
+    const ex = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [pid] });
+    if (ex.rows.length > 0) {
+      await db.execute({
+        sql: `UPDATE player_stats SET draws = draws + 1, matches_played = matches_played + 1, points = points + ? WHERE user_id = ?`,
+        args: [drawPoints, pid],
+      });
+    } else {
+      await db.execute({
+        sql: `INSERT INTO player_stats (id, user_id, draws, matches_played, points, form_history, updated_at) VALUES (?, ?, 1, 1, ?, 'D', ?)`,
+        args: [crypto.randomUUID(), pid, drawPoints, now],
+      });
+    }
+    await db.execute({
+      sql: `UPDATE player_stats SET form_history = substr(('D' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`,
+      args: [pid],
+    });
+    await db.execute({
+      sql: `INSERT INTO points_log (id, user_id, points_change, reason, match_id, created_at) VALUES (?, ?, ?, 'CHALLENGE_DRAW', ?, ?)`,
+      args: [crypto.randomUUID(), pid, drawPoints, challengeId, now],
+    });
+  }
+
+  await recomputePlayerRankings();
+
+  try {
+    await checkAndAward(player1Id, { isWin: false });
+    await checkAndAward(player2Id, { isWin: false });
+  } catch {}
+}
+
+// ─── Helper: get username ─────────────────────────────────────
+
+async function getUsername(userId: string): Promise<string | null> {
+  const r = await db.execute({ sql: "SELECT username FROM users WHERE id = ?", args: [userId] });
+  return (r.rows[0] as any)?.username ?? null;
+}
+
+// ─── Query functions ──────────────────────────────────────────
 
 export async function getChallengeByCode(code: string) {
   const result = await db.execute({
@@ -473,12 +798,19 @@ export async function getChallengeByCode(code: string) {
   const challenge = result.rows[0] as Record<string, unknown> | undefined;
   if (!challenge) return null;
 
-  const results = await db.execute({
+  // Fetch match result if any
+  const mr = await db.execute({
+    sql: "SELECT * FROM match_results WHERE challenge_id = ?",
+    args: [challenge.id as string],
+  });
+
+  // Also fetch old challenge_results for backward compatibility
+  const cr = await db.execute({
     sql: "SELECT * FROM challenge_results WHERE challenge_id = ?",
     args: [challenge.id as string],
   });
 
-  return { ...challenge, results: results.rows };
+  return { ...challenge, matchResult: mr.rows[0] || null, results: cr.rows };
 }
 
 export async function getChallengesForUser(userId: string) {
@@ -490,9 +822,15 @@ export async function getChallengesForUser(userId: string) {
           LEFT JOIN users u1 ON u1.id = c.challenger_id
           LEFT JOIN users u2 ON u2.id = c.opponent_id
           WHERE (c.challenger_id = ? OR c.opponent_id = ?)
-          AND c.status IN ('pending', 'accepted')
-          ORDER BY c.created_at DESC
-          LIMIT 20`,
+          ORDER BY
+            CASE c.status
+              WHEN 'PENDING_ACCEPTANCE' THEN 1
+              WHEN 'MATCH_READY' THEN 2
+              WHEN 'AWAITING_VERIFICATION' THEN 3
+              ELSE 4
+            END,
+            c.created_at DESC
+          LIMIT 50`,
     args: [userId, userId],
   });
   return result.rows;
@@ -503,145 +841,42 @@ export async function getDisputedChallenges() {
     sql: `SELECT c.*,
           u1.username AS challenger_username, u1.display_name AS challenger_display,
           u2.username AS opponent_username, u2.display_name AS opponent_display,
-          cr1.goals_for AS challenger_goals, cr1.goals_against AS challenger_conceded,
-          cr2.goals_for AS opponent_goals, cr2.goals_against AS opponent_conceded
+          mr.challenger_score, mr.opponent_score,
+          mr.counter_challenger_score, mr.counter_opponent_score,
+          mr.dispute_reason, mr.screenshot_url, mr.counter_screenshot_url,
+          mr.submitted_by, mr.submitted_at
           FROM challenges c
           LEFT JOIN users u1 ON u1.id = c.challenger_id
           LEFT JOIN users u2 ON u2.id = c.opponent_id
-          LEFT JOIN challenge_results cr1 ON cr1.challenge_id = c.id AND cr1.player_id = c.challenger_id
-          LEFT JOIN challenge_results cr2 ON cr2.challenge_id = c.id AND cr2.player_id = c.opponent_id
-          WHERE c.status = 'disputed'
+          LEFT JOIN match_results mr ON mr.challenge_id = c.id
+          WHERE c.status IN ('DISPUTED', 'ADMIN_REVIEW')
           ORDER BY c.created_at DESC`,
     args: [],
   });
   return result.rows;
 }
 
-export async function adminResolveDispute(adminId: string, code: string, action: "approve_challenger" | "approve_opponent" | "enter_score" | "cancel") {
-  const result = await db.execute({
-    sql: "SELECT * FROM challenges WHERE challenge_code = ?",
-    args: [code],
-  });
-  const challenge = result.rows[0] as Record<string, unknown> | undefined;
-  if (!challenge) throw new Error("Challenge not found");
-  if (challenge.status !== "disputed") throw new Error("Challenge is not disputed");
+// ─── Backward-compatible aliases ─────────────────────────────
+// Old API routes use these names
 
-  const now = new Date().toISOString();
+export const declineChallenge = rejectChallenge;
 
-  if (action === "cancel") {
-    await db.execute({
-      sql: `UPDATE challenges SET status = 'cancelled', resolved_at = ? WHERE id = ?`,
-      args: [now, challenge.id as string],
-    });
-    await audit(adminId, "CHALLENGE_ADMIN_CANCEL", challenge.id as string, { code });
-    return { status: "cancelled" };
-  }
-
-  let winnerId: string | null = null;
-  let loserId: string | null = null;
-  let winnerScore: number = 0;
-  let loserScore: number = 0;
-
-  const challengerId = challenge.challenger_id as string;
-  const opponentId = challenge.opponent_id as string;
-
-  if (action === "approve_challenger") {
-    const results = await db.execute({
-      sql: "SELECT * FROM challenge_results WHERE challenge_id = ? AND player_id = ?",
-      args: [challenge.id as string, challengerId],
-    });
-    const r = results.rows[0] as Record<string, unknown>;
-    winnerId = challengerId;
-    loserId = opponentId;
-    winnerScore = Number(r?.goals_for ?? 0);
-    loserScore = Number(r?.goals_against ?? 0);
-  } else if (action === "approve_opponent") {
-    const results = await db.execute({
-      sql: "SELECT * FROM challenge_results WHERE challenge_id = ? AND player_id = ?",
-      args: [challenge.id as string, opponentId],
-    });
-    const r = results.rows[0] as Record<string, unknown>;
-    winnerId = opponentId;
-    loserId = challengerId;
-    winnerScore = Number(r?.goals_for ?? 0);
-    loserScore = Number(r?.goals_against ?? 0);
-  }
-
-  if (winnerId && loserId) {
-    await db.execute({
-      sql: `UPDATE challenges SET status = 'completed', resolved_at = ? WHERE id = ?`,
-      args: [now, challenge.id],
-    });
-
-    const reportId = crypto.randomUUID();
-    await db.execute({
-      sql: `INSERT INTO match_reports (id, player1_id, player2_id, winner_id, score1, score2, status, status_raw, submitted_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'COMPLETED', 'COMPLETED', ?, ?)`,
-      args: [reportId, challengerId, opponentId, winnerId, winnerScore, loserScore, adminId, now],
-    });
-
-    const winnerStats = await db.execute({ sql: "SELECT skill_rating, win_streak, points, matches_played FROM player_stats WHERE user_id = ?", args: [winnerId] });
-    const loserStats = await db.execute({ sql: "SELECT skill_rating, points, matches_played FROM player_stats WHERE user_id = ?", args: [loserId] });
-    const wRow = winnerStats.rows[0] as Record<string, unknown>;
-    const lRow = loserStats.rows[0] as Record<string, unknown>;
-    const wRating = Number(wRow?.skill_rating ?? 1000);
-    const lRating = Number(lRow?.skill_rating ?? 1000);
-    const wStreak = Number(wRow?.win_streak ?? 0);
-    const wPoints = Number(wRow?.points ?? 0);
-    const lPoints = Number(lRow?.points ?? 0);
-    const wMatches = Number(wRow?.matches_played ?? 0);
-    const lMatches = Number(lRow?.matches_played ?? 0);
-
-    const xp = calculateXPAndPoints(wRating, lRating, winnerScore, loserScore, winnerId, loserId, wStreak, wPoints, lPoints, wMatches, lMatches);
-
-    // Winner stats — raw SQL upsert
-    const wEx = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [winnerId] });
-    if (wEx.rows.length > 0) {
-      await db.execute({
-        sql: `UPDATE player_stats SET wins = wins + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = win_streak + 1, form_score = form_score + 10 WHERE user_id = ?`,
-        args: [winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, winnerId],
-      });
-    } else {
-      await db.execute({
-        sql: `INSERT INTO player_stats (id, user_id, wins, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 1, 10, 'W', ?)`,
-        args: [crypto.randomUUID(), winnerId, winnerScore, loserScore, xp.winnerNewRating, xp.winnerPointsGain, now],
-      });
-    }
-    await db.execute({ sql: `UPDATE player_stats SET form_history = substr(('W' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`, args: [winnerId] });
-
-    // Loser stats — raw SQL upsert
-    const lEx = await db.execute({ sql: "SELECT user_id FROM player_stats WHERE user_id = ?", args: [loserId] });
-    if (lEx.rows.length > 0) {
-      await db.execute({
-        sql: `UPDATE player_stats SET losses = losses + 1, matches_played = matches_played + 1, goals_scored = goals_scored + ?, goals_conceded = goals_conceded + ?, skill_rating = ?, points = points + ?, win_streak = 0, form_score = form_score - 5 WHERE user_id = ?`,
-        args: [loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), loserId],
-      });
-    } else {
-      await db.execute({
-        sql: `INSERT INTO player_stats (id, user_id, losses, matches_played, goals_scored, goals_conceded, skill_rating, points, win_streak, form_score, form_history, updated_at) VALUES (?, ?, 1, 1, ?, ?, ?, ?, 0, -5, 'L', ?)`,
-        args: [crypto.randomUUID(), loserId, loserScore, winnerScore, xp.loserNewRating, Math.round(xp.loserPointsGain), now],
-      });
-    }
-    await db.execute({ sql: `UPDATE player_stats SET form_history = substr(('L' || coalesce(form_history,'')), 1, 10) WHERE user_id = ?`, args: [loserId] });
-
-    await db.execute({ sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, created_at) VALUES (?, ?, ?, 'CHALLENGE_WIN', ?, ?)`, args: [crypto.randomUUID(), winnerId, xp.winnerPointsGain, xp.description, now] });
-    await db.execute({ sql: `INSERT INTO points_log (id, user_id, points_change, reason, reason_text, created_at) VALUES (?, ?, ?, 'CHALLENGE_LOSS', ?, ?)`, args: [crypto.randomUUID(), loserId, Math.round(xp.loserXPLoss), xp.description, now] });
-
-    await recomputePlayerRankings();
-  }
-
-  await audit(adminId, "CHALLENGE_ADMIN_RESOLVE", challenge.id as string, { action, winnerId, loserId });
-  return { status: "completed", winnerId };
+export async function submitChallengeScore(code: string, playerId: string, goalsFor: number, goalsAgainst: number) {
+  // Legacy wrapper — uses the old dual-submission flow
+  // Just delegates to submitResult for the new single-submission flow
+  return submitResult(code, playerId, goalsFor, goalsAgainst);
 }
+
+// ─── Expiry cron ──────────────────────────────────────────────
 
 export async function expireChallenges() {
   const now = new Date().toISOString();
   const result = await db.execute({
-    sql: `UPDATE challenges SET status = 'expired', resolved_at = ? WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at < ?`,
+    sql: `UPDATE challenges SET status = 'EXPIRED', resolved_at = ? WHERE status IN ('PENDING_ACCEPTANCE', 'MATCH_READY') AND expires_at IS NOT NULL AND expires_at < ?`,
     args: [now, now],
   });
   const fallback = await db.execute({
-    sql: `UPDATE challenges SET status = 'expired', resolved_at = ? WHERE status = 'pending' AND (expires_at IS NULL OR expires_at = '') AND datetime(created_at) < datetime(?, '-48 hours')`,
+    sql: `UPDATE challenges SET status = 'EXPIRED', resolved_at = ? WHERE status IN ('PENDING_ACCEPTANCE', 'MATCH_READY') AND (expires_at IS NULL OR expires_at = '') AND datetime(created_at) < datetime(?, '-48 hours')`,
     args: [now, now],
   });
   return { expired: (result.rowsAffected ?? 0) + (fallback.rowsAffected ?? 0) };

@@ -19,7 +19,12 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await adminResolveDispute(auth.session.userId, body.code, body.action);
+    const result = await adminResolveDispute(
+      auth.session.userId,
+      body.code,
+      body.action,
+      body.finalScores,
+    );
     return NextResponse.json(result);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 400 });

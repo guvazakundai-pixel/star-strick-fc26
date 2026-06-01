@@ -18,7 +18,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    const challenge = await createChallenge(auth.session.userId, body.opponentId);
+    const challenge = await createChallenge(
+      auth.session.userId,
+      body.opponentId,
+      body.platform,
+      body.gameMode,
+      body.message,
+    );
     const baseUrl = process.env.NEXT_PUBLIC_URL || "https://zimfcpro.co.zw";
     return NextResponse.json({
       ...challenge,

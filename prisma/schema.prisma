@@ -115,6 +115,9 @@ model User {
   matchScreenshots         MatchScreenshot[]       @relation("MatchScreenshotUploader")
   matchDisputes            MatchDispute[]            @relation("MatchDisputeReporter")
   matchDisputeResolved     MatchDispute[]            @relation("MatchDisputeResolver")
+  resultSubmissions        MatchResult[]             @relation("ResultSubmitter")
+  resultCounterSubmissions MatchResult[]             @relation("CounterSubmitter")
+  resultResolutions        MatchResult[]             @relation("ResultResolver")
   notificationV2s          NotificationV2[]
   postReactions            PostReaction[]
   mvpVotes                 MatchMvpVote[]            @relation("MvpVoter")
@@ -636,16 +639,20 @@ model Challenge {
   challengeCode String    @unique @map("challenge_code")
   challengerId  String    @map("challenger_id")
   opponentId    String    @map("opponent_id")
-  status        String    @default("pending") // pending, accepted, awaiting_confirmation, completed, disputed, cancelled, expired
+  status        String    @default("PENDING_ACCEPTANCE") // PENDING_ACCEPTANCE, MATCH_READY, AWAITING_VERIFICATION, VERIFIED, DISPUTED, ADMIN_REVIEW, RESOLVED, CANCELLED, EXPIRED
+  platform      String?   // PS5, Xbox, PC
+  gameMode      String?   @map("game_mode") // Friendly, Ranked, etc.
+  message       String?   // optional message from challenger
   seasonId      String?   @map("season_id")
   createdAt     DateTime  @default(now()) @map("created_at")
-  acceptedAt    DateTime?  @map("accepted_at")
-  resolvedAt    DateTime?  @map("resolved_at")
-  expiresAt     DateTime?  @map("expires_at")
+  acceptedAt    DateTime? @map("accepted_at")
+  resolvedAt    DateTime? @map("resolved_at")
+  expiresAt     DateTime? @map("expires_at")
 
   challenger    User              @relation("ChallengeChallenger", fields: [challengerId], references: [id])
   opponent      User              @relation("ChallengeOpponent", fields: [opponentId], references: [id])
   matchResults  ChallengeResult[]
+  matchResult   MatchResult?
   auditLogs     ChallengeAuditLog[]
 
   @@index([challengerId, status])
@@ -665,6 +672,38 @@ model ChallengeResult {
 
   @@unique([challengeId, playerId])
   @@map("challenge_results")
+}
+
+model MatchResult {
+  id                     String    @id @default(uuid())
+  challengeId            String    @unique @map("challenge_id")
+  submittedById          String    @map("submitted_by")
+  challengerScore        Int       @map("challenger_score")
+  opponentScore          Int       @map("opponent_score")
+  screenshotUrl          String?   @map("screenshot_url")
+  notes                  String?
+  submittedAt            DateTime  @default(now()) @map("submitted_at")
+  // opponent's counter-submission (for Adjust flow)
+  counterSubmittedById          String?   @map("counter_submitted_by")
+  counterChallengerScore        Int?      @map("counter_challenger_score")
+  counterOpponentScore          Int?      @map("counter_opponent_score")
+  counterScreenshotUrl          String?   @map("counter_screenshot_url")
+  counterNotes                  String?   @map("counter_notes")
+  counterSubmittedAt            DateTime? @map("counter_submitted_at")
+  // admin resolution
+  finalChallengerScore          Int?      @map("final_challenger_score")
+  finalOpponentScore            Int?      @map("final_opponent_score")
+  resolvedById                  String?   @map("resolved_by")
+  resolvedAt                    DateTime? @map("resolved_at")
+  // dispute reason (if rejected)
+  disputeReason                 String?   @map("dispute_reason")
+
+  challenge          Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  submittedBy        User      @relation("ResultSubmitter", fields: [submittedById], references: [id])
+  counterSubmittedBy User?     @relation("CounterSubmitter", fields: [counterSubmittedById], references: [id])
+  resolvedBy         User?     @relation("ResultResolver", fields: [resolvedById], references: [id])
+
+  @@map("match_results")
 }
 
 model ChallengeAuditLog {
