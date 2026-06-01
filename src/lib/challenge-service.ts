@@ -490,19 +490,19 @@ export async function rejectResult(challengeCode: string, rejectorId: string, re
         try {
           notifyUser(rejectorId as string, {
             type: "MATCH",
-            title: "AI Referee Resolved",
+            title: "Cipher Resolved",
             message: `Dispute auto-resolved: ${aiVerdict.reasoning.slice(-1)[0]}. Final: ${cScore}-${oScore}`,
             link: `/challenges/${challengeCode}`,
           });
           notifyUser(matchResult.submitted_by as string, {
             type: "MATCH",
-            title: "AI Referee Resolved",
+            title: "Cipher Resolved",
             message: `Dispute auto-resolved: ${aiVerdict.reasoning.slice(-1)[0]}. Final: ${cScore}-${oScore}`,
             link: `/challenges/${challengeCode}`,
           });
         } catch {}
 
-        await audit("ai-referee", "AI_RESOLVE", challenge.id as string, {
+        await audit("cipher", "AI_RESOLVE", challenge.id as string, {
           decision: aiVerdict.decision,
           confidence: aiVerdict.confidence,
           reasoning: aiVerdict.reasoning,
@@ -520,10 +520,10 @@ export async function rejectResult(challengeCode: string, rejectorId: string, re
     }
 
     // AI couldn't resolve — log reasoning and escalate
-    console.log(`[AI Referee] Escalated challenge ${challengeCode}: ${aiVerdict.reasoning.join(" | ")}`);
+    console.log(`[Cipher] Escalated challenge ${challengeCode}: ${aiVerdict.reasoning.join(" | ")}`);
   } catch (e) {
-    console.error("[AI Referee] Resolution error:", e instanceof Error ? e.message : String(e));
-    console.error("[AI Referee] Stack:", e instanceof Error ? e.stack : "no stack");
+    console.error("[Cipher] Resolution error:", e instanceof Error ? e.message : String(e));
+    console.error("[Cipher] Stack:", e instanceof Error ? e.stack : "no stack");
     // Fall through — leave as DISPUTED for manual admin review
   }
 
@@ -650,19 +650,19 @@ export async function adjustResult(
         try {
           notifyUser(adjusterId as string, {
             type: "MATCH",
-            title: "AI Referee Decision",
+            title: "Cipher Decision",
             message: `Dispute auto-resolved: ${aiVerdict.reasoning.slice(-1)[0]}. Final: ${cScore}-${oScore}`,
             link: `/challenges/${challengeCode}`,
           });
           notifyUser(matchResult.submitted_by as string, {
             type: "MATCH",
-            title: "AI Referee Decision",
+            title: "Cipher Decision",
             message: `Dispute auto-resolved: ${aiVerdict.reasoning.slice(-1)[0]}. Final: ${cScore}-${oScore}`,
             link: `/challenges/${challengeCode}`,
           });
         } catch {}
 
-        await audit("ai-referee", "AI_RESOLVE", challenge.id as string, {
+        await audit("cipher", "AI_RESOLVE", challenge.id as string, {
           decision: aiVerdict.decision,
           confidence: aiVerdict.confidence,
           reasoning: aiVerdict.reasoning,
@@ -679,10 +679,10 @@ export async function adjustResult(
       }
     }
 
-    console.log(`[AI Referee] Escalated adjust on ${challengeCode}: ${aiVerdict.reasoning.join(" | ")}`);
+    console.log(`[Cipher] Escalated adjust on ${challengeCode}: ${aiVerdict.reasoning.join(" | ")}`);
   } catch (e) {
-    console.error("[AI Referee] Resolution error on adjust:", e instanceof Error ? e.message : String(e));
-    console.error("[AI Referee] Stack:", e instanceof Error ? e.stack : "no stack");
+    console.error("[Cipher] Resolution error on adjust:", e instanceof Error ? e.message : String(e));
+    console.error("[Cipher] Stack:", e instanceof Error ? e.stack : "no stack");
   }
 
   // Notify both players (original flow for escalated cases)

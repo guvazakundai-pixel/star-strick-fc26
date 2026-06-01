@@ -455,7 +455,7 @@ export async function applyAiVerdict(
   await db.execute({
     sql: `UPDATE match_results SET
           final_challenger_score = ?, final_opponent_score = ?,
-          resolved_by = 'ai-referee', resolved_at = ?,
+          resolved_by = 'cipher', resolved_at = ?,
           dispute_reason = COALESCE(dispute_reason, '') || ' [AI resolved: ' || ? || ']'
           WHERE challenge_id = ?`,
     args: [challengerScore, opponentScore, now, verdict.decision, challengeId],
