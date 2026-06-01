@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/route-auth";
 import { rejectResult } from "@/lib/challenge-service";
+import { resolveDispute, applyAiVerdict } from "@/lib/ai-dispute-resolver";
+import { db } from "@/lib/db";
 
 export async function POST(req: Request) {
   const auth = await requireAuth();
@@ -11,13 +13,83 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "code is required" }, { status: 400 });
   }
   if (!body.reason || typeof body.reason !== "string") {
-    return NextResponse.json({ error: "reason is required (Incorrect Score, Wrong Screenshot, Match Not Played, Other)" }, { status: 400 });
+    return NextResponse.json({ error: "reason is required" }, { status: 400 });
   }
 
+  // Run the normal reject flow first
+  const baseResult = await rejectResult(body.code, auth.session.userId, body.reason);
+
+  // Then run AI explicitly and surface any errors
   try {
-    const result = await rejectResult(body.code, auth.session.userId, body.reason);
-    return NextResponse.json(result);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 400 });
+    const challenge = await db.execute({
+      sql: "SELECT * FROM challenges WHERE challenge_code = ?",
+      args: [body.code],
+    });
+    const ch = challenge.rows[0] as Record<string, unknown> | undefined;
+    if (!ch) {
+      return NextResponse.json({ ...baseResult, aiDebug: "challenge not found after reject" });
+    }
+
+    const mr = await db.execute({
+      sql: "SELECT * FROM match_results WHERE challenge_id = ?",
+      args: [ch.id as string],
+    });
+    const matchResult = mr.rows[0] as Record<string, unknown> | undefined;
+    if (!matchResult) {
+      return NextResponse.json({ ...baseResult, aiDebug: "match_result not found" });
+    }
+
+    const aiVerdict = await resolveDispute(
+      ch.id as string, body.code,
+      ch.challenger_id as string, ch.opponent_id as string,
+      {
+        submittedBy: matchResult.submitted_by as string,
+        challengerScore: Number(matchResult.challenger_score),
+        opponentScore: Number(matchResult.opponent_score),
+        screenshotUrl: matchResult.screenshot_url as string | null,
+        notes: matchResult.notes as string | null,
+        submittedAt: matchResult.submitted_at as string,
+      },
+      null,
+      body.reason,
+      "reject",
+    );
+
+    if (aiVerdict.autoApplied) {
+      await applyAiVerdict(ch.id as string, body.code, aiVerdict, ch.challenger_id as string, ch.opponent_id as string);
+
+      // Now apply stats too
+      const cScore = aiVerdict.finalScore.challengerScore;
+      const oScore = aiVerdict.finalScore.opponentScore;
+      const winner = cScore > oScore ? ch.challenger_id : oScore > cScore ? ch.opponent_id : null;
+      const loser = winner === ch.challenger_id ? ch.opponent_id : winner === ch.opponent_id ? ch.challenger_id : null;
+
+      if (winner && loser) {
+        const { applyVerifiedResult } = await import("@/lib/challenge-service");
+        await applyVerifiedResult(winner as string, loser as string, Math.max(cScore, oScore), Math.min(cScore, oScore), ch.id as string);
+      }
+
+      return NextResponse.json({
+        ...baseResult,
+        aiResolved: true,
+        aiDecision: aiVerdict.decision,
+        aiConfidence: aiVerdict.confidence,
+        aiReasoning: aiVerdict.reasoning,
+      });
+    } else {
+      return NextResponse.json({
+        ...baseResult,
+        aiEscalated: true,
+        aiDecision: aiVerdict.decision,
+        aiConfidence: aiVerdict.confidence,
+        aiReasoning: aiVerdict.reasoning,
+      });
+    }
+  } catch (aiErr: any) {
+    return NextResponse.json({
+      ...baseResult,
+      aiError: aiErr.message,
+      aiStack: aiErr.stack?.split("\n").slice(0, 5).join(" | "),
+    });
   }
 }

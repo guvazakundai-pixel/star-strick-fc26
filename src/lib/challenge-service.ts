@@ -816,7 +816,7 @@ export async function adminResolveDispute(
 
 // ─── Helper: apply verified match result (stats + rankings) ──
 
-async function applyVerifiedResult(
+export async function applyVerifiedResult(
   winnerId: string,
   loserId: string,
   winnerScore: number,
@@ -905,7 +905,7 @@ async function applyVerifiedResult(
 
 // ─── Helper: apply draw result ────────────────────────────────
 
-async function applyDrawResult(player1Id: string, player2Id: string, challengeId: string) {
+export async function applyDrawResult(player1Id: string, player2Id: string, challengeId: string) {
   const now = new Date().toISOString();
   const drawPoints = 25;
 
