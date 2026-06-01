@@ -25,15 +25,12 @@ export function TopBar() {
       >
         <div className="mx-auto max-w-6xl px-4 sm:px-6 h-13 flex items-center justify-between gap-4 w-full min-w-0">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <span
-              className="inline-grid place-items-center h-8 w-8 rounded-[10px] text-accent font-display text-base leading-none group-hover:shadow-[0_0_20px_rgba(0,255,133,0.15)] transition-all duration-300"
-              style={{
-                background: "linear-gradient(135deg, rgba(0,255,133,0.12) 0%, rgba(0,255,133,0.03) 100%)",
-                border: "1px solid rgba(0,255,133,0.20)",
-              }}
-            >
-              S
-            </span>
+            <img
+              src="/logo.png"
+              alt="ZIM FCPRO"
+              className="h-8 w-8 rounded-[10px] object-cover group-hover:shadow-[0_0_20px_rgba(0,255,133,0.15)] transition-all duration-300"
+              style={{ border: "1px solid rgba(0,255,133,0.20)" }}
+            />
             <div className="leading-tight">
               <p className="cinematic-heading tracking-wider text-ink text-sm sm:text-base">ZIM FCPRO</p>
               <p className="font-mono text-[9px] text-muted-faint tracking-wider">FC26 · ZW</p>
