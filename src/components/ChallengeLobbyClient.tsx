@@ -55,13 +55,13 @@ type Props = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  PENDING_ACCEPTANCE: { label: "Waiting for Acceptance", color: "#ffb800", icon: "⏳" },
-  MATCH_READY: { label: "Match Ready — Play Now", color: "#00ff85", icon: "⚔" },
-  AWAITING_VERIFICATION: { label: "Awaiting Verification", color: "#22d3ee", icon: "📋" },
-  VERIFIED: { label: "Match Verified", color: "#00ff85", icon: "✓" },
-  DISPUTED: { label: "Under Admin Review", color: "#ff4d4d", icon: "⚠" },
+  PENDING_ACCEPTANCE: { label: "Pending", color: "#ffb800", icon: "⏳" },
+  MATCH_READY: { label: "Waiting for Result", color: "#00ff85", icon: "⚔" },
+  AWAITING_VERIFICATION: { label: "Result Submitted", color: "#22d3ee", icon: "📋" },
+  VERIFIED: { label: "Confirmed", color: "#00ff85", icon: "✓" },
+  DISPUTED: { label: "Disputed", color: "#ff4d4d", icon: "⚠" },
   ADMIN_REVIEW: { label: "Admin Review", color: "#ff4d4d", icon: "⚠" },
-  RESOLVED: { label: "Resolved by Admin", color: "#00ff85", icon: "✓" },
+  RESOLVED: { label: "Resolved", color: "#00ff85", icon: "✓" },
   CANCELLED: { label: "Cancelled", color: "#8E909A", icon: "✕" },
   EXPIRED: { label: "Expired", color: "#8E909A", icon: "⏰" },
 };
@@ -79,6 +79,7 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
   const [theirScore, setTheirScore] = useState("");
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [notes, setNotes] = useState("");
+  const [matchType, setMatchType] = useState("Single Match");
 
   // Dispute reason
   const [disputeReason, setDisputeReason] = useState("");
@@ -444,9 +445,10 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
 
         {status === "PENDING_ACCEPTANCE" && isChallenger && (
           <div className="rounded-2xl border border-yellow-500/20 p-4 mb-6 text-center" style={{ background: "rgba(255,184,0,0.05)" }}>
-            <p className="text-sm text-yellow-400">Waiting for {oName} to accept...</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Share:{" "}
+            <p className="text-sm text-yellow-400 font-bold">{cName} vs {oName}</p>
+            <p className="text-xs text-gray-400 mt-1">Status: Pending — Waiting for {oName} to accept</p>
+            <p className="text-xs text-gray-500 mt-2">
+              Share link:{" "}
               <span className="font-mono text-cyan-400">
                 {typeof window !== "undefined" ? `${window.location.origin}/challenges/${code}` : `/challenges/${code}`}
               </span>
@@ -460,13 +462,32 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
         {status === "MATCH_READY" && isParticipant && (
           <div className="rounded-2xl border border-white/5 p-4 mb-6" style={{ background: "rgba(18,20,24,0.6)" }}>
             <p className="text-[9px] font-black tracking-[0.22em] text-gray-500 uppercase mb-3">Submit Match Result</p>
-            <p className="text-xs text-gray-400 mb-4 text-center">Play your match, then submit the result here</p>
 
+            {/* Match Type */}
+            <div className="mb-4">
+              <label className="text-[9px] font-black tracking-[0.15em] text-gray-500 uppercase mb-2 block">Match Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                {["Single Match", "Best of 3", "Best of 5"].map((mt) => (
+                  <button
+                    key={mt}
+                    type="button"
+                    onClick={() => setMatchType(mt)}
+                    className="h-10 rounded-xl text-xs font-bold transition-all duration-150"
+                    style={matchType === mt
+                      ? { background: "rgba(0,255,133,0.12)", border: "1px solid rgba(0,255,133,0.3)", color: "#00ff85" }
+                      : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "#8E909A" }
+                    }
+                  >
+                    {mt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Score inputs */}
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">
-                  {isChallenger ? "Your Goals" : "Opponent Goals (for challenger)"}
-                </label>
+                <label className="text-xs text-gray-400 mb-1 block">Your Score</label>
                 <input
                   type="number"
                   min="0"
@@ -474,13 +495,11 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
                   value={myScore}
                   onChange={(e) => setMyScore(e.target.value)}
                   className="w-full h-12 rounded-xl bg-black/40 border border-white/10 px-4 text-white font-mono text-lg text-center focus:outline-none focus:border-green-400/30"
-                  placeholder="0"
+                  placeholder="3"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">
-                  {isChallenger ? "Opponent Goals" : "Your Goals"}
-                </label>
+                <label className="text-xs text-gray-400 mb-1 block">Opponent Score</label>
                 <input
                   type="number"
                   min="0"
@@ -488,18 +507,23 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
                   value={theirScore}
                   onChange={(e) => setTheirScore(e.target.value)}
                   className="w-full h-12 rounded-xl bg-black/40 border border-white/10 px-4 text-white font-mono text-lg text-center focus:outline-none focus:border-green-400/30"
-                  placeholder="0"
+                  placeholder="1"
                 />
               </div>
             </div>
 
-            <input
-              type="text"
-              value={screenshotUrl}
-              onChange={(e) => setScreenshotUrl(e.target.value)}
-              className="w-full h-10 rounded-xl bg-black/40 border border-white/10 px-4 text-white text-sm mb-2 focus:outline-none focus:border-green-400/30"
-              placeholder="Screenshot URL (optional)"
-            />
+            {/* Screenshot */}
+            <div className="mb-3">
+              <label className="text-xs text-gray-400 mb-1 block">Screenshot Proof</label>
+              <input
+                type="text"
+                value={screenshotUrl}
+                onChange={(e) => setScreenshotUrl(e.target.value)}
+                className="w-full h-10 rounded-xl bg-black/40 border border-white/10 px-4 text-white text-sm focus:outline-none focus:border-green-400/30"
+                placeholder="Upload screenshot URL"
+              />
+            </div>
+
             <input
               type="text"
               value={notes}
@@ -515,35 +539,52 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
               className="w-full h-12 rounded-xl font-bold text-sm tracking-wider uppercase transition-all duration-200 text-black hover:opacity-90 active:scale-[0.97] disabled:opacity-40"
               style={{ background: "#00ff85" }}
             >
-              {loading ? "Submitting..." : "Submit Result"}
+              {loading ? "Submitting..." : "Submit Score"}
             </button>
           </div>
         )}
 
         {status === "MATCH_READY" && !isParticipant && (
           <div className="rounded-2xl border border-yellow-500/20 p-4 mb-6 text-center" style={{ background: "rgba(255,184,0,0.05)" }}>
-            <p className="text-sm text-yellow-400">This match is in progress. Wait for the result.</p>
+            <p className="text-sm text-yellow-400 font-bold">{cName} vs {oName}</p>
+            <p className="text-xs text-gray-400 mt-1">Status: Waiting for result</p>
           </div>
         )}
 
         {/* ════════════════════════════════════════════════════════ */}
-        {/* AWAITING_VERIFICATION — Verify / Reject / Adjust */}
+        {/* AWAITING_VERIFICATION — Confirm / Edit / Reject */}
         {/* ════════════════════════════════════════════════════════ */}
         {status === "AWAITING_VERIFICATION" && isVerifier && (
           <div className="space-y-3 mb-6">
-            <p className="text-center text-sm text-cyan-400">Review the result above</p>
+            <div className="rounded-xl border border-cyan-500/20 p-4 text-center" style={{ background: "rgba(34,211,238,0.05)" }}>
+              <p className="text-xs text-cyan-400 font-bold uppercase tracking-wider mb-2">Result Received</p>
+              <p className="text-sm text-white">
+                <span className="font-bold text-accent">{cName}</span> submitted:
+              </p>
+              <p className="text-2xl font-mono font-black text-white mt-1">
+                {matchResult?.challenger_score} - {matchResult?.opponent_score}
+              </p>
+            </div>
 
             <button
               type="button"
               onClick={handleVerify}
               disabled={loading}
-              className="w-full h-14 rounded-2xl font-bold text-base tracking-wider uppercase transition-all duration-200 text-black border border-green-400/30 hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+              className="w-full h-14 rounded-2xl font-bold text-base tracking-wider uppercase transition-all duration-200 text-black hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
               style={{ background: "#00ff85", boxShadow: "0 0 40px rgba(0,255,133,0.2)" }}
             >
-              ✓ Accept Result
+              ✓ Confirm
             </button>
 
             <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAdjustForm(true)}
+                disabled={loading}
+                className="h-12 rounded-xl font-bold text-sm tracking-wider uppercase transition-all duration-200 text-yellow-400 border border-yellow-400/20 hover:bg-yellow-400/10 disabled:opacity-50"
+              >
+                ✎ Submit Different Score
+              </button>
               <button
                 type="button"
                 onClick={() => setShowDisputeModal(true)}
@@ -552,21 +593,17 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
               >
                 ✕ Reject
               </button>
-              <button
-                type="button"
-                onClick={() => setShowAdjustForm(true)}
-                disabled={loading}
-                className="h-12 rounded-xl font-bold text-sm tracking-wider uppercase transition-all duration-200 text-yellow-400 border border-yellow-400/20 hover:bg-yellow-400/10 disabled:opacity-50"
-              >
-                ⚡ Adjust
-              </button>
             </div>
           </div>
         )}
 
         {status === "AWAITING_VERIFICATION" && isSubmitter && (
           <div className="rounded-2xl border border-cyan-500/20 p-4 mb-6 text-center" style={{ background: "rgba(34,211,238,0.05)" }}>
-            <p className="text-sm text-cyan-400">Result submitted! Waiting for opponent to verify...</p>
+            <p className="text-sm text-cyan-400 font-bold mb-1">Result Submitted</p>
+            <p className="text-xs text-gray-400">
+              {cName} {matchResult?.challenger_score} - {matchResult?.opponent_score} {oName}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">Waiting for opponent confirmation</p>
           </div>
         )}
 
