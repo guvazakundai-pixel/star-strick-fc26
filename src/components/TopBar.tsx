@@ -122,19 +122,19 @@ export function TopBar() {
             <>
               <Link
                 href="/rankings"
-                className="hidden sm:inline-flex rounded-[10px] text-[9px] font-bold uppercase tracking-[0.2em] text-muted-soft hover:text-ink transition-all duration-300"
+                className="text-[10px] font-bold uppercase tracking-wider text-muted-soft hover:text-ink transition-all duration-300"
               >
                 Rankings
               </Link>
-              <Link
-                href="/tournaments"
-                className="hidden sm:inline-flex rounded-[10px] text-[9px] font-bold uppercase tracking-[0.2em] text-muted-soft hover:text-ink transition-all duration-300"
+              <button
+                onClick={() => openAuth("join")}
+                className="rounded-[10px] bg-accent text-black px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:opacity-90 transition-all duration-200"
               >
-                Tournaments
-              </Link>
+                Join
+              </button>
               <button
                 onClick={() => openAuth("signin")}
-                className="hidden sm:inline-flex rounded-[10px] border border-border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:bg-bg-highlight hover:text-ink transition-all duration-200"
+                className="rounded-[10px] border border-border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:bg-bg-highlight hover:text-ink transition-all duration-200"
               >
                 Sign in
               </button>
