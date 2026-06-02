@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
       const scope = this.props.scope;
       const message = this.state.error?.message || "An unexpected error occurred";
-      const isDataError = /fetch|network|database|query|rows|undefined|null/i.test(message);
+      const isDataError = /fetch\s*fail|network\s*error|failed\s*to\s*fetch|ectimedout|database\s*error|query\s*fail/i.test(message);
 
       return (
         <div className="flex flex-col items-center justify-center min-h-[280px] px-6 text-center space-y-5">
@@ -80,12 +80,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           </div>
           <div className="space-y-2 max-w-sm">
             <h3 className="bc-headline text-xl text-ink">
-              {isDataError ? "Failed to load data" : "Something went wrong"}
+              {isDataError ? "Connection issue" : "Something went wrong"}
             </h3>
             <p className="text-sm text-muted leading-relaxed">
               {isDataError
-                ? "We couldn't fetch the latest data. This might be a temporary issue."
-                : "An unexpected error occurred. Please try again."}
+                ? "We had trouble reaching the server. Please check your connection and try again."
+                : "An unexpected error occurred. Refreshing usually fixes it."}
             </p>
             {scope && (
               <p className="text-[10px] font-mono text-muted-faint tracking-wider uppercase">
