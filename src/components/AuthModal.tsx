@@ -142,6 +142,7 @@ function SignInForm({ onClose, onForgotPassword }: { onClose: () => void; onForg
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ identifier, password }),
     });
     if (!res.ok) {
@@ -193,6 +194,7 @@ function ForgotPasswordForm({ onBack, onSuccess }: { onBack: () => void; onSucce
     const res = await fetch("/api/auth/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ email }),
     });
     const data = await res.json().catch(() => ({}));
@@ -277,6 +279,7 @@ function ResetPasswordForm({ email, onBack, onSuccess }: { email: string; onBack
     const res = await fetch("/api/auth/reset-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ email, code, newPassword }),
     });
 
@@ -401,6 +404,7 @@ function JoinForm({ onClose }: { onClose: () => void }) {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({
         fullName,
         username,

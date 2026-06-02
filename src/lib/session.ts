@@ -13,8 +13,8 @@ export async function setSessionCookie(payload: {
   const store = await cookies();
   store.set(COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    secure: true,
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   });
