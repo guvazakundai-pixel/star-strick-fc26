@@ -129,17 +129,22 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
     if (res.challenge) setChallenge(res.challenge);
   }, [code]);
 
-  const ensureAuth = useCallback((): boolean => {
-    if (!loggedIn) {
-      openAuth("signin");
-      return false;
+  const ensureAuth = useCallback(async (): Promise<string | null> => {
+    const res = await fetch("/api/auth/me").catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (data?.user) {
+      setLoggedIn(true);
+      setUserId(data.user.id);
+      return data.user.id;
     }
-    return true;
-  }, [loggedIn, openAuth]);
+    openAuth("signin");
+    return null;
+  }, [openAuth]);
 
   // ─── Accept ───
   const handleAccept = useCallback(async () => {
-    if (!ensureAuth()) return;
+    const currentUserId = await ensureAuth();
+    if (!currentUserId) return;
     setLoading(true);
     setError("");
     try {
@@ -155,7 +160,8 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
 
   // ─── Reject ───
   const handleReject = useCallback(async () => {
-    if (!ensureAuth()) return;
+    const currentUserId = await ensureAuth();
+    if (!currentUserId) return;
     setLoading(true);
     setError("");
     try {
@@ -171,7 +177,8 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
 
   // ─── Submit result ───
   const handleSubmitResult = useCallback(async () => {
-    if (!ensureAuth()) return;
+    const currentUserId = await ensureAuth();
+    if (!currentUserId) return;
     const my = parseInt(myScore);
     const their = parseInt(theirScore);
     if (isNaN(my) || isNaN(their) || my < 0 || their < 0 || my > 20 || their > 20) {
@@ -179,8 +186,9 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
       return;
     }
 
-    // Determine challenger vs opponent score based on who is submitting
-    const isChallenger = userId === challenge?.challenger_id;
+    // Use fresh userId from ensureAuth, not stale state
+    const actualUserId = currentUserId;
+    const isChallenger = actualUserId === challenge?.challenger_id;
     const cScore = isChallenger ? my : their;
     const oScore = isChallenger ? their : my;
 
@@ -207,11 +215,12 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
       setError(e.message);
     }
     setLoading(false);
-  }, [code, myScore, theirScore, screenshotUrl, notes, ensureAuth, userId, challenge, refresh]);
+  }, [code, myScore, theirScore, screenshotUrl, notes, ensureAuth, challenge, refresh]);
 
   // ─── Verify / Accept result ───
   const handleVerify = useCallback(async () => {
-    if (!ensureAuth()) return;
+    const currentUserId = await ensureAuth();
+    if (!currentUserId) return;
     setLoading(true);
     setError("");
     try {
@@ -232,7 +241,8 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
 
   // ─── Dispute result ───
   const handleDispute = useCallback(async () => {
-    if (!ensureAuth()) return;
+    const currentUserId = await ensureAuth();
+    if (!currentUserId) return;
     const reason = `${disputeCategory}: ${disputeReason}`;
     setLoading(true);
     setError("");
@@ -255,7 +265,8 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
 
   // ─── Adjust result ───
   const handleAdjust = useCallback(async () => {
-    if (!ensureAuth()) return;
+    const currentUserId = await ensureAuth();
+    if (!currentUserId) return;
     const adjMy = parseInt(adjMyScore);
     const adjTheir = parseInt(adjTheirScore);
     if (isNaN(adjMy) || isNaN(adjTheir) || adjMy < 0 || adjTheir < 0 || adjMy > 20 || adjTheir > 20) {
@@ -263,7 +274,8 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
       return;
     }
 
-    const isChallenger = userId === challenge?.challenger_id;
+    const actualUserId = currentUserId;
+    const isChallenger = actualUserId === challenge?.challenger_id;
     const cScore = isChallenger ? adjMy : adjTheir;
     const oScore = isChallenger ? adjTheir : adjMy;
 
@@ -290,7 +302,7 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
       setError(e.message);
     }
     setLoading(false);
-  }, [code, adjMyScore, adjTheirScore, adjScreenshot, adjNotes, ensureAuth, userId, challenge, refresh]);
+  }, [code, adjMyScore, adjTheirScore, adjScreenshot, adjNotes, ensureAuth, challenge, refresh]);
 
   if (!challenge) {
     return (
@@ -307,12 +319,16 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
   const isChallenger = userId === challenge.challenger_id;
   const isOpponent = userId === challenge.opponent_id;
   const isParticipant = isChallenger || isOpponent;
+  // If auth hasn't checked yet (userId still null), treat as potential participant
+  // to ensure buttons are visible. Auth gate fires on click if needed.
+  const authPending = userId === null;
+  const showActions = authPending || isParticipant;
   const config = STATUS_CONFIG[challenge.status] || STATUS_CONFIG.PENDING_ACCEPTANCE;
   const cName = challenge.challenger_display || challenge.challenger_username;
   const oName = challenge.opponent_display || challenge.opponent_username;
   const matchResult = challenge.matchResult;
   const isSubmitter = matchResult?.submitted_by === userId;
-  const isVerifier = matchResult && !isSubmitter && isParticipant;
+  const isVerifier = !authPending && matchResult && !isSubmitter && isParticipant;
   const hasCounter = !!matchResult?.counter_submitted_by;
   const status = challenge.status;
 
@@ -421,7 +437,7 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
         {/* ════════════════════════════════════════════════════════ */}
         {/* PENDING_ACCEPTANCE — Accept / Reject */}
         {/* ════════════════════════════════════════════════════════ */}
-        {status === "PENDING_ACCEPTANCE" && isOpponent && (
+        {status === "PENDING_ACCEPTANCE" && showActions && (
           <div className="space-y-3 mb-6">
             <button
               type="button"
@@ -459,7 +475,7 @@ export function ChallengeLobbyClient({ code, initialChallenge }: Props) {
         {/* ════════════════════════════════════════════════════════ */}
         {/* MATCH_READY — Submit Result */}
         {/* ════════════════════════════════════════════════════════ */}
-        {status === "MATCH_READY" && isParticipant && (
+        {status === "MATCH_READY" && showActions && (
           <div className="rounded-2xl border border-white/5 p-4 mb-6" style={{ background: "rgba(18,20,24,0.6)" }}>
             <p className="text-[9px] font-black tracking-[0.22em] text-gray-500 uppercase mb-3">Submit Match Result</p>
 
