@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthModal } from "@/lib/auth-context";
 
@@ -21,8 +21,35 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
   const [gameMode, setGameMode] = useState("Friendly");
   const [message, setMessage] = useState("");
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; username: string; displayName: string; rank: number | null; points: number; platform: string }>>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedOpponent, setSelectedOpponent] = useState<{ id: string; name: string } | null>(
+    opponentId ? { id: opponentId, name: opponentName || "" } : null
+  );
+  const [showSearch, setShowSearch] = useState(!opponentId);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchQuery.length < 2) { setSearchResults([]); return; }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data.users || []);
+        }
+      } catch {}
+      setSearching(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const handleCreate = useCallback(async () => {
-    if (!opponentId) return;
+    const targetId = selectedOpponent?.id || opponentId;
+    if (!targetId) return;
 
     const me = await fetch("/api/auth/me").then(r => r.ok ? r.json() : null).catch(() => null);
     if (!me?.user) { openAuth("signin"); return; }
@@ -34,7 +61,7 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
       const res = await fetch("/api/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opponentId, platform, gameMode, message: message || undefined }),
+        body: JSON.stringify({ opponentId: targetId, platform, gameMode, message: message || undefined }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed to create challenge"); setCreating(false); return; }
@@ -43,7 +70,7 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
       setError("Connection error. Try again.");
     }
     setCreating(false);
-  }, [opponentId, openAuth, platform, gameMode, message]);
+  }, [selectedOpponent, opponentId, openAuth, platform, gameMode, message]);
 
   const handleCopy = useCallback(async () => {
     if (!result) return;
@@ -53,8 +80,9 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
   }, [result]);
 
   const handleShareWhatsApp = useCallback(() => {
-    if (!result || !opponentName) return;
-    const text = encodeURIComponent(`⚔ ${opponentName} — I challenged you on ZimFC Pro! Accept here: ${result.url}`);
+    const oppName = selectedOpponent?.name || opponentName;
+    if (!result || !oppName) return;
+    const text = encodeURIComponent(`⚔ ${oppName} — I challenged you on ZimFC Pro! Accept here: ${result.url}`);
     window.open(`https://wa.me/?text=${text}`, "_blank", "noopener");
   }, [result, opponentName]);
 
@@ -99,17 +127,61 @@ export function ChallengeModal({ open, onClose, opponentId, opponentName }: Prop
                 <div className="text-center mb-6">
                   <span className="text-4xl block mb-2">⚔</span>
                   <h2 className="cinematic-heading text-2xl text-ink">
-                    Challenge {opponentName || "Player"}
+                    Challenge {selectedOpponent?.name || opponentName || "Player"}
                   </h2>
                   <p className="text-[11px] text-muted-soft mt-2">One click. No configuration. Play FC and submit scores.</p>
                 </div>
 
-                {opponentName && (
-                  <div className="rounded-[16px] p-4 mb-5 text-center" style={{ background: "rgba(0,255,133,0.04)", border: "1px solid rgba(0,255,133,0.12)" }}>
+                {/* Opponent — search or pre-filled */}
+                { selectedOpponent ? (
+                  <div className="rounded-[16px] p-4 mb-3 text-center" style={{ background: "rgba(0,255,133,0.04)", border: "1px solid rgba(0,255,133,0.12)" }}>
                     <p className="text-[9px] font-black tracking-[0.2em] uppercase text-accent/70 mb-1">Opponent</p>
-                    <p className="text-lg font-bold text-ink uppercase">{opponentName}</p>
+                    <p className="text-lg font-bold text-ink uppercase">{selectedOpponent.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedOpponent(null); setShowSearch(true); setSearchQuery(""); }}
+                      className="text-[10px] text-muted-soft hover:text-accent mt-1 transition-colors"
+                    >
+                      Change opponent
+                    </button>
                   </div>
-                )}
+                ) : showSearch ? (
+                  <div className="mb-3">
+                    <label className="text-[9px] font-black tracking-[0.15em] uppercase text-muted-faint mb-1.5 block">Search opponent</label>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full h-10 rounded-xl bg-bg/60 border border-border-faint px-4 text-ink text-sm focus:outline-none focus:border-accent/30 mb-2"
+                      placeholder="Type a username..."
+                      autoFocus
+                    />
+                    {searching && <p className="text-[10px] text-muted-soft text-center">Searching...</p>}
+                    {searchResults.length > 0 && (
+                      <div className="max-h-48 overflow-y-auto rounded-xl border border-border-faint divide-y divide-border-faint" style={{ background: "rgba(12,12,16,0.95)" }}>
+                        {searchResults.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => { setSelectedOpponent({ id: u.id, name: u.displayName || u.username }); setShowSearch(false); setSearchQuery(""); setSearchResults([]); }}
+                            className="w-full px-4 py-2.5 text-left hover:bg-accent/5 transition-colors flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="text-sm text-ink font-bold">{u.displayName || u.username}</p>
+                              <p className="text-[10px] text-muted-soft">@{u.username}{u.platform ? ` · ${u.platform}` : ""}</p>
+                            </div>
+                            {u.rank && (
+                              <span className="text-xs text-accent font-mono">#{u.rank} · {u.points}pts</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
+                      <p className="text-[10px] text-muted-soft text-center">No players found</p>
+                    )}
+                  </div>
+                ) : null}
 
                 {/* Platform & Game Mode */}
                 <div className="grid grid-cols-2 gap-2 mb-3">
